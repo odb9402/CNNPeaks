@@ -90,22 +90,29 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, logger):
             stride = region_size / num_grid             # that can be elimenated.
 
             read_count_by_grid = pd.DataFrame(columns=['readCount'], dtype=int)
-            count_all = bam_alignment.count(region=createRegionStr(chr,region_start,region_start))
+            count_all = bam_alignment.count(region=createRegionStr(chr,region_start,region_end))
 
             for step in range(num_grid):
                 logger.debug("[STEP:"+str(step)+"] Searching point " + createRegionStr(chr,region_start + stride*step))
-                count = bam_alignment.count(region=createRegionStr(chr,region_start + stride*step))
+                count = bam_alignment.count(region=createRegionStr(chr, int(region_start + stride*step)))
                 read_count_by_grid = read_count_by_grid.append({'readCount' : count}, ignore_index=True)
 
             output_count_file = bam_file[:-4] + "/" + str(chr) + "_" + str(cls) + "_grid" + str(num_grid)+".ct"
             output_label_file = bam_file[:-4] + "/label_" + str(chr) + "_" + str(cls) + "_grid" + str(num_grid)+".lb"
 
-            output_label_df = pd.DataFrame(columns=['startGrid','endGrid'])
-            output_label_df['startGrid'] = (label_data_by_class['start'] - region_start) / stride
-            output_label_df['endGrid'] = (label_data_by_class['end'] - region_start) / stride
+            output_label_df_bef = pd.DataFrame(columns=['startGrid','endGrid'])
+            output_label_df_bef['startGrid'] = (label_data_by_class['start'] - region_start) / stride
+            output_label_df_bef['endGrid'] = (label_data_by_class['end'] - region_start) / stride
+
+            output_label_df = pd.DataFrame(columns=['peak'], dtype=int, index=range(2000))
+            output_label_df['peak'] = -1
+
+            for index, row in output_label_df_bef.iterrows():
+                output_label_df.loc[int(row['startGrid']):int(row['endGrid'])]['peak'] = 1
 
             read_count_by_grid.to_csv(output_count_file)
             output_label_df.to_csv(output_label_file)
+
             logger.info("["+output_count_file+"] is created.")
             logger.info("["+output_label_file+"] is created.\n")
 
