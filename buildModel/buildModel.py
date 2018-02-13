@@ -9,13 +9,13 @@ import random
 from sklearn.model_selection import KFold
 
 
-def run(dir_name, logger, grid=2000):
+def run(dir_name, logger, num_grid=2000):
     """
 
 
     :param dir_name:
     :param logger:
-    :param grid:
+    :param num_grid:
     :return:
     """
     PATH = os.path.abspath(dir_name)
@@ -48,16 +48,16 @@ def run(dir_name, logger, grid=2000):
 
     batch_size = 1
     evaluation_size = 1
-    generations = 300
-    eval_every = 1
-    learning_rate = 0.01
-    target_size = grid
+    generations = 500
+    eval_every = 5
+    learning_rate = 0.003
+    target_size = num_grid
 
     conv1_features = 25
     conv2_features = 50
     max_pool_size1 = 5
     max_pool_size2 = 5
-    fully_connected_size1 = 10
+    fully_connected_size1 = 15
     ###########################################################
 
     global conv1_weight
@@ -74,28 +74,28 @@ def run(dir_name, logger, grid=2000):
     for dir in input_list:
         for chr in input_list[dir]:
             for cls in input_list[dir][chr]:
-                input_file_name = (dir + "/" + chr + "_" + cls + "_grid" + str(grid) + ".ct")
-                label_file_name = (dir + "/label_" + chr + "_" + cls + "_grid" + str(grid) + ".lb")
+                input_file_name = (dir + "/" + chr + "_" + cls + "_grid" + str(num_grid) + ".ct")
+                label_file_name = (dir + "/label_" + chr + "_" + cls + "_grid" + str(num_grid) + ".lb")
                 train_data_list.append(pd.read_csv(input_file_name))
                 train_label_list.append(pd.read_csv(label_file_name))
 
     test_data_list, test_label_list = splitTrainingData(train_data_list, train_label_list)
 
-    input_data_train = tf.placeholder(tf.float32, shape=(batch_size, grid, 1), name="readCount")
-    input_data_eval = tf.placeholder(tf.float32, shape=(batch_size, grid, 1), name="readCount")
+    input_data_train = tf.placeholder(tf.float32, shape=(batch_size, num_grid, 1), name="readCount")
+    input_data_eval = tf.placeholder(tf.float32, shape=(batch_size, num_grid, 1), name="readCount")
 
-    output_data_train = tf.placeholder(tf.float32, shape=(evaluation_size, grid))
-    output_data_eval = tf.placeholder(tf.float32, shape=(evaluation_size, grid))
+    output_data_train = tf.placeholder(tf.float32, shape=(evaluation_size, num_grid))
+    output_data_eval = tf.placeholder(tf.float32, shape=(evaluation_size, num_grid))
 
     ## For convolution layers
-    conv1_weight = tf.Variable(tf.truncated_normal([4,1,conv1_features],stddev=0.1, dtype=tf.float32))
+    conv1_weight = tf.Variable(tf.truncated_normal([8,1,conv1_features],stddev=0.1, dtype=tf.float32))
     conv1_bias = tf.Variable(tf.zeros([conv1_features], dtype=tf.float32))
 
     conv2_weight = tf.Variable(tf.truncated_normal([4,conv1_features,conv2_features], stddev=0.1, dtype=tf.float32))
     conv2_bias = tf.Variable(tf.zeros([conv2_features], dtype=tf.float32))
 
     ## For fully connected layers
-    resulting_width = grid // ( max_pool_size1 * max_pool_size2)
+    resulting_width = num_grid // (max_pool_size1 * max_pool_size2)
 
     full1_input_size = resulting_width * conv2_features
     full1_weight = tf.Variable(tf.truncated_normal([full1_input_size, fully_connected_size1], stddev=0.1, dtype=tf.float32))
@@ -108,9 +108,11 @@ def run(dir_name, logger, grid=2000):
     test_model_output = peakPredictConvModel(input_data_eval, logger)
 
     loss = tf.reduce_mean(((model_output - (tf.reshape(output_data_train, model_output.shape))))**2)
+    #loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits())
 
     prediction = model_output
     test_prediction = test_model_output
+
 
     optimizer = tf.train.AdamOptimizer(learning_rate)
     train_step = optimizer.minimize(loss)
@@ -127,25 +129,26 @@ def run(dir_name, logger, grid=2000):
         rand_x = train_data_list[rand_index[0]]['readCount'].as_matrix()
         rand_x = rand_x.reshape(input_data_train.shape)
         rand_y = train_label_list[rand_index[0]]['peak'].as_matrix()
-        rand_y = rand_y.reshape(output_data_train.shape)
+        rand_y = (rand_y.reshape(output_data_train.shape))
         train_dict = {input_data_train: rand_x, output_data_train: rand_y}
 
         sess.run(train_step, feed_dict=train_dict)
         temp_train_loss, temp_train_preds = sess.run([loss, prediction], feed_dict=train_dict)
+        #np.set_printoptions(threshold=np.inf)
         #logger.info(temp_train_preds)
         #logger.info(rand_y)
-        temp_train_acc = getAccuracy(temp_train_preds, rand_y)
+        temp_train_acc = getAccuracy(temp_train_preds, rand_y, num_grid=num_grid)
 
         if (i+1) % eval_every == 0:
             eval_index = np.random.choice(len(test_data_list), size=batch_size)
             eval_x = test_data_list[eval_index[0]]['readCount'].as_matrix()
             eval_x = eval_x.reshape(input_data_eval.shape)
             eval_y = test_label_list[eval_index[0]]['peak'].as_matrix()
-            eval_y = eval_y.reshape(output_data_eval.shape)
+            eval_y = (eval_y.reshape(output_data_eval.shape))
             test_dict = {input_data_eval: eval_x, output_data_eval: eval_y}
 
             test_preds = sess.run(test_prediction, feed_dict=test_dict)
-            temp_test_acc = getAccuracy(test_preds, eval_y)
+            temp_test_acc = getAccuracy(test_preds, eval_y, num_grid=num_grid)
 
             train_loss.append(temp_train_loss)
             train_acc.append(temp_train_acc)
@@ -155,33 +158,33 @@ def run(dir_name, logger, grid=2000):
             acc_and_loss = [np.round(x,2) for x in acc_and_loss]
             print('Generation # {}. TrainLoss: {:.2f}. TrainACC (TestACC): {:.2f}. ({:.2f}.)'.format(*acc_and_loss))
 
-
     visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss)
 
+    
+    visualizePeakResult(batch_size, input_data_eval, num_grid, output_data_eval, sess, test_data_list, test_label_list,
+                        test_prediction)
 
-def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss):
-    """
 
-    :param eval_every:
-    :param generations:
-    :param test_acc:
-    :param train_acc:
-    :param train_loss:
-    :return:
-    """
-    eval_indices = range(0, generations, eval_every)
-
-    plt.plot(eval_indices, train_loss, 'k-')
-    plt.title('L1 Loss per generation')
-    plt.xlabel('Generation')
-    plt.ylabel('Loss')
-    plt.show()
-
-    plt.plot(eval_indices, train_acc, 'k-', label='Train Set Accuracy')
-    plt.plot(eval_indices, test_acc, 'r--', label='Test Set Accuracy')
-    plt.title('Train and Test Accuracy')
-    plt.xlabel('Generation')
-    plt.ylabel('Accuracy')
+def visualizePeakResult(batch_size, input_data_eval, num_grid, output_data_eval, sess, test_data_list, test_label_list,
+                        test_prediction):
+    show_index = np.random.choice(len(test_data_list), size=batch_size)
+    show_x = test_data_list[show_index[0]]['readCount'].as_matrix()
+    show_x = show_x.reshape(input_data_eval.shape)
+    show_y = test_label_list[show_index[0]]['peak'].as_matrix()
+    show_y = show_y.reshape(output_data_eval.shape)
+    show_dict = {input_data_eval: show_x, output_data_eval: show_y}
+    show_preds = sess.run(test_prediction, feed_dict=show_dict)
+    show_preds = classValueFilter(show_preds, num_grid)
+    show_y = show_y.reshape(num_grid).tolist()
+    show_preds = show_preds.reshape(num_grid).tolist()
+    for index in range(len(show_preds)):
+        if show_preds[index] == 1.0:
+            show_preds[index] += 1
+    plt.plot(show_y, 'k.', label='Real prediction')
+    plt.plot(show_preds, 'r.', label='Model prediction')
+    plt.title('Peak prediction result by regions')
+    plt.xlabel('Regions')
+    plt.ylabel('Peak')
     plt.legend(loc='lower right')
     plt.show()
 
@@ -223,7 +226,7 @@ def peakPredictConvModel(input_data, logger):
     return (final_model_output)
 
 
-def getAccuracy(logits, targets):
+def getAccuracy(logits, targets, num_grid=2000):
     """
 
     :param logits:
@@ -231,8 +234,8 @@ def getAccuracy(logits, targets):
     :return:
     """
 
-    logits = logits.reshape(2000)
-    targets = targets.reshape(2000)
+    logits = logits.reshape(num_grid)
+    targets = targets.reshape(num_grid)
 
     correct_num = 0.
 
@@ -245,6 +248,27 @@ def getAccuracy(logits, targets):
             pass
 
     return correct_num / len(logits)
+
+
+def classValueFilter(output_value, num_grid=2000):
+    """
+
+    :param output_value:
+    :param num_grid:
+    :return:
+    """
+    before_shape = output_value.shape
+    output_value = np.reshape(output_value,num_grid)
+
+    for index in range(len(output_value)):
+        if output_value[index] >= 0:
+            output_value[index] = 1
+        elif output_value[index] < 0:
+            output_value[index] = -1
+
+    output_value = np.reshape(output_value,before_shape)
+
+    return output_value
 
 
 def extractChrClass(dir):
@@ -289,3 +313,40 @@ def splitTrainingData(data_list, label_list, Kfold=4):
         counter -= 1
 
     return test_data, test_label
+
+
+def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss):
+    """
+
+    :param eval_every:
+    :param generations:
+    :param test_acc:
+    :param train_acc:
+    :param train_loss:
+    :return:
+    """
+    eval_indices = range(0, generations, eval_every)
+
+    plt.plot(eval_indices, train_loss, 'k-')
+    plt.title('L1 Loss per generation')
+    plt.xlabel('Generation')
+    plt.ylabel('Loss')
+    plt.show()
+
+    plt.plot(eval_indices, train_acc, 'k-', label='Train Set Accuracy')
+    plt.plot(eval_indices, test_acc, 'r--', label='Test Set Accuracy')
+    plt.title('Train and Test Accuracy')
+    plt.xlabel('Generation')
+    plt.ylabel('Accuracy')
+    plt.legend(loc='lower right')
+    plt.show()
+
+
+def softmax_numpy(x):
+    """
+
+    :param x:
+    :return:
+    """
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)

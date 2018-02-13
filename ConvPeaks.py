@@ -17,7 +17,7 @@ def main():
     arg_parser.add_argument("-mode","--runMode", choices=['preprocess','buildModel'] ,help="Select a mode.")
     arg_parser.add_argument("-i","--inputDir", help="Input directory including labeled data and bam alignment files.")
     arg_parser.add_argument("-m","--savedModel", help="A saved CNN model file.")
-    arg_parser.add_argument("-g","--gridSize", help="")
+    arg_parser.add_argument("-g","--gridSize",default=2000, help="Define numbers of grid for each training data")
     arg_parser.add_argument("-s","--searchingDist", help="")
 
     args = arg_parser.parse_args()
@@ -28,9 +28,9 @@ def main():
     ###############################################################
 
     if args.runMode == 'preprocess':
-        preProcessing(args.inputDir, logger)
+        preProcessing(args.inputDir, logger, num_grid=int(args.gridSize))
     elif args.runMode =='buildModel':
-        buildModel(args.inputDir, logger)
+        buildModel(args.inputDir, logger, num_grid=int(args.gridSize))
 
 
 if __name__ == '__main__':

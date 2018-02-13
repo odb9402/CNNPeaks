@@ -5,6 +5,9 @@ import os
 import re
 import subprocess
 import random
+import time
+
+from multiprocessing import cpu_count, Process, Manager
 
 from sklearn.cluster import DBSCAN
 
@@ -27,11 +30,14 @@ def run(dir_name, logger, bp_eps=30000, searching_dist=10000, num_grid=2000):
     bam_files = glob.glob(PATH + '/*.bam')
     label_files = glob.glob(PATH + '/*.txt')
 
+    MAX_CORE = cpu_count()
+    processes = []
+
     logger.info("Creating small fragment files for training in input dir.")
 
     for bam_file in bam_files:
         for label_file in label_files:
-            if is_same_target(bam_file, label_file):
+            if is_same_target(bam_file, label_file) == True:
                 logger.info("Find a matched pair between labeled data and an alignment file.\n"
                             "Shared target :: " + bam_file.rsplit('/',1)[1].split('_')[0])
                 label_data = loadLabel(label_file)
@@ -44,7 +50,12 @@ def run(dir_name, logger, bp_eps=30000, searching_dist=10000, num_grid=2000):
 
                 logger.info("Making fragments for training with <searching distance, grid> : [ " \
                             + str(searching_dist) + ", "+ str(num_grid)+" ]\n")
-                makeTrainFrags(bam_file, label_data, searching_dist, num_grid, logger)
+                process = Process(target=makeTrainFrags, args=(bam_file, label_data, searching_dist, num_grid, logger,))
+                parallel_learning(MAX_CORE-1, process, processes)
+                #makeTrainFrags(bam_file, label_data, searching_dist, num_grid, logger)
+
+    for proc in processes:
+        proc.join()
 
 
 def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, logger):
@@ -67,15 +78,16 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, logger):
     right_dist = searching_dist - left_dist
 
     chr_list = set(label_data_df['chr'].tolist())
-    bam_alignment = pysam.AlignmentFile(bam_file,'rb')
     if not os.path.isdir(bam_file[:-4]):
         os.makedirs(bam_file[:-4])
 
-    if not bam_alignment.check_index():
-        createBamIndex()
+    if not os.path.isfile(bam_file + '.sort.bai'):
+        createBamIndex(bam_file)
         logger.info("Creating index file of [" + bam_file + "]")
     else:
         logger.info("[" + bam_file + "] already has index file.")
+
+    bam_alignment = pysam.AlignmentFile(bam_file +'.sort', 'rb', index_filename=bam_file +'.sort.bai')
 
     for chr in chr_list:
         label_data_by_chr = label_data_df[label_data_df['chr'] == chr]
@@ -90,10 +102,9 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, logger):
             stride = region_size / num_grid             # that can be elimenated.
 
             read_count_by_grid = pd.DataFrame(columns=['readCount'], dtype=int)
-            count_all = bam_alignment.count(region=createRegionStr(chr,region_start,region_end))
 
             for step in range(num_grid):
-                logger.debug("[STEP:"+str(step)+"] Searching point " + createRegionStr(chr,region_start + stride*step))
+                logger.info("[STEP:"+str(step)+"] Searching point " + createRegionStr(chr,region_start + stride*step))
                 count = bam_alignment.count(region=createRegionStr(chr, int(region_start + stride*step)))
                 read_count_by_grid = read_count_by_grid.append({'readCount' : count}, ignore_index=True)
 
@@ -104,7 +115,7 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, logger):
             output_label_df_bef['startGrid'] = (label_data_by_class['start'] - region_start) / stride
             output_label_df_bef['endGrid'] = (label_data_by_class['end'] - region_start) / stride
 
-            output_label_df = pd.DataFrame(columns=['peak'], dtype=int, index=range(2000))
+            output_label_df = pd.DataFrame(columns=['peak'], dtype=int, index=range(num_grid))
             output_label_df['peak'] = -1
 
             for index, row in output_label_df_bef.iterrows():
@@ -200,7 +211,12 @@ def createBamIndex(input_bam):
 
     :param input_bam: A input bam file name.
     """
-    subprocess.call(['bamtools','index','-in',input_bam])
+    if not os.path.isfile(input_bam+".sort"):
+        subprocess.call(['sudo bamtools sort -in ' + input_bam + ' -out '+ input_bam+'.sort'], shell=True)
+    else:
+        exit()
+    subprocess.call(['sudo bamtools index -in ' + input_bam+".sort"], shell=True)
+
 
 
 def createRegionStr(chr, start, end=None):
@@ -217,9 +233,9 @@ def createRegionStr(chr, start, end=None):
     :return: A string of samtool-style region
     """
     if end == None:
-        return str(chr) + ":" + str(start) + "-" + str(start)
+        return str(chr) + ":" + str(int(start)) + "-" + str(int(start))
     elif end is not None:
-        return str(chr) + ":" + str(start) + "-" + str(end)
+        return str(chr) + ":" + str(int(start)) + "-" + str(int(end))
 
 
 def filtering_label_with_cellType(label_data_df, cellType):
@@ -240,4 +256,30 @@ def is_same_target(bam_file_name, label_data_df):
     :param label_data_df:
     :return:
     """
-    return bam_file_name.split('_')[0] == label_data_df.split('_')[0]
+    return bam_file_name.rsplit('/',1)[1].split('_')[0] == label_data_df.rsplit('/',1)[1].split('_')[0]
+
+
+def parallel_learning(MAX_CORE, learning_process, learning_processes):
+    """
+    :param MAX_CORE:
+    :param learning_process:
+    :param learning_processes:
+    :return:
+    """
+    if len(learning_processes) < MAX_CORE - 1:
+        learning_processes.append(learning_process)
+        learning_process.start()
+    else:
+        keep_wait = True
+        while True:
+            time.sleep(0.1)
+            if not (keep_wait is True):
+                break
+            else:
+                for process in reversed(learning_processes):
+                    if process.is_alive() is False:
+                        learning_processes.remove(process)
+                        learning_processes.append(learning_process)
+                        learning_process.start()
+                        keep_wait = False
+                        break
