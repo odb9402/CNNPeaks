@@ -12,7 +12,7 @@ from multiprocessing import cpu_count, Process, Manager
 from sklearn.cluster import DBSCAN
 
 
-def run(dir_name, logger, bp_eps=30000, searching_dist=10000, num_grid=2000):
+def run(dir_name, logger, bp_eps=50000, searching_dist=30000, num_grid=2000):
     """
     This preprocessing step will create alignment read count data from
     input directory dir_name was specified by a user. The results will
@@ -38,8 +38,8 @@ def run(dir_name, logger, bp_eps=30000, searching_dist=10000, num_grid=2000):
     for bam_file in bam_files:
         for label_file in label_files:
             if is_same_target(bam_file, label_file) == True:
-                logger.info("Find a matched pair between labeled data and an alignment file.\n"
-                            "Shared target :: " + bam_file.rsplit('/',1)[1].split('_')[0])
+                logger.info("Find a matched pair between labeled data and an alignment file.")
+                logger.info("Shared target :: " + bam_file.rsplit('/',1)[1].split('_')[0])
                 label_data = loadLabel(label_file)
 
                 cellType_string = bam_file[:-4].rsplit('_',1)[1]
@@ -65,6 +65,8 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, logger):
     labeled regions and "searching_dist". If a group of labeled
     data start at chr1:300,000 and end with chr1:350,000, the
     length of a small fragment from bam_file is 50000 + searching dist.
+    If (regions of the label cluster / 5) is lower than searchine dist,
+    the bias is not a searching dist but (regions of the label cluster / 5).
 
     :param bam_files: bam_files MUST be a absPath.
     :param label_data_df:
@@ -73,9 +75,6 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, logger):
     :param logger:
     :return:
     """
-
-    left_dist = random.randint(0, searching_dist)       # Additional window is non-deterministic.
-    right_dist = searching_dist - left_dist
 
     chr_list = set(label_data_df['chr'].tolist())
     if not os.path.isdir(bam_file[:-4]):
@@ -95,16 +94,26 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, logger):
 
         for cls in class_list:
             label_data_by_class = label_data_by_chr[label_data_by_chr['class'] == cls]
-            region_start = int(label_data_by_class.head(1)['start'] - left_dist)
-            region_end = int(label_data_by_class.tail(1)['end']  + right_dist)
+            region_start = int(label_data_by_class.head(1)['start'])
+            region_end = int(label_data_by_class.tail(1)['end'])
+            region_size = region_end - region_start
 
-            region_size = region_end - region_start     # If there are regions have anomaly size,
+            if region_size / 5 > searching_dist:
+                left_dist = random.randint(0, int(region_size/5))
+                right_dist = int(region_size/5) - left_dist
+            else:
+                left_dist = random.randint(0, searching_dist)  # Additional window is non-deterministic.
+                right_dist = searching_dist - left_dist
+
+            region_start -= left_dist
+            region_end += right_dist
+            region_size = region_end - region_start
+
             stride = region_size / num_grid             # that can be elimenated.
-
+            logger.debug("STRIDE :" + str(stride) + "           REGION SIZE :" + str(region_size))
             read_count_by_grid = pd.DataFrame(columns=['readCount'], dtype=int)
 
             for step in range(num_grid):
-                logger.info("[STEP:"+str(step)+"] Searching point " + createRegionStr(chr,region_start + stride*step))
                 count = bam_alignment.count(region=createRegionStr(chr, int(region_start + stride*step)))
                 read_count_by_grid = read_count_by_grid.append({'readCount' : count}, ignore_index=True)
 
@@ -115,12 +124,13 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, logger):
             output_label_df_bef['startGrid'] = (label_data_by_class['start'] - region_start) / stride
             output_label_df_bef['endGrid'] = (label_data_by_class['end'] - region_start) / stride
 
-            output_label_df = pd.DataFrame(columns=['peak'], dtype=int, index=range(num_grid))
-            output_label_df['peak'] = -1
+            output_label_df = pd.DataFrame(columns=['peak','noPeak'], dtype=int, index=range(num_grid))
+            output_label_df['peak'] = 0
+            output_label_df['noPeak'] = 1
 
             for index, row in output_label_df_bef.iterrows():
-                output_label_df.loc[int(row['startGrid']):int(row['endGrid'])]['peak'] = 1
-
+                output_label_df.loc[int(row['startGrid']):int(row['endGrid']), 'peak'] = 1
+                output_label_df.loc[int(row['startGrid']):int(row['endGrid']), 'noPeak'] = 0
             read_count_by_grid.to_csv(output_count_file)
             output_label_df.to_csv(output_label_file)
 
@@ -150,7 +160,7 @@ def clusteringLabels(label_data_df, bp_eps):
         DBSCAN_model = DBSCAN(eps = bp_eps, min_samples=1)  ## It does not allow noisy element with minsample = 1
         predict = pd.DataFrame(DBSCAN_model.fit_predict(feature_df), columns=['class'])
 
-        label_data_df.loc[label_data_df.chr == chr,'class'] = predict['class'].tolist()
+        label_data_df.loc[label_data_df.chr == chr, 'class'] = predict['class'].tolist()
 
 
 def loadLabel(label_file_name):

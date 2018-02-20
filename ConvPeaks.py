@@ -17,7 +17,7 @@ def main():
     arg_parser.add_argument("-mode","--runMode", choices=['preprocess','buildModel'] ,help="Select a mode.")
     arg_parser.add_argument("-i","--inputDir", help="Input directory including labeled data and bam alignment files.")
     arg_parser.add_argument("-m","--savedModel", help="A saved CNN model file.")
-    arg_parser.add_argument("-g","--gridSize",default=2000, help="Define numbers of grid for each training data")
+    arg_parser.add_argument("-g","--gridSize",default=4000, help="Define numbers of grid for each training data")
     arg_parser.add_argument("-s","--searchingDist", help="")
 
     args = arg_parser.parse_args()
@@ -35,7 +35,7 @@ def main():
 
 if __name__ == '__main__':
     logger = logging.getLogger("ConvLog")
-    logger.setLevel(logging.INFO)               # The logger object only output logs which have
+    logger.setLevel(logging.DEBUG)               # The logger object only output logs which have
                                                 # upper level than INFO.
     log_format = logging.Formatter('%(asctime)s:%(message)s')
 
