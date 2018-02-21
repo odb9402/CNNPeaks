@@ -19,6 +19,7 @@ def main():
     arg_parser.add_argument("-m","--savedModel", help="A saved CNN model file.")
     arg_parser.add_argument("-g","--gridSize",default=4000, help="Define numbers of grid for each training data")
     arg_parser.add_argument("-s","--searchingDist", help="")
+    arg_parser.add_argument("-eps","--basePointEPS",help="")
 
     args = arg_parser.parse_args()
 

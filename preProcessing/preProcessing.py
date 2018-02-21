@@ -11,7 +11,6 @@ from multiprocessing import cpu_count, Process, Manager
 
 from sklearn.cluster import DBSCAN
 
-
 def run(dir_name, logger, bp_eps=50000, searching_dist=30000, num_grid=2000):
     """
     This preprocessing step will create alignment read count data from
@@ -51,8 +50,7 @@ def run(dir_name, logger, bp_eps=50000, searching_dist=30000, num_grid=2000):
                 logger.info("Making fragments for training with <searching distance, grid> : [ " \
                             + str(searching_dist) + ", "+ str(num_grid)+" ]\n")
                 process = Process(target=makeTrainFrags, args=(bam_file, label_data, searching_dist, num_grid, logger,))
-                parallel_learning(MAX_CORE-1, process, processes)
-                #makeTrainFrags(bam_file, label_data, searching_dist, num_grid, logger)
+                parallel_execution(MAX_CORE - 1, process, processes)
 
     for proc in processes:
         proc.join()
@@ -269,7 +267,7 @@ def is_same_target(bam_file_name, label_data_df):
     return bam_file_name.rsplit('/',1)[1].split('_')[0] == label_data_df.rsplit('/',1)[1].split('_')[0]
 
 
-def parallel_learning(MAX_CORE, learning_process, learning_processes):
+def parallel_execution(MAX_CORE, learning_process, learning_processes):
     """
     :param MAX_CORE:
     :param learning_process:

@@ -10,7 +10,8 @@ import random
 
 def run(dir_name, logger, num_grid=10000):
     """
-
+    This is the main function to build convolution neural network model
+    for peak prediction.
 
     :param dir_name:
     :param logger:
@@ -43,9 +44,12 @@ def run(dir_name, logger, num_grid=10000):
     global conv2_features
     global conv3_features
     global conv4_features
+    global conv5_features
     global max_pool_size1
     global max_pool_size2
+    global max_pool_size3
     global fully_connected_size1
+    global fully_connected_size2
 
     batch_size = 1
     evaluation_size = 1
@@ -57,10 +61,13 @@ def run(dir_name, logger, num_grid=10000):
     conv1_features = 15
     conv2_features = 25
     conv3_features = 25
-    conv4_features = 50
+    conv4_features = 30
+    conv5_features = 30
     max_pool_size1 = 4
     max_pool_size2 = 2
+    max_pool_size3 = 2
     fully_connected_size1 = 300
+    fully_connected_size2 = 300
     ###########################################################
 
     global conv1_weight
@@ -71,6 +78,8 @@ def run(dir_name, logger, num_grid=10000):
     global conv3_bias
     global conv4_weight
     global conv4_bias
+    global conv5_weight
+    global conv5_bias
     global full1_weight
     global full1_bias
     global full2_weight
@@ -106,7 +115,7 @@ def run(dir_name, logger, num_grid=10000):
     loss_weight = tf.placeholder(tf.float32)
 
     ## For convolution layers
-    conv1_weight = tf.Variable(tf.truncated_normal([4, 1, conv1_features],stddev=0.1, dtype=tf.float32))
+    conv1_weight = tf.Variable(tf.truncated_normal([8, 1, conv1_features],stddev=0.1, dtype=tf.float32))
     conv1_bias = tf.Variable(tf.zeros([conv1_features], dtype=tf.float32))
 
     conv2_weight = tf.Variable(tf.truncated_normal([4,conv1_features,conv2_features], stddev=0.1, dtype=tf.float32))
@@ -118,10 +127,12 @@ def run(dir_name, logger, num_grid=10000):
     conv4_weight = tf.Variable(tf.truncated_normal([2,conv3_features,conv4_features], stddev=0.1, dtype=tf.float32))
     conv4_bias = tf.Variable(tf.zeros([conv4_features], dtype=tf.float32))
 
+    conv5_weight = tf.Variable(tf.truncated_normal([1,conv4_features,conv5_features], stddev=0.1, dtype=tf.float32))
+    conv5_bias = tf.Variable(tf.zeros([conv5_features], dtype=tf.float32))
     ## For fully connected layers
-    resulting_width = num_grid // ( max_pool_size1* max_pool_size2)
+    resulting_width = num_grid // ( max_pool_size1 * max_pool_size2 * max_pool_size3)
+    full1_input_size = resulting_width * conv5_features
 
-    full1_input_size = resulting_width * conv3_features
     full1_weight = tf.Variable(tf.truncated_normal([full1_input_size, fully_connected_size1], stddev=0.1, dtype=tf.float32))
     full1_bias = tf.Variable(tf.truncated_normal([fully_connected_size1], stddev=0.1, dtype=tf.float32))
 
@@ -131,8 +142,8 @@ def run(dir_name, logger, num_grid=10000):
     model_output = peakPredictConvModel(input_data_train, logger)
     test_model_output = peakPredictConvModel(input_data_eval, logger)
 
-    prediction = tf.nn.softmax(model_output, axis=1)
-    test_prediction = tf.nn.softmax(test_model_output, axis=1)
+    prediction = tf.nn.sigmoid(model_output)#, axis=1)
+    test_prediction = tf.nn.sigmoid(test_model_output)#, axis=1)
 
     loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train\
             ,logits=model_output, pos_weight=loss_weight))
@@ -157,7 +168,7 @@ def run(dir_name, logger, num_grid=10000):
         rand_y = train_label_list[rand_index[0]][['peak','noPeak']].as_matrix().transpose()
         rand_y = rand_y.reshape(label_data_train.shape)
 
-        p_n_rate = pnRate(rand_y)**1/2
+        p_n_rate = (pnRate(rand_y))
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y, p_dropout:0.5, loss_weight:p_n_rate}
 
@@ -178,15 +189,16 @@ def run(dir_name, logger, num_grid=10000):
 
             test_preds = sess.run(test_prediction, feed_dict=test_dict)
             temp_test_acc = getAccuracy(test_preds, eval_y, num_grid=num_grid)
-            TP_rate = tpRate(test_preds, eval_y, num_grid=num_grid)
+            TP_rate, TN_rate = tpTnRate(test_preds, eval_y, num_grid=num_grid)
 
             train_loss.append(temp_train_loss)
             train_acc.append(temp_train_acc)
             test_acc.append(temp_test_acc)
 
-            acc_and_loss = [(i+1), temp_train_loss, temp_train_acc, temp_test_acc, TP_rate]
+            acc_and_loss = [(i+1), temp_train_loss, temp_train_acc, temp_test_acc, TP_rate, TN_rate]
 
-            logger.info('Generation # {}. TrainLoss: {:.2f}. TrainACC (TestACC): {:.2f}. ({:.2f}.) TPR:{:.2f}'.format(*acc_and_loss))
+            logger.info('Generation # {}. TrainLoss: {:.2f}. TrainACC (TestACC): {:.2f}. ({:.2f}.) TPR:{:.2f} TNR:{:.2f}'\
+                        .format(*acc_and_loss))
 
     visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss)
 
@@ -214,7 +226,6 @@ def peakPredictConvModel(input_data, logger):
                            , name="MaxPooling1")
     logger.debug(max_pool1)
 
-
     conv2 = tf.nn.conv1d(max_pool1, conv2_weight, stride=1, padding='SAME', name="Convolution2")
     logger.debug(conv2)
     relu2 = tf.nn.relu(tf.nn.bias_add(conv2,conv2_bias), name="Relu2")
@@ -226,10 +237,18 @@ def peakPredictConvModel(input_data, logger):
                            , name="MaxPooling2")
     logger.debug(max_pool2)
 
+    conv4 = tf.nn.conv1d(max_pool2, conv4_weight, stride=1, padding='SAME', name="Convolution4")
+    relu4 = tf.nn.relu(tf.nn.bias_add(conv4,conv4_bias), name="Relu4")
 
-    final_conv_shape = max_pool2.get_shape().as_list()
+    conv5 = tf.nn.conv1d(conv4, conv5_weight, stride=1, padding='SAME', name="Convolution5")
+    relu5 = tf.nn.relu(tf.nn.bias_add(conv5,conv5_bias), name="Relu5")
+
+    max_pool3 = tf.nn.pool(relu5, [max_pool_size3], strides=[max_pool_size3], padding='SAME', pooling_type='MAX'\
+                           , name="MaxPooling3")
+
+    final_conv_shape = max_pool3.get_shape().as_list()
     final_shape = final_conv_shape[1] * final_conv_shape[2]
-    flat_output = tf.reshape(max_pool2, [final_conv_shape[0] , final_shape])
+    flat_output = tf.reshape(max_pool3, [final_conv_shape[0] , final_shape])
 
     fully_connected1 = tf.nn.relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias), name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
@@ -245,11 +264,13 @@ def peakPredictConvModel(input_data, logger):
 
 def getAccuracy(logits, targets, num_grid=2000):
     """
+    Return accuracy of the result.
+    Acc = ( TP + TF ) / ( TP + TF + FN + FF )
+    ( TP + TF + FN + FF ) = num_grid
 
     :param logits:
     :param targets:
     :return:
-
     """
     logits = logits.reshape(2,num_grid)
     targets = targets.reshape(2,num_grid)
@@ -267,8 +288,12 @@ def getAccuracy(logits, targets, num_grid=2000):
     return correct_num / len(logits[0])
 
 
-def tpRate(logits, targets, num_grid=2000):
+def tpTnRate(logits, targets, num_grid=2000):
     """
+    Return true positive rate and true negative rate.
+    By adjusting value from tpTnRate function, the loss function can get
+    equilibrium between sensitivity and specificity derived from
+    unbalanced ratio from regions which are peak and not peak.
 
     :param logits:
     :param targets:
@@ -281,21 +306,30 @@ def tpRate(logits, targets, num_grid=2000):
     P_num = 0.
     TP_num = 0.
 
+    N_num = 0.
+    TN_num = 0.
+
     for index in range(len(logits[0])):
         if targets[0][index] > 0:
             P_num += 1
-            if logits[0][index] > 0.5:
+            if logits[0][index] >= 0.5:
                 TP_num += 1
-
-    return TP_num/ P_num
+        else:
+            N_num += 1
+            if logits[0][index] < 0.5:
+                TN_num += 1
+    return (TP_num/ P_num , TN_num/ N_num)
 
 
 def pnRate(targets, num_grid=2000):
     """
+    Return the The ratio of Negative#/ Positive#.
+    It will be used for weights of loss function to adjust
+    between sensitivity and specificity.
 
     :param targets:
     :param num_grid:
-    :return: The ratio of Negative#/ Positive#
+    :return:
     """
     count = 0.
     for index in range(len(targets[0][0])):
@@ -307,6 +341,7 @@ def pnRate(targets, num_grid=2000):
 
 def classValueFilter(output_value, num_grid=2000):
     """
+    For output of final softmax layer,
 
     :param output_value:
     :param num_grid:
@@ -397,6 +432,20 @@ def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train
 
 def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
                         test_prediction, k = 1):
+    """
+
+    :param batch_size:
+    :param input_data_eval:
+    :param num_grid:
+    :param label_data_eval:
+    :param sess:
+    :param test_data_list:
+    :param test_label_list:
+    :param test_prediction:
+    :param k:
+    :return:
+    """
+
     if k > 0:
         for i in range(k):
             show_index = np.random.choice(len(test_data_list), size=batch_size)
@@ -418,6 +467,7 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             plt.ylabel('Peak')
             plt.legend(loc='lower right')
             plt.show()
+
     else:
         for i in range(len(test_data_list)):
             show_x = test_data_list[i]['readCount'].as_matrix()
