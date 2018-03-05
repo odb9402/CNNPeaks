@@ -11,7 +11,7 @@ from multiprocessing import cpu_count, Process, Manager
 
 from sklearn.cluster import DBSCAN
 
-def run(dir_name, logger, bp_eps=50000, searching_dist=30000, num_grid=2000):
+def run(dir_name, logger, bp_eps=20000, searching_dist=30000, num_grid=2000):
     """
     This preprocessing step will create alignment read count data from
     input directory dir_name was specified by a user. The results will
@@ -40,23 +40,23 @@ def run(dir_name, logger, bp_eps=50000, searching_dist=30000, num_grid=2000):
                 logger.info("Find a matched pair between labeled data and an alignment file.")
                 logger.info("Shared target :: " + bam_file.rsplit('/',1)[1].split('_')[0])
                 label_data = loadLabel(label_file)
-
                 cellType_string = bam_file[:-4].rsplit('_',1)[1]
-                label_data = filtering_label_with_cellType(label_data, cellType_string)
+                #label_data = filtering_label_with_cellType(label_data, cellType_string)
 
                 logger.info("DBSACN clustering raw label data with base point eps:[ " + str(bp_eps) + " ]\n")
                 clusteringLabels(label_data, bp_eps)
 
                 logger.info("Making fragments for training with <searching distance, grid> : [ " \
                             + str(searching_dist) + ", "+ str(num_grid)+" ]\n")
-                process = Process(target=makeTrainFrags, args=(bam_file, label_data, searching_dist, num_grid, logger,))
+                process = Process(target=makeTrainFrags, \
+                                  args=(bam_file, label_data, searching_dist, num_grid, cellType_string ,logger,))
                 parallel_execution(MAX_CORE - 1, process, processes)
 
     for proc in processes:
         proc.join()
 
 
-def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, logger):
+def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type, logger):
     """
     For a bam alignment file, it slices into small fragments
     with label regions. Length of sliced bam files is a sum of
@@ -126,9 +126,12 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, logger):
             output_label_df['peak'] = 0
             output_label_df['noPeak'] = 1
 
+            index_count = 0
             for index, row in output_label_df_bef.iterrows():
-                output_label_df.loc[int(row['startGrid']):int(row['endGrid']), 'peak'] = 1
-                output_label_df.loc[int(row['startGrid']):int(row['endGrid']), 'noPeak'] = 0
+                if cell_type in str(label_data_by_class['cellType'].iloc[index_count]):
+                    output_label_df.loc[int(row['startGrid']):int(row['endGrid']), 'peak'] = 1
+                    output_label_df.loc[int(row['startGrid']):int(row['endGrid']), 'noPeak'] = 0
+                index_count += 1
             read_count_by_grid.to_csv(output_count_file)
             output_label_df.to_csv(output_label_file)
 
@@ -190,12 +193,14 @@ def loadLabel(label_file_name):
     label_data.sort()
 
     for i in range(len(label_data)):
-        label_data[i] = re.split(':|-| ', label_data[i])
+        label_data[i] = re.split(':|-| ', label_data[i], 4)
+
         for index in range(len(label_data[i])):
             if label_data[i][index] == '':
                 label_data[i].pop(index)
         if len(label_data[i]) == 4:
             label_data[i].append('None')
+
         label_data[i][1] = int(label_data[i][1].replace(',',''))
         label_data[i][2] = int(label_data[i][2].replace(',',''))
 
@@ -207,7 +212,6 @@ def loadLabel(label_file_name):
     label_data_frame['start'] = label_data_frame.start.astype(int)
     label_data_frame['end'] = label_data_frame.end.astype(int)
     label_data_frame['peakStat'] = label_data_frame.peakStat.astype('category')
-    label_data_frame['cellType'] = label_data_frame.cellType.astype('category')
 
     return label_data_frame
 
@@ -253,7 +257,7 @@ def filtering_label_with_cellType(label_data_df, cellType):
     :param cellType: A string of cell type
     :return:
     """
-    label_data_df = label_data_df[label_data_df.cellType == cellType]
+    label_data_df = label_data_df[label_data_df.cellType.str.contains(cellType)]
     return label_data_df
 
 

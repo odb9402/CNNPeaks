@@ -14,12 +14,13 @@ def main():
 
     #################### Setting arguments ########################
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("-mode","--runMode", choices=['preprocess','buildModel'] ,help="Select a mode.")
+    arg_parser.add_argument("-mode","--runMode", choices=['preprocess','buildModel','peakCall'] ,help="Select a mode.")
     arg_parser.add_argument("-i","--inputDir", help="Input directory including labeled data and bam alignment files.")
     arg_parser.add_argument("-m","--savedModel", help="A saved CNN model file.")
     arg_parser.add_argument("-g","--gridSize",default=4000, help="Define numbers of grid for each training data")
     arg_parser.add_argument("-s","--searchingDist", help="")
     arg_parser.add_argument("-eps","--basePointEPS",help="")
+    arg_parser.add_argument("-w","--windowSize",default=40000,help="Window size for peak calling.")
 
     args = arg_parser.parse_args()
 
@@ -32,7 +33,10 @@ def main():
         preProcessing(args.inputDir, logger, num_grid=int(args.gridSize))
     elif args.runMode =='buildModel':
         buildModel(args.inputDir, logger, num_grid=int(args.gridSize))
-
+    elif args.runMode == 'peakCall':
+        pass
+    else:
+        logger.info("-mode ( --runMode ) must be one of : { preprocess, buildModel, peakCall }.")
 
 if __name__ == '__main__':
     logger = logging.getLogger("ConvLog")

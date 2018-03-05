@@ -40,46 +40,141 @@ def run(dir_name, logger, num_grid=10000):
     global eval_every
     global learning_rate
     global target_size
+
     global conv1_features
-    global conv2_features
-    global conv3_features
-    global conv4_features
-    global conv5_features
+    global conv1a_features
+    global conv1b_features
+    global convMax1_features
+    global convAvg1_features
+
+    global conv2a_features
+    global conv2b_features
+    global convMax2_features
+    global convAvg2_features
+
+    global conv3a_features
+    global conv3b_features
+    global convMax3_features
+    global convAvg3_features
+
+    global conv4a_features
+    global conv4b_features
+    global convMax4_features
+    global convAvg4_features
+
+    global conv5a_features
+    global conv5b_features
+    global convMax5_features
+    global convAvg5_features
+
     global max_pool_size1
     global max_pool_size2
     global max_pool_size3
+    global max_pool_size4
+    global max_pool_size5
+
     global fully_connected_size1
-    global fully_connected_size2
 
     batch_size = 1
     evaluation_size = 1
-    generations = 3000
-    eval_every = 5
+    generations = 5000
+    eval_every = 10
     learning_rate = 0.005
     target_size = num_grid
 
-    conv1_features = 15
-    conv2_features = 25
-    conv3_features = 25
-    conv4_features = 30
-    conv5_features = 30
-    max_pool_size1 = 4
+    conv1_features = 16
+
+    conv1a_features = 8
+    conv1b_features = 8
+    convMax1_features = 8
+    convAvg1_features = 8
+
+    conv2a_features = 32
+    conv2b_features = 32
+    convMax2_features = 32
+    convAvg2_features = 32
+
+    conv3a_features = 64
+    conv3b_features = 64
+    convMax3_features = 64
+    convAvg3_features = 64
+
+    conv4a_features = 128
+    conv4b_features = 128
+    convMax4_features = 128
+    convAvg4_features = 128
+
+    conv5a_features = 256
+    conv5b_features = 256
+    convMax5_features = 256
+    convAvg5_features = 256
+
+    max_pool_size_stem = 2
+    max_pool_size1 = 2
     max_pool_size2 = 2
     max_pool_size3 = 2
-    fully_connected_size1 = 300
-    fully_connected_size2 = 300
+    max_pool_size4 = 2
+    max_pool_size5 = 5
+    fully_connected_size1 = 1000
     ###########################################################
 
     global conv1_weight
     global conv1_bias
-    global conv2_weight
-    global conv2_bias
-    global conv3_weight
-    global conv3_bias
-    global conv4_weight
-    global conv4_bias
-    global conv5_weight
-    global conv5_bias
+
+    global conv1a_weight
+    global conv1a_bias
+    global conv1b_weight
+    global conv1b_bias
+    global convMax1_weight
+    global convMax1_bias
+    global convAvg1_weight
+    global convAvg1_bias
+
+    global conv2a_weight
+    global conv2a_bias
+    global conv2b_weight
+    global conv2b_bias
+    global convMax2_weight
+    global convMax2_bias
+    global convAvg2_weight
+    global convAvg2_bias
+
+    global conv3a_weight
+    global conv3a_bias
+    global conv3b_weight
+    global conv3b_bias
+    global convMax3_weight
+    global convMax3_bias
+    global convAvg3_weight
+    global convAvg3_bias
+
+    global conv4a_weight
+    global conv4a_bias
+    global conv4b_weight
+    global conv4b_bias
+    global convMax4_weight
+    global convMax4_bias
+    global convAvg4_weight
+    global convAvg4_bias
+
+    global conv5a_weight
+    global conv5a_bias
+    global conv5b_weight
+    global conv5b_bias
+    global convMax5_weight
+    global convMax5_bias
+    global convAvg5_weight
+    global convAvg5_bias
+
+    global convMax1_weight
+    global convMax1_bias
+    global convAvg1_weight
+    global convAvg1_bias
+    global convMax1_weight
+    global convMax1_bias
+    global convAvg1_weight
+    global convAvg1_bias
+
     global full1_weight
     global full1_bias
     global full2_weight
@@ -92,6 +187,8 @@ def run(dir_name, logger, num_grid=10000):
     global label_data_eval
     global p_dropout
     global loss_weight
+    global is_test
+    global iteration
 
     train_data_list = []
     train_label_list = []
@@ -108,45 +205,74 @@ def run(dir_name, logger, num_grid=10000):
     input_data_train = tf.placeholder(tf.float32, shape=(batch_size, num_grid, 1), name="trainingData")
     input_data_eval = tf.placeholder(tf.float32, shape=(batch_size, num_grid, 1), name="testData")
 
-    label_data_train = tf.placeholder(tf.float32, shape=(evaluation_size, 2, target_size))
-    label_data_eval = tf.placeholder(tf.float32, shape=(evaluation_size, 2, target_size))
+    label_data_train = tf.placeholder(tf.float32, shape=(evaluation_size, 1, target_size))
+    label_data_eval = tf.placeholder(tf.float32, shape=(evaluation_size, 1, target_size))
 
     p_dropout = tf.placeholder(tf.float32)
     loss_weight = tf.placeholder(tf.float32)
+    is_test = tf.placeholder(tf.bool)
+    iteration = tf.placeholder(tf.int32)
 
     ## For convolution layers
-    conv1_weight = tf.Variable(tf.truncated_normal([8, 1, conv1_features],stddev=0.1, dtype=tf.float32))
+    conv1_weight = tf.get_variable("Conv_W1",shape=[4, 1, conv1_features], initializer=tf.contrib.layers.xavier_initializer())
     conv1_bias = tf.Variable(tf.zeros([conv1_features], dtype=tf.float32))
 
-    conv2_weight = tf.Variable(tf.truncated_normal([4,conv1_features,conv2_features], stddev=0.1, dtype=tf.float32))
-    conv2_bias = tf.Variable(tf.zeros([conv2_features], dtype=tf.float32))
+    conv1a_weight = tf.get_variable("Conv_W6", shape=[4, conv1_features, conv1a_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv1a_bias = tf.Variable(tf.zeros([conv1a_features], dtype=tf.float32))
+    conv1b_weight = tf.get_variable("Conv_W7", shape=[2, conv1_features, conv1b_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv1b_bias = tf.Variable(tf.zeros([conv1b_features], dtype=tf.float32))
+    convMax1_weight = tf.get_variable("Conv_max_W1", shape=[1, conv1_features, convMax1_features], initializer=tf.contrib.layers.xavier_initializer())
+    convMax1_bias = tf.Variable(tf.zeros([convMax1_features],dtype=tf.float32))
+    convAvg1_weight = tf.get_variable("Conv_avg_W1", shape=[1, conv1_features, convAvg1_features], initializer=tf.contrib.layers.xavier_initializer())
+    convAvg1_bias = tf.Variable(tf.zeros([convAvg1_features],dtype=tf.float32))
 
-    conv3_weight = tf.Variable(tf.truncated_normal([2,conv2_features,conv3_features], stddev=0.1, dtype=tf.float32))
-    conv3_bias = tf.Variable(tf.zeros([conv3_features], dtype=tf.float32))
+    conv2a_weight = tf.get_variable("Conv_W8", shape=[4, 32, conv2a_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv2a_bias = tf.Variable(tf.zeros([conv2a_features], dtype=tf.float32))
+    conv2b_weight = tf.get_variable("Conv_W9", shape=[2, 32, conv2b_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv2b_bias = tf.Variable(tf.zeros([conv2b_features], dtype=tf.float32))
 
-    conv4_weight = tf.Variable(tf.truncated_normal([2,conv3_features,conv4_features], stddev=0.1, dtype=tf.float32))
-    conv4_bias = tf.Variable(tf.zeros([conv4_features], dtype=tf.float32))
+    conv3a_weight = tf.get_variable("Conv_W10", shape=[4, 128, conv3a_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv3a_bias = tf.Variable(tf.zeros([conv3a_features], dtype=tf.float32))
+    conv3b_weight = tf.get_variable("Conv_W11", shape=[2, 128, conv3b_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv3b_bias = tf.Variable(tf.zeros([conv3b_features], dtype=tf.float32))
+    convMax3_weight = tf.get_variable("Conv_max_W3", shape=[1, 128, convMax3_features],initializer=tf.contrib.layers.xavier_initializer())
+    convMax3_bias = tf.Variable(tf.zeros([convMax3_features], dtype=tf.float32))
+    convAvg3_weight = tf.get_variable("Conv_avg_W3", shape=[1, 128, convAvg3_features],initializer=tf.contrib.layers.xavier_initializer())
+    convAvg3_bias = tf.Variable(tf.zeros([convAvg3_features], dtype=tf.float32))
 
-    conv5_weight = tf.Variable(tf.truncated_normal([1,conv4_features,conv5_features], stddev=0.1, dtype=tf.float32))
-    conv5_bias = tf.Variable(tf.zeros([conv5_features], dtype=tf.float32))
+    conv4a_weight = tf.get_variable("Conv_W12", shape=[4, 384, conv4a_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv4a_bias = tf.Variable(tf.zeros([conv4a_features], dtype=tf.float32))
+    conv4b_weight = tf.get_variable("Conv_W13", shape=[2, 384, conv4b_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv4b_bias = tf.Variable(tf.zeros([conv4b_features], dtype=tf.float32))
+
+    conv5a_weight = tf.get_variable("Conv_W14", shape=[4, 1024, conv5a_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv5a_bias = tf.Variable(tf.zeros([conv5a_features], dtype=tf.float32))
+    conv5b_weight = tf.get_variable("Conv_W15", shape=[2, 1024, conv5b_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv5b_bias = tf.Variable(tf.zeros([conv5b_features], dtype=tf.float32))
+    convMax5_weight = tf.get_variable("Conv_max_W5", shape=[1, 1024, convMax5_features], initializer=tf.contrib.layers.xavier_initializer())
+    convMax5_bias = tf.Variable(tf.zeros([convMax5_features],dtype=tf.float32))
+    convAvg5_weight = tf.get_variable("Conv_avg_W5", shape=[1, 1024, convAvg5_features], initializer=tf.contrib.layers.xavier_initializer())
+    convAvg5_bias = tf.Variable(tf.zeros([convAvg5_features],dtype=tf.float32))
+
+
     ## For fully connected layers
-    resulting_width = num_grid // ( max_pool_size1 * max_pool_size2 * max_pool_size3)
-    full1_input_size = resulting_width * conv5_features
+    resulting_width = num_grid // (max_pool_size_stem * max_pool_size1 * max_pool_size2 * max_pool_size3 * max_pool_size4 * max_pool_size5)
+    full1_input_size = resulting_width * (2560)
 
-    full1_weight = tf.Variable(tf.truncated_normal([full1_input_size, fully_connected_size1], stddev=0.1, dtype=tf.float32))
+    full1_weight = tf.get_variable("Full_W1", shape=[full1_input_size, fully_connected_size1], initializer=tf.contrib.layers.xavier_initializer())
     full1_bias = tf.Variable(tf.truncated_normal([fully_connected_size1], stddev=0.1, dtype=tf.float32))
 
-    full2_weight = tf.Variable(tf.truncated_normal([fully_connected_size1, target_size*2], stddev=0.1, dtype=tf.float32))
-    full2_bias = tf.Variable(tf.truncated_normal([target_size*2], stddev=0.1, dtype=tf.float32))
+    full2_weight = tf.get_variable("Full_W2", shape=[fully_connected_size1, target_size] , initializer=tf.contrib.layers.xavier_initializer())
+    full2_bias = tf.Variable(tf.truncated_normal([target_size], stddev=0.1, dtype=tf.float32))
 
     model_output = peakPredictConvModel(input_data_train, logger)
     test_model_output = peakPredictConvModel(input_data_eval, logger)
 
-    prediction = tf.nn.sigmoid(model_output)#, axis=1)
-    test_prediction = tf.nn.sigmoid(test_model_output)#, axis=1)
+    prediction = tf.nn.sigmoid(model_output)
+    test_prediction = tf.nn.sigmoid(test_model_output)#
 
     loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train\
-            ,logits=model_output, pos_weight=loss_weight))
+            ,logits=model_output, pos_weight=loss_weight))*100
 
     optimizer = tf.train.AdamOptimizer(learning_rate)
     train_step = optimizer.minimize(loss)
@@ -165,12 +291,13 @@ def run(dir_name, logger, num_grid=10000):
         rand_x = train_data_list[rand_index[0]]['readCount'].as_matrix()
         rand_x = rand_x.reshape(input_data_train.shape)
 
-        rand_y = train_label_list[rand_index[0]][['peak','noPeak']].as_matrix().transpose()
+        rand_y = train_label_list[rand_index[0]][['peak']].as_matrix().transpose()
         rand_y = rand_y.reshape(label_data_train.shape)
 
         p_n_rate = (pnRate(rand_y))
 
-        train_dict = {input_data_train: rand_x, label_data_train: rand_y, p_dropout:0.5, loss_weight:p_n_rate}
+        train_dict = {input_data_train: rand_x, label_data_train: rand_y,\
+                      p_dropout:0.5, loss_weight:p_n_rate, is_test:True, iteration:i}
 
         sess.run(train_step, feed_dict=train_dict)
         temp_train_loss, temp_train_preds = sess.run([loss, prediction], feed_dict=train_dict)
@@ -182,10 +309,11 @@ def run(dir_name, logger, num_grid=10000):
             eval_x = test_data_list[eval_index[0]]['readCount'].as_matrix()
             eval_x = eval_x.reshape(input_data_eval.shape)
 
-            eval_y = test_label_list[eval_index[0]][['peak', 'noPeak']].as_matrix().transpose()
+            eval_y = test_label_list[eval_index[0]][['peak']].as_matrix().transpose()
             eval_y = (eval_y.reshape(label_data_eval.shape))
 
-            test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, p_dropout:1, loss_weight:p_n_rate}
+            test_dict = {input_data_eval: eval_x, label_data_eval: eval_y,\
+                         p_dropout:1, loss_weight:p_n_rate, is_test:False, iteration:i}
 
             test_preds = sess.run(test_prediction, feed_dict=test_dict)
             temp_test_acc = getAccuracy(test_preds, eval_y, num_grid=num_grid)
@@ -196,7 +324,6 @@ def run(dir_name, logger, num_grid=10000):
             test_acc.append(temp_test_acc)
 
             acc_and_loss = [(i+1), temp_train_loss, temp_train_acc, temp_test_acc, TP_rate, TN_rate]
-
             logger.info('Generation # {}. TrainLoss: {:.2f}. TrainACC (TestACC): {:.2f}. ({:.2f}.) TPR:{:.2f} TNR:{:.2f}'\
                         .format(*acc_and_loss))
 
@@ -207,6 +334,7 @@ def run(dir_name, logger, num_grid=10000):
                         test_prediction, k=-1)
 
 
+    #ECCB
 def peakPredictConvModel(input_data, logger):
     """
 
@@ -215,51 +343,95 @@ def peakPredictConvModel(input_data, logger):
     :return:
     """
 
-    logger.debug(input_data)
-    input_data = tf.nn.batch_normalization(input_data, 0.,5.,0.,5.,1e-5)
-    conv1 = tf.nn.conv1d(input_data, conv1_weight, stride=1, padding='SAME', name="Convolution1")
-    logger.debug(conv1)
-    relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_bias), name="Relu1")
-    logger.debug(relu1)
+    #input_data = tf.nn.batch_normalization(input_data,0,1.,0,1,0.00001)
+    conv1 = tf.nn.conv1d(input_data, conv1_weight, stride=1, padding='SAME')
+    relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_bias))
+    max_pool1 = tf.nn.pool(relu1, [max_pool_size1], strides=[max_pool_size1], padding='SAME', pooling_type='MAX')
 
-    max_pool1 = tf.nn.pool(relu1, [max_pool_size1], strides=[max_pool_size1], padding='SAME', pooling_type='MAX'\
-                           , name="MaxPooling1")
-    logger.debug(max_pool1)
+    concat1 = concatLayer_B(max_pool1, conv1a_weight, convMax1_weight, conv1b_weight, convAvg1_weight,\
+                            conv1a_bias, convMax1_bias, conv1b_bias, convAvg1_bias, max_pool_size1)
 
-    conv2 = tf.nn.conv1d(max_pool1, conv2_weight, stride=1, padding='SAME', name="Convolution2")
-    logger.debug(conv2)
-    relu2 = tf.nn.relu(tf.nn.bias_add(conv2,conv2_bias), name="Relu2")
-    logger.debug(relu2)
-    conv3 = tf.nn.conv1d(relu2, conv3_weight, stride=1, padding='SAME', name="Convolution3")
-    logger.debug(conv3)
-    relu3 = tf.nn.relu(tf.nn.bias_add(conv3,conv3_bias), name="Relu3")
-    max_pool2 = tf.nn.pool(relu3, [max_pool_size2], strides=[max_pool_size2], padding='SAME', pooling_type='MAX'\
-                           , name="MaxPooling2")
-    logger.debug(max_pool2)
+    concat2 = concatLayer_A(concat1, conv2a_weight, conv2b_weight, conv2a_bias, conv2b_bias, max_pool_size2)
 
-    conv4 = tf.nn.conv1d(max_pool2, conv4_weight, stride=1, padding='SAME', name="Convolution4")
-    relu4 = tf.nn.relu(tf.nn.bias_add(conv4,conv4_bias), name="Relu4")
+    concat3 = concatLayer_A(concat2, conv3a_weight, conv3b_weight, conv3a_bias, conv3b_bias, max_pool_size3)
 
-    conv5 = tf.nn.conv1d(conv4, conv5_weight, stride=1, padding='SAME', name="Convolution5")
-    relu5 = tf.nn.relu(tf.nn.bias_add(conv5,conv5_bias), name="Relu5")
+    concat4 = concatLayer_A(concat3, conv4a_weight, conv4b_weight, conv4a_bias, conv4b_bias, max_pool_size4)
 
-    max_pool3 = tf.nn.pool(relu5, [max_pool_size3], strides=[max_pool_size3], padding='SAME', pooling_type='MAX'\
-                           , name="MaxPooling3")
+    concat5 = concatLayer_A(concat4, conv5a_weight, conv5b_weight, conv5a_bias, conv5b_bias, max_pool_size5)
 
-    final_conv_shape = max_pool3.get_shape().as_list()
+    final_conv_shape = concat5.get_shape().as_list()
     final_shape = final_conv_shape[1] * final_conv_shape[2]
-    flat_output = tf.reshape(max_pool3, [final_conv_shape[0] , final_shape])
+    flat_output = tf.reshape(concat5, [final_conv_shape[0] , final_shape])
 
-    fully_connected1 = tf.nn.relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias), name="FullyConnected1")
+    fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias)\
+                                        ,alpha=0.01, name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
-    logger.debug(fully_connected1)
-    final_model_output = tf.add(tf.matmul(fully_connected1,full2_weight), full2_bias)
-    final_model_output = tf.reshape(final_model_output,[1, 2, target_size], name="FullyConnected2")
-    logger.debug(final_model_output)
 
-    logger.debug("///////////////////////////////////")
+    final_model_output = tf.add(tf.matmul(fully_connected1,full2_weight), full2_bias)
+    final_model_output = tf.reshape(final_model_output,[batch_size, 1, target_size], name="FullyConnected2")
 
     return (final_model_output)
+
+
+def concatLayer_A(source_layer, conv1_w, conv2_w, conv1_b, conv2_b, pooling_size):
+    """
+
+    :param source_layer:
+    :param conv1_w:
+    :param conv2_w:
+    :param conv1_b:
+    :param conv2_b:
+    :param pooling_size:
+    :return:
+    """
+    conv1 = tf.nn.conv1d(source_layer, conv1_w, stride=pooling_size, padding='SAME')
+    relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_b))
+    print(relu1.shape)
+    conv2 = tf.nn.conv1d(source_layer, conv2_w, stride=pooling_size, padding='SAME')
+    relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_b))
+    print(relu2.shape)
+    max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size], padding='SAME', pooling_type='MAX')
+    print(max_pool.shape)
+    avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size], padding='SAME', pooling_type='AVG')
+    print(avg_pool.shape)
+    concat = tf.concat([relu1, relu2, max_pool, avg_pool], axis=2)
+    print(concat.shape)
+    return concat
+
+
+def concatLayer_B(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w,\
+                  conv1_b, conv_max_b, conv2_b, conv_avg_b, pooling_size):
+    """
+
+    :param source_layer:
+    :param conv1_w:
+    :param conv_max_w:
+    :param conv2_w:
+    :param conv_avg_w:
+    :param conv1_b:
+    :param conv_max_b:
+    :param conv2_b:
+    :param conv_avg_b:
+    :param pooling_size:
+    :return:
+    """
+    conv1 = tf.nn.conv1d(source_layer, conv1_w, stride=pooling_size, padding='SAME')
+    relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_b))
+    print(relu1.shape)
+    conv2 = tf.nn.conv1d(source_layer, conv2_w, stride=pooling_size, padding='SAME')
+    relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_b))
+    print(relu2.shape)
+    max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size], padding='SAME', pooling_type='MAX')
+    conv_max = tf.nn.conv1d(max_pool, conv_max_w, stride=1, padding='SAME')
+    relu_max = tf.nn.relu(tf.nn.bias_add(conv_max, conv_max_b))
+    print(relu_max.shape)
+    avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size], padding='SAME', pooling_type='AVG')
+    conv_avg = tf.nn.conv1d(avg_pool, conv_avg_w, stride=1, padding='SAME')
+    relu_avg = tf.nn.relu(tf.nn.bias_add(conv_avg, conv_avg_b))
+    print(relu_avg.shape)
+    concat = tf.concat([relu1, relu2, relu_max, relu_avg], axis=2)
+    print(concat.shape)
+    return concat
 
 
 def getAccuracy(logits, targets, num_grid=2000):
@@ -272,15 +444,15 @@ def getAccuracy(logits, targets, num_grid=2000):
     :param targets:
     :return:
     """
-    logits = logits.reshape(2,num_grid)
-    targets = targets.reshape(2,num_grid)
+    logits = logits.reshape(1,num_grid)
+    targets = targets.reshape(1,num_grid)
 
     correct_num = 0.
 
-    for index in range(len(logits[1])):
+    for index in range(len(logits[0])):
         if (logits[0][index]) >= 0.5 and targets[0][index] >= 0.5:
             correct_num += 1
-        elif (logits[1][index]) > 0.5 and targets[1][index] > 0.5:
+        elif (logits[0][index]) < 0.5 and targets[0][index] < 0.5:
             correct_num += 1
         else:
             pass
@@ -300,8 +472,8 @@ def tpTnRate(logits, targets, num_grid=2000):
     :param num_grid:
     :return:
     """
-    logits = logits.reshape(2,num_grid)
-    targets = targets.reshape(2,num_grid)
+    logits = logits.reshape(1,num_grid)
+    targets = targets.reshape(1,num_grid)
 
     P_num = 0.
     TP_num = 0.
@@ -318,7 +490,11 @@ def tpTnRate(logits, targets, num_grid=2000):
             N_num += 1
             if logits[0][index] < 0.5:
                 TN_num += 1
-    return (TP_num/ P_num , TN_num/ N_num)
+
+    if P_num == 0.:
+        return (-1., TN_num/N_num)
+    else:
+        return (TP_num/ P_num , TN_num/ N_num)
 
 
 def pnRate(targets, num_grid=2000):
@@ -335,6 +511,9 @@ def pnRate(targets, num_grid=2000):
     for index in range(len(targets[0][0])):
         if targets[0][0][index] > 0:
             count += 1
+
+    if count == 0.:
+        count = 1
 
     return len(targets[0][0]) / count
 
@@ -380,7 +559,7 @@ def extractChrClass(dir):
     return data_direction
 
 
-def splitTrainingData(data_list, label_list, Kfold=3):
+def splitTrainingData(data_list, label_list, Kfold=4):
     """
 
     :param list_data:
@@ -451,9 +630,10 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             show_index = np.random.choice(len(test_data_list), size=batch_size)
             show_x = test_data_list[show_index[0]]['readCount'].as_matrix()
             show_x = show_x.reshape(input_data_eval.shape)
-            show_y = test_label_list[show_index[0]][['peak', 'noPeak']].as_matrix().transpose()
+            show_y = test_label_list[show_index[0]][['peak']].as_matrix().transpose()
             show_y = show_y.reshape(label_data_eval.shape)
-            show_dict = {input_data_eval: show_x, label_data_eval: show_y, p_dropout: 1}
+            show_dict = {input_data_eval: show_x, label_data_eval: show_y, \
+                         p_dropout: 0.5, is_test: False, iteration:i}
             show_preds = sess.run(test_prediction, feed_dict=show_dict)
             show_preds = classValueFilter(show_preds, num_grid)
             show_y = classValueFilter(show_y, num_grid)
@@ -472,9 +652,10 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
         for i in range(len(test_data_list)):
             show_x = test_data_list[i]['readCount'].as_matrix()
             show_x = show_x.reshape(input_data_eval.shape)
-            show_y = test_label_list[i][['peak', 'noPeak']].as_matrix().transpose()
+            show_y = test_label_list[i][['peak']].as_matrix().transpose()
             show_y = show_y.reshape(label_data_eval.shape)
-            show_dict = {input_data_eval: show_x, label_data_eval: show_y, p_dropout: 1}
+            show_dict = {input_data_eval: show_x, label_data_eval: show_y, \
+                         p_dropout: 0.5, is_test: False, iteration:i}
             show_preds = sess.run(test_prediction, feed_dict=show_dict)
             show_preds = classValueFilter(show_preds, num_grid)
             show_y = classValueFilter(show_y, num_grid)
@@ -488,28 +669,3 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             plt.ylabel('Peak')
             plt.legend(loc='lower right')
             plt.show()
-
-
-
-def softmax_numpy(x):
-    """
-
-    :param x:
-    :return:
-    """
-    e_x = np.exp(x - np.max(x))
-    return e_x / e_x.sum(axis=0)
-
-
-def batchNormalization(Ylogits, is_test, iteration, offset, convolutional=False):
-    exp_moving_avg = tf.train.ExponentialMovingAverage(0.999, iteration) # adding the iteration prevents from averaging across non-existing iterations
-    bnepsilon = 1e-5
-    if convolutional:
-        mean, variance = tf.nn.moments(Ylogits, [0, 1, 2])
-    else:
-        mean, variance = tf.nn.moments(Ylogits, [0])
-    update_moving_everages = exp_moving_avg.apply([mean, variance])
-    m = tf.cond(is_test, lambda: exp_moving_avg.average(mean), lambda: mean)
-    v = tf.cond(is_test, lambda: exp_moving_avg.average(variance), lambda: variance)
-    Ybn = tf.nn.batch_normalization(Ylogits, m, v, offset, None, bnepsilon)
-    return Ybn, update_moving_everages
