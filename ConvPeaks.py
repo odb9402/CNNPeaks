@@ -9,18 +9,20 @@ import logging
 
 from buildModel.buildModel import run as buildModel
 from preProcessing.preProcessing import run as preProcessing
+from peakCalling.callPeaks import run as callPeaks
 
 def main():
 
     #################### Setting arguments ########################
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("-mode","--runMode", choices=['preprocess','buildModel','peakCall'] ,help="Select a mode.")
-    arg_parser.add_argument("-i","--inputDir", help="Input directory including labeled data and bam alignment files.")
+    arg_parser.add_argument("-i","--inputDir", help="Input directory including labeled data and bam alignment files."
+                                                    "\nIn case of callPeak mode, it will be input bam file to call peaks.")
     arg_parser.add_argument("-m","--savedModel", help="A saved CNN model file.")
     arg_parser.add_argument("-g","--gridSize",default=4000, help="Define numbers of grid for each training data")
     arg_parser.add_argument("-s","--searchingDist", help="")
     arg_parser.add_argument("-eps","--basePointEPS",help="")
-    arg_parser.add_argument("-w","--windowSize",default=40000,help="Window size for peak calling.")
+    arg_parser.add_argument("-w","--windowSize",default=80000,help="Window size for peak calling.")
 
     args = arg_parser.parse_args()
 
@@ -34,7 +36,7 @@ def main():
     elif args.runMode =='buildModel':
         buildModel(args.inputDir, logger, num_grid=int(args.gridSize))
     elif args.runMode == 'peakCall':
-        pass
+        callPeaks(args.inputDir, logger, window_size=int(args.windowSize), num_grid=int(args.gridSize))
     else:
         logger.info("-mode ( --runMode ) must be one of : { preprocess, buildModel, peakCall }.")
 

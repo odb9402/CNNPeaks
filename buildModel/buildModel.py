@@ -67,6 +67,7 @@ def run(dir_name, logger, num_grid=10000):
     global convMax5_features
     global convAvg5_features
 
+    global max_pool_size_stem
     global max_pool_size1
     global max_pool_size2
     global max_pool_size3
@@ -77,35 +78,35 @@ def run(dir_name, logger, num_grid=10000):
 
     batch_size = 1
     evaluation_size = 1
-    generations = 5000
+    generations = 10000
     eval_every = 10
     learning_rate = 0.005
     target_size = num_grid
 
-    conv1_features = 16
+    conv1_features = 8
 
     conv1a_features = 8
     conv1b_features = 8
     convMax1_features = 8
     convAvg1_features = 8
 
-    conv2a_features = 32
-    conv2b_features = 32
+    conv2a_features = 8
+    conv2b_features = 8
     convMax2_features = 32
     convAvg2_features = 32
 
-    conv3a_features = 64
-    conv3b_features = 64
+    conv3a_features = 16
+    conv3b_features = 16
     convMax3_features = 64
     convAvg3_features = 64
 
-    conv4a_features = 128
-    conv4b_features = 128
+    conv4a_features = 32
+    conv4b_features = 32
     convMax4_features = 128
     convAvg4_features = 128
 
-    conv5a_features = 256
-    conv5b_features = 256
+    conv5a_features = 64
+    conv5b_features = 64
     convMax5_features = 256
     convAvg5_features = 256
 
@@ -115,7 +116,8 @@ def run(dir_name, logger, num_grid=10000):
     max_pool_size3 = 2
     max_pool_size4 = 2
     max_pool_size5 = 5
-    fully_connected_size1 = 1000
+
+    fully_connected_size1 = 500
     ###########################################################
 
     global conv1_weight
@@ -188,7 +190,6 @@ def run(dir_name, logger, num_grid=10000):
     global p_dropout
     global loss_weight
     global is_test
-    global iteration
 
     train_data_list = []
     train_label_list = []
@@ -211,53 +212,52 @@ def run(dir_name, logger, num_grid=10000):
     p_dropout = tf.placeholder(tf.float32)
     loss_weight = tf.placeholder(tf.float32)
     is_test = tf.placeholder(tf.bool)
-    iteration = tf.placeholder(tf.int32)
 
     ## For convolution layers
-    conv1_weight = tf.get_variable("Conv_W1",shape=[4, 1, conv1_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv1_weight = tf.get_variable("Conv_STEM",shape=[4, 1, conv1_features], initializer=tf.contrib.layers.xavier_initializer())
     conv1_bias = tf.Variable(tf.zeros([conv1_features], dtype=tf.float32))
 
-    conv1a_weight = tf.get_variable("Conv_W6", shape=[4, conv1_features, conv1a_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv1a_weight = tf.get_variable("Conv_1A", shape=[4, conv1_features, conv1a_features], initializer=tf.contrib.layers.xavier_initializer())
     conv1a_bias = tf.Variable(tf.zeros([conv1a_features], dtype=tf.float32))
-    conv1b_weight = tf.get_variable("Conv_W7", shape=[2, conv1_features, conv1b_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv1b_weight = tf.get_variable("Conv_1B", shape=[2, conv1_features, conv1b_features], initializer=tf.contrib.layers.xavier_initializer())
     conv1b_bias = tf.Variable(tf.zeros([conv1b_features], dtype=tf.float32))
     convMax1_weight = tf.get_variable("Conv_max_W1", shape=[1, conv1_features, convMax1_features], initializer=tf.contrib.layers.xavier_initializer())
     convMax1_bias = tf.Variable(tf.zeros([convMax1_features],dtype=tf.float32))
     convAvg1_weight = tf.get_variable("Conv_avg_W1", shape=[1, conv1_features, convAvg1_features], initializer=tf.contrib.layers.xavier_initializer())
     convAvg1_bias = tf.Variable(tf.zeros([convAvg1_features],dtype=tf.float32))
 
-    conv2a_weight = tf.get_variable("Conv_W8", shape=[4, 32, conv2a_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv2a_weight = tf.get_variable("Conv_2A", shape=[4, 32, conv2a_features], initializer=tf.contrib.layers.xavier_initializer())
     conv2a_bias = tf.Variable(tf.zeros([conv2a_features], dtype=tf.float32))
-    conv2b_weight = tf.get_variable("Conv_W9", shape=[2, 32, conv2b_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv2b_weight = tf.get_variable("Conv_2B", shape=[2, 32, conv2b_features], initializer=tf.contrib.layers.xavier_initializer())
     conv2b_bias = tf.Variable(tf.zeros([conv2b_features], dtype=tf.float32))
 
-    conv3a_weight = tf.get_variable("Conv_W10", shape=[4, 128, conv3a_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv3a_weight = tf.get_variable("Conv_3A", shape=[4, 80, conv3a_features], initializer=tf.contrib.layers.xavier_initializer())
     conv3a_bias = tf.Variable(tf.zeros([conv3a_features], dtype=tf.float32))
-    conv3b_weight = tf.get_variable("Conv_W11", shape=[2, 128, conv3b_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv3b_weight = tf.get_variable("Conv_3B", shape=[2, 80, conv3b_features], initializer=tf.contrib.layers.xavier_initializer())
     conv3b_bias = tf.Variable(tf.zeros([conv3b_features], dtype=tf.float32))
-    convMax3_weight = tf.get_variable("Conv_max_W3", shape=[1, 128, convMax3_features],initializer=tf.contrib.layers.xavier_initializer())
+    convMax3_weight = tf.get_variable("Conv_max_W3", shape=[1, 80, convMax3_features],initializer=tf.contrib.layers.xavier_initializer())
     convMax3_bias = tf.Variable(tf.zeros([convMax3_features], dtype=tf.float32))
-    convAvg3_weight = tf.get_variable("Conv_avg_W3", shape=[1, 128, convAvg3_features],initializer=tf.contrib.layers.xavier_initializer())
+    convAvg3_weight = tf.get_variable("Conv_avg_W3", shape=[1, 80, convAvg3_features],initializer=tf.contrib.layers.xavier_initializer())
     convAvg3_bias = tf.Variable(tf.zeros([convAvg3_features], dtype=tf.float32))
 
-    conv4a_weight = tf.get_variable("Conv_W12", shape=[4, 384, conv4a_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv4a_weight = tf.get_variable("Conv_4A", shape=[4, 192, conv4a_features], initializer=tf.contrib.layers.xavier_initializer())
     conv4a_bias = tf.Variable(tf.zeros([conv4a_features], dtype=tf.float32))
-    conv4b_weight = tf.get_variable("Conv_W13", shape=[2, 384, conv4b_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv4b_weight = tf.get_variable("Conv_4B", shape=[2, 192, conv4b_features], initializer=tf.contrib.layers.xavier_initializer())
     conv4b_bias = tf.Variable(tf.zeros([conv4b_features], dtype=tf.float32))
 
-    conv5a_weight = tf.get_variable("Conv_W14", shape=[4, 1024, conv5a_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv5a_weight = tf.get_variable("Conv_5A", shape=[4, 448, conv5a_features], initializer=tf.contrib.layers.xavier_initializer())
     conv5a_bias = tf.Variable(tf.zeros([conv5a_features], dtype=tf.float32))
-    conv5b_weight = tf.get_variable("Conv_W15", shape=[2, 1024, conv5b_features], initializer=tf.contrib.layers.xavier_initializer())
+    conv5b_weight = tf.get_variable("Conv_5B", shape=[2, 448, conv5b_features], initializer=tf.contrib.layers.xavier_initializer())
     conv5b_bias = tf.Variable(tf.zeros([conv5b_features], dtype=tf.float32))
-    convMax5_weight = tf.get_variable("Conv_max_W5", shape=[1, 1024, convMax5_features], initializer=tf.contrib.layers.xavier_initializer())
+    convMax5_weight = tf.get_variable("Conv_max_W5", shape=[1, 448, convMax5_features], initializer=tf.contrib.layers.xavier_initializer())
     convMax5_bias = tf.Variable(tf.zeros([convMax5_features],dtype=tf.float32))
-    convAvg5_weight = tf.get_variable("Conv_avg_W5", shape=[1, 1024, convAvg5_features], initializer=tf.contrib.layers.xavier_initializer())
+    convAvg5_weight = tf.get_variable("Conv_avg_W5", shape=[1, 448, convAvg5_features], initializer=tf.contrib.layers.xavier_initializer())
     convAvg5_bias = tf.Variable(tf.zeros([convAvg5_features],dtype=tf.float32))
 
 
     ## For fully connected layers
     resulting_width = num_grid // (max_pool_size_stem * max_pool_size1 * max_pool_size2 * max_pool_size3 * max_pool_size4 * max_pool_size5)
-    full1_input_size = resulting_width * (2560)
+    full1_input_size = resulting_width * (1024)
 
     full1_weight = tf.get_variable("Full_W1", shape=[full1_input_size, fully_connected_size1], initializer=tf.contrib.layers.xavier_initializer())
     full1_bias = tf.Variable(tf.truncated_normal([fully_connected_size1], stddev=0.1, dtype=tf.float32))
@@ -269,7 +269,7 @@ def run(dir_name, logger, num_grid=10000):
     test_model_output = peakPredictConvModel(input_data_eval, logger)
 
     prediction = tf.nn.sigmoid(model_output)
-    test_prediction = tf.nn.sigmoid(test_model_output)#
+    test_prediction = tf.nn.sigmoid(test_model_output)
 
     loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train\
             ,logits=model_output, pos_weight=loss_weight))*100
@@ -297,7 +297,7 @@ def run(dir_name, logger, num_grid=10000):
         p_n_rate = (pnRate(rand_y))
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y,\
-                      p_dropout:0.5, loss_weight:p_n_rate, is_test:True, iteration:i}
+                      p_dropout:0.7, loss_weight:p_n_rate, is_test:True}
 
         sess.run(train_step, feed_dict=train_dict)
         temp_train_loss, temp_train_preds = sess.run([loss, prediction], feed_dict=train_dict)
@@ -313,7 +313,7 @@ def run(dir_name, logger, num_grid=10000):
             eval_y = (eval_y.reshape(label_data_eval.shape))
 
             test_dict = {input_data_eval: eval_x, label_data_eval: eval_y,\
-                         p_dropout:1, loss_weight:p_n_rate, is_test:False, iteration:i}
+                         p_dropout:1, loss_weight:p_n_rate, is_test:False}
 
             test_preds = sess.run(test_prediction, feed_dict=test_dict)
             temp_test_acc = getAccuracy(test_preds, eval_y, num_grid=num_grid)
@@ -333,6 +333,9 @@ def run(dir_name, logger, num_grid=10000):
     visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
                         test_prediction, k=-1)
 
+    saver = tf.train.Saver()
+    save_path = saver.save(sess,  os.getcwd() + "/model.ckpt")
+    logger.info("Model saved in path : %s" % save_path)
 
     #ECCB
 def peakPredictConvModel(input_data, logger):
@@ -346,7 +349,7 @@ def peakPredictConvModel(input_data, logger):
     #input_data = tf.nn.batch_normalization(input_data,0,1.,0,1,0.00001)
     conv1 = tf.nn.conv1d(input_data, conv1_weight, stride=1, padding='SAME')
     relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_bias))
-    max_pool1 = tf.nn.pool(relu1, [max_pool_size1], strides=[max_pool_size1], padding='SAME', pooling_type='MAX')
+    max_pool1 = tf.nn.pool(relu1, [max_pool_size_stem], strides=[max_pool_size_stem], padding='SAME', pooling_type='MAX')
 
     concat1 = concatLayer_B(max_pool1, conv1a_weight, convMax1_weight, conv1b_weight, convAvg1_weight,\
                             conv1a_bias, convMax1_bias, conv1b_bias, convAvg1_bias, max_pool_size1)
@@ -571,6 +574,7 @@ def splitTrainingData(data_list, label_list, Kfold=4):
 
     test_data = []
     test_label = []
+
     while True:
         if counter <= 0:
             break
@@ -633,7 +637,7 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             show_y = test_label_list[show_index[0]][['peak']].as_matrix().transpose()
             show_y = show_y.reshape(label_data_eval.shape)
             show_dict = {input_data_eval: show_x, label_data_eval: show_y, \
-                         p_dropout: 0.5, is_test: False, iteration:i}
+                         p_dropout: 0.5, is_test: False}
             show_preds = sess.run(test_prediction, feed_dict=show_dict)
             show_preds = classValueFilter(show_preds, num_grid)
             show_y = classValueFilter(show_y, num_grid)
@@ -655,7 +659,7 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             show_y = test_label_list[i][['peak']].as_matrix().transpose()
             show_y = show_y.reshape(label_data_eval.shape)
             show_dict = {input_data_eval: show_x, label_data_eval: show_y, \
-                         p_dropout: 0.5, is_test: False, iteration:i}
+                         p_dropout: 0.5, is_test: False}
             show_preds = sess.run(test_prediction, feed_dict=show_dict)
             show_preds = classValueFilter(show_preds, num_grid)
             show_y = classValueFilter(show_y, num_grid)
