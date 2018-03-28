@@ -18,52 +18,15 @@ def run(input_bam, logger, window_size, num_grid=4000):
     """
     ##################### Hyperparameters #####################
     global batch_size
-    global evaluation_size
-    global generations
-    global eval_every
-    global learning_rate
-    global target_size
-
-    global conv1_features
-    global conv1a_features
-    global conv1b_features
-    global convMax1_features
-    global convAvg1_features
-
-    global conv2a_features
-    global conv2b_features
-    global convMax2_features
-    global convAvg2_features
-
-    global conv3a_features
-    global conv3b_features
-    global convMax3_features
-    global convAvg3_features
-
-    global conv4a_features
-    global conv4b_features
-    global convMax4_features
-    global convAvg4_features
-
-    global conv5a_features
-    global conv5b_features
-    global convMax5_features
-    global convAvg5_features
-
     global max_pool_size_stem
     global max_pool_size1
     global max_pool_size2
     global max_pool_size3
     global max_pool_size4
     global max_pool_size5
-
-    global fully_connected_size1
+    global target_size
 
     batch_size = 1
-    evaluation_size = 1
-    generations = 10000
-    eval_every = 10
-    learning_rate = 0.005
     target_size = num_grid
 
     conv1_features = 8
@@ -75,8 +38,6 @@ def run(input_bam, logger, window_size, num_grid=4000):
 
     conv2a_features = 8
     conv2b_features = 8
-    convMax2_features = 32
-    convAvg2_features = 32
 
     conv3a_features = 16
     conv3b_features = 16
@@ -85,8 +46,6 @@ def run(input_bam, logger, window_size, num_grid=4000):
 
     conv4a_features = 32
     conv4b_features = 32
-    convMax4_features = 128
-    convAvg4_features = 128
 
     conv5a_features = 64
     conv5b_features = 64
@@ -100,7 +59,7 @@ def run(input_bam, logger, window_size, num_grid=4000):
     max_pool_size4 = 2
     max_pool_size5 = 5
 
-    fully_connected_size1 = 500
+    fully_connected_size1 = 1000
     ###########################################################
     global conv1_weight
     global conv1_bias
@@ -173,7 +132,6 @@ def run(input_bam, logger, window_size, num_grid=4000):
     tf.reset_default_graph()
 
     input_data = tf.placeholder(tf.float32, shape=(batch_size, num_grid, 1), name="testData")
-    label_data = tf.placeholder(tf.float32, shape=(evaluation_size, 1, target_size))
 
     p_dropout = tf.placeholder(tf.float32)
     is_test = tf.placeholder(tf.bool)
@@ -246,14 +204,14 @@ def run(input_bam, logger, window_size, num_grid=4000):
     else:
         logger.info("[" + input_bam + "] already has index file.")
 
-    window_count = 184000000
+    window_count = 1
     bam_alignment = pysam.AlignmentFile(input_bam +'.sort', 'rb', index_filename=input_bam +'.sort.bai')
     bam_length = bam_alignment.lengths
     print(bam_length)
 
     stride = window_size / num_grid
-    print(window_size, num_grid, stride)
 
+    eval_counter = 0
     for chr_no in range(22):
         while True:
             read_count_by_grid = []
@@ -269,23 +227,48 @@ def run(input_bam, logger, window_size, num_grid=4000):
 
             preds = sess.run(prediction, feed_dict=result_dict)
             class_value_prediction = buildModel.classValueFilter(preds)
-
-            plt.plot(read_count_by_grid.reshape(num_grid).tolist())
-            plt.plot(class_value_prediction, 'r.')
-            plt.show()
-
-            logger.info("Reading . . . :[chr"+str(chr_no+1)+":"+str(window_count)+"-"+str(window_count+window_size)+"]")
+            predictionToBedString(class_value_prediction, "chr"+ str(chr_no + 1), window_count, stride, num_grid, logger,read_count_by_grid.reshape(num_grid).tolist())
+            eval_counter += 1
+            if eval_counter == 100:
+                logger.info("Reading . . . :[chr"+str(chr_no+1)+":"\
+                    +str(window_count-(window_size*99))+"-"+str(window_count+window_size)+"]")
+                eval_counter = 0
             window_count += window_size
 
 
-def predictionToBedString(prediction, region_start, stride, logger):
+def predictionToBedString(prediction, chromosome, region_start, stride, num_grid, logger, reads):
     """
 
     :param prediction:
     :param logger:
     :return:
     """
-    pass
+    min_peak_size = 5
+    peak_size = 0
+    step = 0
+    peak_switch = False
+    while True:
+        if step > num_grid - 1:
+            break
+        if prediction[step] is 1:
+            peak_size += 1
+        else:
+            if peak_size > min_peak_size:
+                if peak_size is not 0 :
+                    end_point = region_start + ( stride * step )
+                    start_point = end_point - ( peak_size * step )
+                    logger.info("{}:{}-{}".format(chromosome,int(start_point),int(end_point)))
+                    peak_size = 0
+                    peak_switch = True
+                else:
+                    peak_size = 0
+        step += 1
+
+    if peak_switch is True:
+        plt.plot(prediction, 'r.')
+        plt.plot(reads)
+        plt.show()
+
 
 
 def peakPredictConvModel(input_data, logger):
@@ -317,7 +300,7 @@ def peakPredictConvModel(input_data, logger):
     flat_output = tf.reshape(concat5, [final_conv_shape[0] , final_shape])
 
     fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias)\
-                                        ,alpha=0.01, name="FullyConnected1")
+                                        ,alpha=0.001, name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
 
     final_model_output = tf.add(tf.matmul(fully_connected1,full2_weight), full2_bias)

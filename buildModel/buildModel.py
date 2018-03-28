@@ -117,7 +117,7 @@ def run(dir_name, logger, num_grid=10000):
     max_pool_size4 = 2
     max_pool_size5 = 5
 
-    fully_connected_size1 = 500
+    fully_connected_size1 = 1000
     ###########################################################
 
     global conv1_weight
@@ -230,6 +230,11 @@ def run(dir_name, logger, num_grid=10000):
     conv2a_bias = tf.Variable(tf.zeros([conv2a_features], dtype=tf.float32))
     conv2b_weight = tf.get_variable("Conv_2B", shape=[2, 32, conv2b_features], initializer=tf.contrib.layers.xavier_initializer())
     conv2b_bias = tf.Variable(tf.zeros([conv2b_features], dtype=tf.float32))
+    convMax2_weight = tf.get_variable("Conv_max_W2", shape=[1, 32, convMax2_features], initializer=tf.contrib.layers.xavier_initializer())
+    convMax2_bias = tf.Variable(tf.zeros([convMax2_features],dtype=tf.float32))
+    convAvg2_weight = tf.get_variable("Conv_avg_W2", shape=[1, 32, convAvg2_features], initializer=tf.contrib.layers.xavier_initializer())
+    convAvg2_bias = tf.Variable(tf.zeros([convAvg2_features],dtype=tf.float32))
+
 
     conv3a_weight = tf.get_variable("Conv_3A", shape=[4, 80, conv3a_features], initializer=tf.contrib.layers.xavier_initializer())
     conv3a_bias = tf.Variable(tf.zeros([conv3a_features], dtype=tf.float32))
@@ -244,6 +249,10 @@ def run(dir_name, logger, num_grid=10000):
     conv4a_bias = tf.Variable(tf.zeros([conv4a_features], dtype=tf.float32))
     conv4b_weight = tf.get_variable("Conv_4B", shape=[2, 192, conv4b_features], initializer=tf.contrib.layers.xavier_initializer())
     conv4b_bias = tf.Variable(tf.zeros([conv4b_features], dtype=tf.float32))
+    convMax4_weight = tf.get_variable("Conv_max_W4", shape=[1, 192, convMax4_features], initializer=tf.contrib.layers.xavier_initializer())
+    convMax4_bias = tf.Variable(tf.zeros([convMax4_features],dtype=tf.float32))
+    convAvg4_weight = tf.get_variable("Conv_avg_W4", shape=[1, 192, convAvg4_features], initializer=tf.contrib.layers.xavier_initializer())
+    convAvg4_bias = tf.Variable(tf.zeros([convAvg4_features],dtype=tf.float32))
 
     conv5a_weight = tf.get_variable("Conv_5A", shape=[4, 448, conv5a_features], initializer=tf.contrib.layers.xavier_initializer())
     conv5a_bias = tf.Variable(tf.zeros([conv5a_features], dtype=tf.float32))
@@ -294,7 +303,7 @@ def run(dir_name, logger, num_grid=10000):
         rand_y = train_label_list[rand_index[0]][['peak']].as_matrix().transpose()
         rand_y = rand_y.reshape(label_data_train.shape)
 
-        p_n_rate = (pnRate(rand_y))
+        p_n_rate = (pnRate(rand_y))**1/2
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y,\
                       p_dropout:0.7, loss_weight:p_n_rate, is_test:True}
@@ -337,7 +346,7 @@ def run(dir_name, logger, num_grid=10000):
     save_path = saver.save(sess,  os.getcwd() + "/model.ckpt")
     logger.info("Model saved in path : %s" % save_path)
 
-    #ECCB
+
 def peakPredictConvModel(input_data, logger):
     """
 
@@ -367,7 +376,7 @@ def peakPredictConvModel(input_data, logger):
     flat_output = tf.reshape(concat5, [final_conv_shape[0] , final_shape])
 
     fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias)\
-                                        ,alpha=0.01, name="FullyConnected1")
+                                        ,alpha=0.005, name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
 
     final_model_output = tf.add(tf.matmul(fully_connected1,full2_weight), full2_bias)
@@ -389,16 +398,15 @@ def concatLayer_A(source_layer, conv1_w, conv2_w, conv1_b, conv2_b, pooling_size
     """
     conv1 = tf.nn.conv1d(source_layer, conv1_w, stride=pooling_size, padding='SAME')
     relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_b))
-    print(relu1.shape)
+
     conv2 = tf.nn.conv1d(source_layer, conv2_w, stride=pooling_size, padding='SAME')
     relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_b))
-    print(relu2.shape)
+
     max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size], padding='SAME', pooling_type='MAX')
-    print(max_pool.shape)
+
     avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size], padding='SAME', pooling_type='AVG')
-    print(avg_pool.shape)
+
     concat = tf.concat([relu1, relu2, max_pool, avg_pool], axis=2)
-    print(concat.shape)
     return concat
 
 
@@ -420,20 +428,20 @@ def concatLayer_B(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w,\
     """
     conv1 = tf.nn.conv1d(source_layer, conv1_w, stride=pooling_size, padding='SAME')
     relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_b))
-    print(relu1.shape)
+
     conv2 = tf.nn.conv1d(source_layer, conv2_w, stride=pooling_size, padding='SAME')
     relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_b))
-    print(relu2.shape)
+
     max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size], padding='SAME', pooling_type='MAX')
     conv_max = tf.nn.conv1d(max_pool, conv_max_w, stride=1, padding='SAME')
     relu_max = tf.nn.relu(tf.nn.bias_add(conv_max, conv_max_b))
-    print(relu_max.shape)
+
     avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size], padding='SAME', pooling_type='AVG')
     conv_avg = tf.nn.conv1d(avg_pool, conv_avg_w, stride=1, padding='SAME')
     relu_avg = tf.nn.relu(tf.nn.bias_add(conv_avg, conv_avg_b))
-    print(relu_avg.shape)
+
     concat = tf.concat([relu1, relu2, relu_max, relu_avg], axis=2)
-    print(concat.shape)
+
     return concat
 
 
