@@ -4,7 +4,10 @@ import tensorflow as tf
 import numpy as np
 import pysam
 import os
+import random
+import string
 import matplotlib.pyplot as plt
+from multiprocessing import cpu_count, Process, Manager
 
 def run(input_bam, logger, window_size, num_grid=4000):
     """
@@ -212,7 +215,7 @@ def run(input_bam, logger, window_size, num_grid=4000):
     if not os.path.isdir(input_bam[:-4]):
         os.makedirs(input_bam[:-4])
 
-    if not os.path.isfile(input_bam + '.sort.bai'):
+    if not os.path.isfile(input_bam + '.bai'):
         preProcessing.createBamIndex(input_bam)
         logger.info("Creating index file of [" + input_bam + "]")
     else:
@@ -220,37 +223,45 @@ def run(input_bam, logger, window_size, num_grid=4000):
 
     input_bam = os.path.abspath(input_bam)
 
-    window_count = 1
-    bam_alignment = pysam.AlignmentFile(input_bam +'.sort', 'rb', index_filename=input_bam +'.sort.bai')
-    bam_length = bam_alignment.lengths
-    print(bam_length)
+    processes = []
 
-    stride = window_size / num_grid
-
-    eval_counter = 0
     for chr_no in range(22):
-        while True:
-            read_count_by_grid = []
-            if window_count + window_size > bam_length[chr_no]:
-                window_count = 1
-                break
-            for step in range(num_grid):
-                count = bam_alignment.count(region=preProcessing.createRegionStr("chr"+str(chr_no+1),\
-                                                                       int(window_count + stride*step)))
-                read_count_by_grid.append(count)
-            read_count_by_grid = np.array(read_count_by_grid, dtype=int)
-            read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
-            result_dict = {input_data: read_count_by_grid, p_dropout:1, is_test:True}
+        preProcessing.parallel_execution()
+        process = Process(target=call_peak,\
+                          args=(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size,))
+        preProcessing.parallel_execution(cpu_count()-1, process, processes)
 
-            preds = sess.run(prediction, feed_dict=result_dict)
-            class_value_prediction = buildModel.classValueFilter(preds)
-            predictionToBedString(input_bam, class_value_prediction, "chr"+ str(chr_no + 1), window_count, stride, num_grid, logger,read_count_by_grid.reshape(num_grid).tolist())
-            eval_counter += 1
-            if eval_counter == 100:
-                logger.info("Reading . . . :[chr"+str(chr_no+1)+":"\
-                    +str(window_count-(window_size*99))+"-"+str(window_count+window_size)+"]")
-                eval_counter = 0
-            window_count += window_size
+
+def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size):
+
+    window_count = 1
+    bam_alignment = pysam.AlignmentFile(input_bam + '.sort', 'rb', index_filename=input_bam + '.sort.bai')
+    bam_length = bam_alignment.lengths
+    stride = window_size / num_grid
+    eval_counter = 0
+
+    while True:
+        read_count_by_grid = []
+        if window_count + window_size > bam_length[chr_no]:
+            break
+        for step in range(num_grid):
+            count = bam_alignment.count(region=preProcessing.createRegionStr("chr" + str(chr_no + 1), \
+                                                                             int(window_count + stride * step)))
+            read_count_by_grid.append(count)
+        read_count_by_grid = np.array(read_count_by_grid, dtype=int)
+        read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
+        result_dict = {input_data: read_count_by_grid, p_dropout: 1, is_test: True}
+
+        preds = sess.run(prediction, feed_dict=result_dict)
+        class_value_prediction = buildModel.classValueFilter(preds)
+        predictionToBedString(input_bam, class_value_prediction, "chr" + str(chr_no + 1), window_count, stride,
+                              num_grid, logger, read_count_by_grid.reshape(num_grid).tolist())
+        eval_counter += 1
+        if eval_counter == 100:
+            logger.info("Reading . . . :[chr" + str(chr_no + 1) + ":" \
+                        + str(window_count - (window_size * 99)) + "-" + str(window_count + window_size) + "]")
+            eval_counter = 0
+        window_count += window_size
 
 
 def predictionToBedString(input_bam ,prediction, chromosome, region_start, stride, num_grid,\
@@ -267,7 +278,7 @@ def predictionToBedString(input_bam ,prediction, chromosome, region_start, strid
     peak_switch = False
     peaks = []
 
-    output_file_name = input_bam.rsplit('.')[0] + ".bed"
+    output_file_name = input_bam.rsplit('.')[0] + "_" +str(chromosome) + ".bed"
 
     while True:
         if step > num_grid - 1:
@@ -346,3 +357,6 @@ def peakPredictConvModel(input_data, logger):
     final_model_output = tf.reshape(final_model_output,[batch_size, 1, target_size], name="FullyConnected2")
 
     return (final_model_output)
+
+def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))

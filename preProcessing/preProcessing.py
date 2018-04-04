@@ -11,7 +11,7 @@ from multiprocessing import cpu_count, Process, Manager
 
 from sklearn.cluster import DBSCAN
 
-def run(dir_name, logger, bp_eps=20000, searching_dist=50000, num_grid=2000):
+def run(dir_name, logger, bp_eps=20000, searching_dist=80000, num_grid=2000):
     """
     This preprocessing step will create alignment read count data from
     input directory dir_name was specified by a user. The results will
@@ -273,6 +273,7 @@ def is_same_target(bam_file_name, label_data_df):
 
 def parallel_execution(MAX_CORE, learning_process, learning_processes):
     """
+
     :param MAX_CORE:
     :param learning_process:
     :param learning_processes:

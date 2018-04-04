@@ -304,7 +304,7 @@ def run(dir_name, logger, num_grid=10000):
         rand_y = train_label_list[rand_index[0]][['peak']].as_matrix().transpose()
         rand_y = rand_y.reshape(label_data_train.shape)
 
-        p_n_rate = (pnRate(rand_y))**1/2
+        p_n_rate = (pnRate(rand_y))
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y,\
                       p_dropout:0.7, loss_weight:p_n_rate, is_test:True}
@@ -378,8 +378,7 @@ def peakPredictConvModel(input_data, logger):
     final_shape = final_conv_shape[1] * final_conv_shape[2]
     flat_output = tf.reshape(concat5, [final_conv_shape[0] , final_shape])
 
-    fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias)\
-                                        ,alpha=0.005, name="FullyConnected1")
+    fully_connected1 = tf.nn.relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias), name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
 
     final_model_output = tf.add(tf.matmul(fully_connected1,full2_weight), full2_bias)
