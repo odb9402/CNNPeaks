@@ -16,6 +16,8 @@ def run(input_bam, logger, window_size, num_grid=4000):
     :param num_grid:
     :return:
     """
+    global num_peaks
+    num_peaks = 0
     ##################### Hyperparameters #####################
     global batch_size
     global max_pool_size_stem
@@ -38,6 +40,8 @@ def run(input_bam, logger, window_size, num_grid=4000):
 
     conv2a_features = 8
     conv2b_features = 8
+    convMax2_features = 32
+    convAvg2_features = 32
 
     conv3a_features = 16
     conv3b_features = 16
@@ -46,6 +50,8 @@ def run(input_bam, logger, window_size, num_grid=4000):
 
     conv4a_features = 32
     conv4b_features = 32
+    convMax4_features = 128
+    convAvg4_features = 128
 
     conv5a_features = 64
     conv5b_features = 64
@@ -59,7 +65,7 @@ def run(input_bam, logger, window_size, num_grid=4000):
     max_pool_size4 = 2
     max_pool_size5 = 5
 
-    fully_connected_size1 = 1000
+    fully_connected_size1 = 800
     ###########################################################
     global conv1_weight
     global conv1_bias
@@ -154,6 +160,10 @@ def run(input_bam, logger, window_size, num_grid=4000):
     conv2a_bias = tf.Variable(tf.zeros([conv2a_features], dtype=tf.float32))
     conv2b_weight = tf.get_variable("Conv_2B", shape=[2, 32, conv2b_features])
     conv2b_bias = tf.Variable(tf.zeros([conv2b_features], dtype=tf.float32))
+    convMax2_weight = tf.get_variable("Conv_max_W2", shape=[1, 32, convMax2_features])
+    convMax2_bias = tf.Variable(tf.zeros([convMax2_features],dtype=tf.float32))
+    convAvg2_weight = tf.get_variable("Conv_avg_W2", shape=[1, 32, convAvg2_features])
+    convAvg2_bias = tf.Variable(tf.zeros([convAvg2_features],dtype=tf.float32))
 
     conv3a_weight = tf.get_variable("Conv_3A", shape=[4, 80, conv3a_features])
     conv3a_bias = tf.Variable(tf.zeros([conv3a_features], dtype=tf.float32))
@@ -168,6 +178,10 @@ def run(input_bam, logger, window_size, num_grid=4000):
     conv4a_bias = tf.Variable(tf.zeros([conv4a_features], dtype=tf.float32))
     conv4b_weight = tf.get_variable("Conv_4B", shape=[2, 192, conv4b_features])
     conv4b_bias = tf.Variable(tf.zeros([conv4b_features], dtype=tf.float32))
+    convMax3_weight = tf.get_variable("Conv_max_W4", shape=[1, 192, convMax4_features])
+    convMax3_bias = tf.Variable(tf.zeros([convMax4_features], dtype=tf.float32))
+    convAvg3_weight = tf.get_variable("Conv_avg_W4", shape=[1, 192, convAvg4_features])
+    convAvg3_bias = tf.Variable(tf.zeros([convAvg4_features], dtype=tf.float32))
 
     conv5a_weight = tf.get_variable("Conv_5A", shape=[4, 448, conv5a_features])
     conv5a_bias = tf.Variable(tf.zeros([conv5a_features], dtype=tf.float32))
@@ -204,6 +218,8 @@ def run(input_bam, logger, window_size, num_grid=4000):
     else:
         logger.info("[" + input_bam + "] already has index file.")
 
+    input_bam = os.path.abspath(input_bam)
+
     window_count = 1
     bam_alignment = pysam.AlignmentFile(input_bam +'.sort', 'rb', index_filename=input_bam +'.sort.bai')
     bam_length = bam_alignment.lengths
@@ -216,6 +232,7 @@ def run(input_bam, logger, window_size, num_grid=4000):
         while True:
             read_count_by_grid = []
             if window_count + window_size > bam_length[chr_no]:
+                window_count = 1
                 break
             for step in range(num_grid):
                 count = bam_alignment.count(region=preProcessing.createRegionStr("chr"+str(chr_no+1),\
@@ -227,7 +244,7 @@ def run(input_bam, logger, window_size, num_grid=4000):
 
             preds = sess.run(prediction, feed_dict=result_dict)
             class_value_prediction = buildModel.classValueFilter(preds)
-            predictionToBedString(class_value_prediction, "chr"+ str(chr_no + 1), window_count, stride, num_grid, logger,read_count_by_grid.reshape(num_grid).tolist())
+            predictionToBedString(input_bam, class_value_prediction, "chr"+ str(chr_no + 1), window_count, stride, num_grid, logger,read_count_by_grid.reshape(num_grid).tolist())
             eval_counter += 1
             if eval_counter == 100:
                 logger.info("Reading . . . :[chr"+str(chr_no+1)+":"\
@@ -236,39 +253,61 @@ def run(input_bam, logger, window_size, num_grid=4000):
             window_count += window_size
 
 
-def predictionToBedString(prediction, chromosome, region_start, stride, num_grid, logger, reads):
+def predictionToBedString(input_bam ,prediction, chromosome, region_start, stride, num_grid,\
+                          logger, reads, min_peak_size=10):
     """
 
     :param prediction:
     :param logger:
     :return:
     """
-    min_peak_size = 5
+    global num_peaks
     peak_size = 0
     step = 0
     peak_switch = False
+    peaks = []
+
+    output_file_name = input_bam.rsplit('.')[0] + ".bed"
+
     while True:
         if step > num_grid - 1:
             break
         if prediction[step] is 1:
             peak_size += 1
         else:
-            if peak_size > min_peak_size:
-                if peak_size is not 0 :
+            if peak_size is not 0:
+                if peak_size > min_peak_size:
                     end_point = region_start + ( stride * step )
-                    start_point = end_point - ( peak_size * step )
-                    logger.info("{}:{}-{}".format(chromosome,int(start_point),int(end_point)))
+                    start_point = end_point - ( peak_size * stride )
                     peak_size = 0
                     peak_switch = True
+                    num_peaks += 1
+
+                    logger.info("{}:{:,}-{:,} , # peaks :{}".format(chromosome, int(start_point), int(end_point), num_peaks))
+                    peaks.append("{}\t{}\t{}\n".format(chromosome, int(start_point), int(end_point)))
+                    writeBed(output_file_name, peaks)
+                    peaks = []
                 else:
                     peak_size = 0
         step += 1
 
-    if peak_switch is True:
-        plt.plot(prediction, 'r.')
-        plt.plot(reads)
-        plt.show()
+    #if peak_switch is True:
+    #    plt.plot(prediction, 'r.')
+    #    plt.plot(reads)
+    #    plt.show()
 
+
+def writeBed(output_file, peaks):
+    if not os.path.isfile(output_file):
+        bed_file = open(output_file, 'w')
+    else:
+        bed_file = open(output_file, 'a')
+    for peak in peaks:
+        bed_file.write(peak)
+
+
+def removeCentromere():
+    pass
 
 
 def peakPredictConvModel(input_data, logger):
@@ -300,7 +339,7 @@ def peakPredictConvModel(input_data, logger):
     flat_output = tf.reshape(concat5, [final_conv_shape[0] , final_shape])
 
     fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias)\
-                                        ,alpha=0.001, name="FullyConnected1")
+                                        ,alpha=0.005, name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
 
     final_model_output = tf.add(tf.matmul(fully_connected1,full2_weight), full2_bias)

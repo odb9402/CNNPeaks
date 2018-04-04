@@ -117,7 +117,7 @@ def run(dir_name, logger, num_grid=10000):
     max_pool_size4 = 2
     max_pool_size5 = 5
 
-    fully_connected_size1 = 1000
+    fully_connected_size1 = 800
     ###########################################################
 
     global conv1_weight
@@ -294,6 +294,7 @@ def run(dir_name, logger, num_grid=10000):
     train_acc = []
     test_acc = []
 
+    # Start of the training process
     for i in range(generations):
         rand_index = np.random.choice(len(train_data_list), size=batch_size)
 
@@ -312,6 +313,7 @@ def run(dir_name, logger, num_grid=10000):
         temp_train_loss, temp_train_preds = sess.run([loss, prediction], feed_dict=train_dict)
         temp_train_acc = getAccuracy(temp_train_preds, rand_y, num_grid=num_grid)
 
+        # Recording results of test data
         if (i+1) % eval_every == 0:
             eval_index = np.random.choice(len(test_data_list), size=batch_size)
 
@@ -336,8 +338,8 @@ def run(dir_name, logger, num_grid=10000):
             logger.info('Generation # {}. TrainLoss: {:.2f}. TrainACC (TestACC): {:.2f}. ({:.2f}.) TPR:{:.2f} TNR:{:.2f}'\
                         .format(*acc_and_loss))
 
-    visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss)
 
+    visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss)
 
     visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
                         test_prediction, k=-1)
@@ -349,10 +351,11 @@ def run(dir_name, logger, num_grid=10000):
 
 def peakPredictConvModel(input_data, logger):
     """
+    Define structure of convolution model.
 
     :param logger:
     :param input_data:
-    :return:
+    :return: Tensor of the output layer
     """
 
     #input_data = tf.nn.batch_normalization(input_data,0,1.,0,1,0.00001)
@@ -387,6 +390,7 @@ def peakPredictConvModel(input_data, logger):
 
 def concatLayer_A(source_layer, conv1_w, conv2_w, conv1_b, conv2_b, pooling_size):
     """
+    Define concat layer which like Inception module.
 
     :param source_layer:
     :param conv1_w:
@@ -413,6 +417,7 @@ def concatLayer_A(source_layer, conv1_w, conv2_w, conv1_b, conv2_b, pooling_size
 def concatLayer_B(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w,\
                   conv1_b, conv_max_b, conv2_b, conv_avg_b, pooling_size):
     """
+    Define concat layer which like Inception module.
 
     :param source_layer:
     :param conv1_w:
@@ -551,6 +556,7 @@ def classValueFilter(output_value, num_grid=2000):
 
 def extractChrClass(dir):
     """
+    Extract a chromosome number and a class number from label file names.
 
     :param dir:
     :return:
@@ -651,6 +657,7 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             show_y = classValueFilter(show_y, num_grid)
             for index in range(len(show_preds)):
                 show_preds[index] += 3
+            fig = plt.figure(figsize=(12,6))
             plt.plot(show_x.reshape(num_grid).tolist())
             plt.plot(show_y, 'k.', label='Real prediction')
             plt.plot(show_preds, 'r.', label='Model prediction')
@@ -658,6 +665,7 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             plt.xlabel('Regions')
             plt.ylabel('Peak')
             plt.legend(loc='lower right')
+            fig.savefig('learning.jpeg', bbox_inches='tight', pad_inches=0)
             plt.show()
 
     else:
