@@ -78,7 +78,7 @@ def run(dir_name, logger, num_grid=10000):
 
     batch_size = 1
     evaluation_size = 1
-    generations = 10000
+    generations = 15000
     eval_every = 10
     learning_rate = 0.005
     target_size = num_grid
@@ -277,8 +277,8 @@ def run(dir_name, logger, num_grid=10000):
     model_output = peakPredictConvModel(input_data_train, logger)
     test_model_output = peakPredictConvModel(input_data_eval, logger)
 
-    prediction = tf.nn.sigmoid(model_output)
-    test_prediction = tf.nn.sigmoid(test_model_output)
+    prediction = model_output
+    test_prediction = test_model_output
 
     loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train\
             ,logits=model_output, pos_weight=loss_weight))*100
@@ -304,7 +304,7 @@ def run(dir_name, logger, num_grid=10000):
         rand_y = train_label_list[rand_index[0]][['peak']].as_matrix().transpose()
         rand_y = rand_y.reshape(label_data_train.shape)
 
-        p_n_rate = (pnRate(rand_y))
+        p_n_rate = (pnRate(rand_y))**1/2
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y,\
                       p_dropout:0.7, loss_weight:p_n_rate, is_test:True}
@@ -342,7 +342,7 @@ def run(dir_name, logger, num_grid=10000):
     visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss)
 
     visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
-                        test_prediction, k=-1)
+                        test_prediction, k=10)
 
     saver = tf.train.Saver()
     save_path = saver.save(sess,  os.getcwd() + "/model.ckpt")
@@ -378,7 +378,7 @@ def peakPredictConvModel(input_data, logger):
     final_shape = final_conv_shape[1] * final_conv_shape[2]
     flat_output = tf.reshape(concat5, [final_conv_shape[0] , final_shape])
 
-    fully_connected1 = tf.nn.relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias), name="FullyConnected1")
+    fully_connected1 = tf.nn.sigmoid(tf.add(tf.matmul(flat_output, full1_weight), full1_bias),  name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
 
     final_model_output = tf.add(tf.matmul(fully_connected1,full2_weight), full2_bias)
@@ -582,7 +582,7 @@ def splitTrainingData(data_list, label_list, Kfold=4):
     :param Kfold:
     :return:
     """
-
+    print("##################NUMBER OF LABEL DATA : {}".format(len(data_list)))
     counter = len(data_list) / Kfold
 
     test_data = []
