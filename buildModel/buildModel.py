@@ -45,7 +45,7 @@ def run(dir_name, logger, num_grid=10000):
 
     batch_size = 1
     evaluation_size = 1
-    generations = 15000
+    generations = 40
     eval_every = 20
     learning_rate = 0.005
     target_size = num_grid
@@ -82,9 +82,9 @@ def run(dir_name, logger, num_grid=10000):
     max_pool_size2 = 2
     max_pool_size3 = 2
     max_pool_size4 = 2
-    max_pool_size5 = 5
+    max_pool_size5 = 2
 
-    fully_connected_size1 = 800
+    fully_connected_size1 = 1000
     fully_connected_size2 = 500
     ###########################################################
 
@@ -387,6 +387,7 @@ def concatLayer_A(source_layer, conv1_w, conv2_w, conv1_b, conv2_b, pooling_size
     avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size], padding='SAME', pooling_type='AVG')
 
     concat = tf.concat([relu1, avg_pool, relu2, max_pool], axis=2)
+    print(concat.shape)
     return concat
 
 
@@ -422,7 +423,6 @@ def concatLayer_B(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w,\
     relu_avg = tf.nn.relu(tf.nn.bias_add(conv_avg, conv_avg_b))
 
     concat = tf.concat([relu1, relu_max, relu2, relu_avg], axis=2)
-
     return concat
 
 
@@ -607,7 +607,7 @@ def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train
     plt.show()
 
     plt.plot(eval_indices, train_acc, 'k-', label='Train Set Accuracy')
-    plt.plot(eval_indices, test_acc, 'r--', label='Test Set Accuracy')
+    plt.plot(eval_indices, test_acc, 'r-', label='Test Set Accuracy')
     plt.title('Train and Test Accuracy')
     plt.xlabel('Generation')
     plt.ylabel('Accuracy')
@@ -628,6 +628,7 @@ def expandingPrediction(input_list, multiple=5):
             expanded_list.append(prediction)
 
     return expanded_list
+
 
 def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
                         test_prediction, k = 1):
@@ -655,39 +656,32 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             show_dict = {input_data_eval: show_x, label_data_eval: show_y, \
                          p_dropout: 0.5, is_test: False}
             show_preds = sess.run(test_prediction, feed_dict=show_dict)
-            show_preds = classValueFilter(show_preds, num_grid)
-            show_y = classValueFilter(show_y, num_grid)
-            for index in range(len(show_preds)):
-                show_preds[index] += 3
-            show_y = expandingPrediction(show_y)
-            show_preds = expandingPrediction(show_preds)
-            plt.plot(show_x.reshape(num_grid).tolist())
-            plt.plot(show_y, 'k.', label='Real prediction')
-            plt.plot(show_preds, 'r.', label='Model prediction')
-            plt.title('Peak prediction result by regions')
-            plt.xlabel('Regions')
-            plt.ylabel('Peak')
-            plt.legend(loc='lower right')
-            plt.show()
 
-    else:
-        for i in range(len(test_data_list)):
-            show_x = test_data_list[i]['readCount'].as_matrix()
-            show_x = show_x.reshape(input_data_eval.shape)
-            show_y = test_label_list[i][['peak']].as_matrix().transpose()
-            show_y = show_y.reshape(label_data_eval.shape)
-            show_dict = {input_data_eval: show_x, label_data_eval: show_y, \
-                         p_dropout: 0.5, is_test: False}
-            show_preds = sess.run(test_prediction, feed_dict=show_dict)
-            show_preds = classValueFilter(show_preds, num_grid)
-            show_y = classValueFilter(show_y, num_grid)
+            show_preds = expandingPrediction(classValueFilter(show_preds, num_grid))
+            show_y = expandingPrediction(classValueFilter(show_y, num_grid))
+
             for index in range(len(show_preds)):
-                show_preds[index] += 3
-            plt.plot(show_x.reshape(num_grid).tolist())
-            plt.plot(show_y, 'k.', label='Real prediction')
-            plt.plot(show_preds, 'r.', label='Model prediction')
+                if show_preds[index] > 0:
+                    show_preds[index] += 1
+
+            y_index = []
+            y = []
+            pred_index = []
+            pred = []
+
+            for index in range(len(show_preds)):
+                if show_y[index] > 0:
+                    y_index.append(index)
+                    y.append(show_y[index])
+                if show_preds[index] > 0:
+                    pred_index.append(index)
+                    pred.append(show_preds[index])
+
+            plt.plot(show_x.reshape(num_grid).tolist(),'k')
+            plt.plot(y_index,y, 'b.', label='Real prediction')
+            plt.plot(pred_index,pred, 'r.', label='Model prediction')
             plt.title('Peak prediction result by regions')
             plt.xlabel('Regions')
-            plt.ylabel('Peak')
+            plt.ylabel('Read Count')
             plt.legend(loc='lower right')
             plt.show()

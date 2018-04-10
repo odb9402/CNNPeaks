@@ -215,7 +215,7 @@ def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess,
         read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
         result_dict = {input_data: read_count_by_grid, p_dropout: 1, is_test: True}
         preds = sess.run(prediction, feed_dict=result_dict)
-        class_value_prediction = buildModel.classValueFilter(preds)
+        class_value_prediction = buildModel.expandingPrediction(buildModel.classValueFilter(preds))
         predictionToBedString(input_bam, class_value_prediction, "chr" + str(chr_no + 1), window_count, stride,
                               num_grid, logger, read_count_by_grid.reshape(num_grid).tolist())
         eval_counter += 1
