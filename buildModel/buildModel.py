@@ -34,52 +34,19 @@ def run(dir_name, logger, num_grid=10000):
         input_list[dir] = extractChrClass(dir)
 
     ##################### Hyperparameters #####################
-    global batch_size
-    global evaluation_size
-    global generations
-    global eval_every
-    global learning_rate
-    global target_size
-
-    global conv1_features
-    global conv1a_features
-    global conv1b_features
-    global convMax1_features
-    global convAvg1_features
-
-    global conv2a_features
-    global conv2b_features
-    global convMax2_features
-    global convAvg2_features
-
-    global conv3a_features
-    global conv3b_features
-    global convMax3_features
-    global convAvg3_features
-
-    global conv4a_features
-    global conv4b_features
-    global convMax4_features
-    global convAvg4_features
-
-    global conv5a_features
-    global conv5b_features
-    global convMax5_features
-    global convAvg5_features
-
-    global max_pool_size_stem
-    global max_pool_size1
-    global max_pool_size2
-    global max_pool_size3
-    global max_pool_size4
-    global max_pool_size5
-
-    global fully_connected_size1
+    global batch_size, evaluation_size, generations, eval_every, learning_rate, target_size,\
+        conv1_features, conv1a_features, conv1b_features, convMax1_features, convAvg1_features,\
+        conv2a_features, conv2b_features, convMax2_features, convAvg2_features,\
+        conv3a_features, conv3b_features, convMax3_features, convAvg3_features,\
+        conv4a_features, conv4b_features, convMax4_features, convAvg4_features,\
+        conv5a_features, conv5b_features, convMax5_features, convAvg5_features,\
+        max_pool_size_stem, max_pool_size1, max_pool_size2, max_pool_size3, max_pool_size4, max_pool_size5,\
+        fully_connected_size1, fully_connected_size2
 
     batch_size = 1
     evaluation_size = 1
     generations = 15000
-    eval_every = 10
+    eval_every = 20
     learning_rate = 0.005
     target_size = num_grid
 
@@ -118,96 +85,35 @@ def run(dir_name, logger, num_grid=10000):
     max_pool_size5 = 5
 
     fully_connected_size1 = 800
+    fully_connected_size2 = 500
     ###########################################################
 
-    global conv1_weight
-    global conv1_bias
+    global conv1_weight, conv1_bias, conv1a_weight, conv1a_bias, conv1b_weight, conv1b_bias,\
+        convMax1_weight, convMax1_bias, convAvg1_weight, convAvg1_bias
 
-    global conv1a_weight
-    global conv1a_bias
-    global conv1b_weight
-    global conv1b_bias
-    global convMax1_weight
-    global convMax1_bias
-    global convAvg1_weight
-    global convAvg1_bias
+    global conv2a_weight, conv2a_bias, conv2b_weight, conv2b_bias,\
+        convMax2_weight, convMax2_bias, convAvg2_weight, convAvg2_bias
 
-    global conv2a_weight
-    global conv2a_bias
-    global conv2b_weight
-    global conv2b_bias
-    global convMax2_weight
-    global convMax2_bias
-    global convAvg2_weight
-    global convAvg2_bias
+    global conv3a_weight, conv3a_bias, conv3b_weight, conv3b_bias,\
+        convMax3_weight, convMax3_bias, convAvg3_weight, convAvg3_bias
 
-    global conv3a_weight
-    global conv3a_bias
-    global conv3b_weight
-    global conv3b_bias
-    global convMax3_weight
-    global convMax3_bias
-    global convAvg3_weight
-    global convAvg3_bias
+    global conv4a_weight, conv4a_bias, conv4b_weight, conv4b_bias,\
+        convMax4_weight, convMax4_bias, convAvg4_weight, convAvg4_bias
 
-    global conv4a_weight
-    global conv4a_bias
-    global conv4b_weight
-    global conv4b_bias
-    global convMax4_weight
-    global convMax4_bias
-    global convAvg4_weight
-    global convAvg4_bias
+    global conv5a_weight, conv5a_bias, conv5b_weight, conv5b_bias,\
+        convMax5_weight, convMax5_bias, convAvg5_weight, convAvg5_bias
 
-    global conv5a_weight
-    global conv5a_bias
-    global conv5b_weight
-    global conv5b_bias
-    global convMax5_weight
-    global convMax5_bias
-    global convAvg5_weight
-    global convAvg5_bias
+    global full1_weight, full1_bias, full2_weight, full2_bias, full_hidden_weight, full_hidden_bias
 
-    global convMax1_weight
-    global convMax1_bias
-    global convAvg1_weight
-    global convAvg1_bias
-    global convMax1_weight
-    global convMax1_bias
-    global convAvg1_weight
-    global convAvg1_bias
+    global model_output, test_model_output, input_data_train, input_data_eval,\
+        label_data_train, label_data_eval, p_dropout, loss_weight, is_test
 
-    global full1_weight
-    global full1_bias
-    global full2_weight
-    global full2_bias
-    global model_output
-    global test_model_output
-    global input_data_train
-    global input_data_eval
-    global label_data_train
-    global label_data_eval
-    global p_dropout
-    global loss_weight
-    global is_test
-
-    train_data_list = []
-    train_label_list = []
-    for dir in input_list:
-        for chr in input_list[dir]:
-            for cls in input_list[dir][chr]:
-                input_file_name = (dir + "/" + chr + "_" + cls + "_grid" + str(num_grid) + ".ct")
-                label_file_name = (dir + "/label_" + chr + "_" + cls + "_grid" + str(num_grid) + ".lb")
-                train_data_list.append(pd.read_csv(input_file_name))
-                train_label_list.append(pd.read_csv(label_file_name))
-
-    test_data_list, test_label_list = splitTrainingData(train_data_list, train_label_list)
 
     input_data_train = tf.placeholder(tf.float32, shape=(batch_size, num_grid, 1), name="trainingData")
     input_data_eval = tf.placeholder(tf.float32, shape=(batch_size, num_grid, 1), name="testData")
 
-    label_data_train = tf.placeholder(tf.float32, shape=(evaluation_size, 1, target_size))
-    label_data_eval = tf.placeholder(tf.float32, shape=(evaluation_size, 1, target_size))
+    label_data_train = tf.placeholder(tf.float32, shape=(evaluation_size, 1, target_size//5))
+    label_data_eval = tf.placeholder(tf.float32, shape=(evaluation_size, 1, target_size//5))
 
     p_dropout = tf.placeholder(tf.float32)
     loss_weight = tf.placeholder(tf.float32)
@@ -271,14 +177,17 @@ def run(dir_name, logger, num_grid=10000):
     full1_weight = tf.get_variable("Full_W1", shape=[full1_input_size, fully_connected_size1], initializer=tf.contrib.layers.xavier_initializer())
     full1_bias = tf.Variable(tf.truncated_normal([fully_connected_size1], stddev=0.1, dtype=tf.float32))
 
-    full2_weight = tf.get_variable("Full_W2", shape=[fully_connected_size1, target_size] , initializer=tf.contrib.layers.xavier_initializer())
-    full2_bias = tf.Variable(tf.truncated_normal([target_size], stddev=0.1, dtype=tf.float32))
+    full2_weight = tf.get_variable("Full_W2", shape=[fully_connected_size1, target_size//5] , initializer=tf.contrib.layers.xavier_initializer())
+    full2_bias = tf.Variable(tf.truncated_normal([target_size//5], stddev=0.1, dtype=tf.float32))
+
+    full_hidden_weight = tf.get_variable("Full_Hidden", shape=[fully_connected_size1, fully_connected_size2], initializer=tf.contrib.layers.xavier_initializer())
+    full_hidden_bias = tf.Variable(tf.truncated_normal([fully_connected_size2], stddev=0.1, dtype=tf.float32))
 
     model_output = peakPredictConvModel(input_data_train, logger)
     test_model_output = peakPredictConvModel(input_data_eval, logger)
 
-    prediction = model_output
-    test_prediction = test_model_output
+    prediction = tf.nn.sigmoid(model_output)
+    test_prediction = tf.nn.sigmoid(test_model_output)
 
     loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train\
             ,logits=model_output, pos_weight=loss_weight))*100
@@ -286,66 +195,118 @@ def run(dir_name, logger, num_grid=10000):
     optimizer = tf.train.AdamOptimizer(learning_rate)
     train_step = optimizer.minimize(loss)
 
+
+########################################################################################################################
+
+    train_data_list = []
+    train_label_list = []
+    for dir in input_list:
+        for chr in input_list[dir]:
+            for cls in input_list[dir][chr]:
+                input_file_name = (dir + "/" + chr + "_" + cls + "_grid" + str(num_grid) + ".ct")
+                label_file_name = (dir + "/label_" + chr + "_" + cls + "_grid" + str(num_grid) + ".lb")
+                train_data_list.append(pd.read_csv(input_file_name))
+                train_label_list.append(pd.read_csv(label_file_name))
+
+    K_fold = 4
+    test_data_list, test_label_list = splitTrainingData(train_data_list, train_label_list, Kfold=K_fold)
+
+    for i in range(K_fold):
+        training_data = []
+        training_label = []
+        test_data = []
+        test_label = []
+        for j in range(K_fold):
+            if i == j:
+                test_label += test_label_list[j]
+                test_data += test_data_list[j]
+            else:
+                training_data += test_data_list[j]
+                training_label += test_label_list[j]
+
+        training(training_data, training_label , test_data, test_label, \
+                 train_step, loss, prediction, test_prediction, logger, num_grid, i)
+
+
+def training(train_data_list, train_label_list, test_data_list, test_label_list, \
+             train_step, loss, prediction, test_prediction, logger, num_grid, step_num):
+
     init = tf.global_variables_initializer()
     sess = tf.Session()
     sess.run(init)
-
+    print("{} {}".format(len(train_data_list),len(test_data_list)))
     train_loss = []
     train_acc = []
     test_acc = []
 
+    loss_containor_for_mean = []
+    acc_containor_for_mean = []
     # Start of the training process
     for i in range(generations):
         rand_index = np.random.choice(len(train_data_list), size=batch_size)
 
         rand_x = train_data_list[rand_index[0]]['readCount'].as_matrix()
         rand_x = rand_x.reshape(input_data_train.shape)
+        mean_x = np.mean(rand_x)
+        rand_x = rand_x - mean_x
 
         rand_y = train_label_list[rand_index[0]][['peak']].as_matrix().transpose()
         rand_y = rand_y.reshape(label_data_train.shape)
 
-        p_n_rate = (pnRate(rand_y))**1/2
+        p_n_rate = pnRate(rand_y)
 
-        train_dict = {input_data_train: rand_x, label_data_train: rand_y,\
-                      p_dropout:0.7, loss_weight:p_n_rate, is_test:True}
+        train_dict = {input_data_train: rand_x, label_data_train: rand_y, \
+                      p_dropout: 0.7, loss_weight: p_n_rate, is_test: True}
 
         sess.run(train_step, feed_dict=train_dict)
         temp_train_loss, temp_train_preds = sess.run([loss, prediction], feed_dict=train_dict)
-        temp_train_acc = getAccuracy(temp_train_preds, rand_y, num_grid=num_grid)
+        temp_train_acc = getAccuracy(temp_train_preds, rand_y, num_grid=num_grid//5)
+
+        loss_containor_for_mean.append(temp_train_loss)
+        acc_containor_for_mean.append(temp_train_acc)
 
         # Recording results of test data
-        if (i+1) % eval_every == 0:
+        if (i + 1) % eval_every == 0:
             eval_index = np.random.choice(len(test_data_list), size=batch_size)
 
             eval_x = test_data_list[eval_index[0]]['readCount'].as_matrix()
             eval_x = eval_x.reshape(input_data_eval.shape)
+            #mean_eval_x = np.mean(eval_x)
+            #eval_x = eval_x - mean_eval_x
 
             eval_y = test_label_list[eval_index[0]][['peak']].as_matrix().transpose()
             eval_y = (eval_y.reshape(label_data_eval.shape))
 
-            test_dict = {input_data_eval: eval_x, label_data_eval: eval_y,\
-                         p_dropout:1, loss_weight:p_n_rate, is_test:False}
+            test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, \
+                         p_dropout: 1, loss_weight: p_n_rate, is_test: False}
 
             test_preds = sess.run(test_prediction, feed_dict=test_dict)
-            temp_test_acc = getAccuracy(test_preds, eval_y, num_grid=num_grid)
-            TP_rate, TN_rate = tpTnRate(test_preds, eval_y, num_grid=num_grid)
+            temp_test_acc = getAccuracy(test_preds, eval_y, num_grid=num_grid//5)
+            TP_rate, TN_rate = tpTnRate(test_preds, eval_y, num_grid=num_grid//5)
 
-            train_loss.append(temp_train_loss)
-            train_acc.append(temp_train_acc)
+            loss_mean = sum(loss_containor_for_mean)/float(len(loss_containor_for_mean))
+            acc_mean = sum(acc_containor_for_mean)/float(len(acc_containor_for_mean))
+            train_loss.append(loss_mean)
+            train_acc.append(acc_mean)
             test_acc.append(temp_test_acc)
+            loss_containor_for_mean.clear()
+            acc_containor_for_mean.clear()
 
-            acc_and_loss = [(i+1), temp_train_loss, temp_train_acc, temp_test_acc, TP_rate, TN_rate]
-            logger.info('Generation # {}. TrainLoss: {:.2f}. TrainACC (TestACC): {:.2f}. ({:.2f}.) TPR:{:.2f} TNR:{:.2f}'\
-                        .format(*acc_and_loss))
-
+            acc_and_loss = [(i + 1), loss_mean, acc_mean, temp_test_acc, TP_rate, TN_rate, p_n_rate]
+            if TP_rate == -1.0:
+                logger.info(
+                    'Generation # {}. TrainLoss: {:.2f}. TrainACC (TestACC): {:.2f}. ({:.2f}.) TPR:-.-- TNR:{:.2f} PN_rate:-.--' \
+                        .format(i+1, loss_mean, acc_mean, temp_train_acc,  TN_rate))
+            else:
+                logger.info(
+                    'Generation # {}. TrainLoss: {:.2f}. TrainACC (TestACC): {:.2f}. ({:.2f}.) TPR:{:.2f} TNR:{:.2f} PN_rate:{:.2f}' \
+                    .format(*acc_and_loss))
 
     visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss)
-
     visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
                         test_prediction, k=10)
-
     saver = tf.train.Saver()
-    save_path = saver.save(sess,  os.getcwd() + "/model.ckpt")
+    save_path = saver.save(sess, os.getcwd() + "/model_" + str(step_num) +".ckpt")
     logger.info("Model saved in path : %s" % save_path)
 
 
@@ -358,7 +319,6 @@ def peakPredictConvModel(input_data, logger):
     :return: Tensor of the output layer
     """
 
-    #input_data = tf.nn.batch_normalization(input_data,0,1.,0,1,0.00001)
     conv1 = tf.nn.conv1d(input_data, conv1_weight, stride=1, padding='SAME')
     relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_bias))
     max_pool1 = tf.nn.pool(relu1, [max_pool_size_stem], strides=[max_pool_size_stem], padding='SAME', pooling_type='MAX')
@@ -378,11 +338,14 @@ def peakPredictConvModel(input_data, logger):
     final_shape = final_conv_shape[1] * final_conv_shape[2]
     flat_output = tf.reshape(concat5, [final_conv_shape[0] , final_shape])
 
-    fully_connected1 = tf.nn.sigmoid(tf.add(tf.matmul(flat_output, full1_weight), full1_bias),  name="FullyConnected1")
+    fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias), alpha=0.005, name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
 
+    fully_connected2 = tf.nn.leaky_relu(tf.add(tf.matmul(fully_connected1,full_hidden_weight), full_hidden_bias), alpha=0.005,name = "FullyConnectedHidden")
+    fully_connected2 = tf.nn.dropout(fully_connected2, keep_prob=p_dropout)
+
     final_model_output = tf.add(tf.matmul(fully_connected1,full2_weight), full2_bias)
-    final_model_output = tf.reshape(final_model_output,[batch_size, 1, target_size], name="FullyConnected2")
+    final_model_output = tf.reshape(final_model_output,[batch_size, 1, target_size//5], name="FullyConnected2")
 
     return (final_model_output)
 
@@ -409,7 +372,7 @@ def concatLayer_A(source_layer, conv1_w, conv2_w, conv1_b, conv2_b, pooling_size
 
     avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size], padding='SAME', pooling_type='AVG')
 
-    concat = tf.concat([relu1, relu2, max_pool, avg_pool], axis=2)
+    concat = tf.concat([relu1, avg_pool, relu2, max_pool], axis=2)
     return concat
 
 
@@ -444,7 +407,7 @@ def concatLayer_B(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w,\
     conv_avg = tf.nn.conv1d(avg_pool, conv_avg_w, stride=1, padding='SAME')
     relu_avg = tf.nn.relu(tf.nn.bias_add(conv_avg, conv_avg_b))
 
-    concat = tf.concat([relu1, relu2, relu_max, relu_avg], axis=2)
+    concat = tf.concat([relu1, relu_max, relu2, relu_avg], axis=2)
 
     return concat
 
@@ -527,10 +490,11 @@ def pnRate(targets, num_grid=2000):
         if targets[0][0][index] > 0:
             count += 1
 
+    # The label only has negative samples.
     if count == 0.:
-        count = 1
+        return 1
 
-    return len(targets[0][0]) / count
+    return (len(targets[0][0]) - count) / count
 
 
 def classValueFilter(output_value, num_grid=2000):
@@ -583,18 +547,29 @@ def splitTrainingData(data_list, label_list, Kfold=4):
     :return:
     """
     print("##################NUMBER OF LABEL DATA : {}".format(len(data_list)))
-    counter = len(data_list) / Kfold
+
+    size = len(data_list)
+    counter = size / Kfold
 
     test_data = []
     test_label = []
+    for i in range(Kfold - 1):
+        test_data_temp = []
+        test_label_temp = []
+        while True:
+            if counter <= 0:
+                test_data.append(test_data_temp)
+                test_label.append(test_label_temp)
+                counter = size / Kfold
+                break
 
-    while True:
-        if counter <= 0:
-            break
-        pop_index = random.randint(0,len(data_list) - 1)
-        test_data.append(data_list.pop(pop_index))
-        test_label.append(label_list.pop(pop_index))
-        counter -= 1
+            pop_index = random.randint(0,len(test_data))
+            test_data_temp.append(data_list.pop(pop_index))
+            test_label_temp.append(label_list.pop(pop_index))
+            counter -= 1
+
+    test_data.append(data_list)
+    test_label.append(label_list)
 
     return test_data, test_label
 
@@ -656,7 +631,6 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             show_y = classValueFilter(show_y, num_grid)
             for index in range(len(show_preds)):
                 show_preds[index] += 3
-            fig = plt.figure(figsize=(12,6))
             plt.plot(show_x.reshape(num_grid).tolist())
             plt.plot(show_y, 'k.', label='Real prediction')
             plt.plot(show_preds, 'r.', label='Model prediction')
@@ -664,7 +638,6 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             plt.xlabel('Regions')
             plt.ylabel('Peak')
             plt.legend(loc='lower right')
-            fig.savefig('learning.jpeg', bbox_inches='tight', pad_inches=0)
             plt.show()
 
     else:

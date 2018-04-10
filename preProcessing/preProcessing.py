@@ -73,6 +73,7 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
     :param logger:
     :return:
     """
+    num_grid_label = num_grid // 5
 
     chr_list = set(label_data_df['chr'].tolist())
     if not os.path.isdir(bam_file[:-4]):
@@ -108,6 +109,8 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
             region_size = region_end - region_start
 
             stride = region_size / num_grid             # that can be elimenated.
+            stride_label = region_size / num_grid_label
+
             logger.debug("STRIDE :" + str(stride) + "           REGION SIZE :" + str(region_size))
             read_count_by_grid = pd.DataFrame(columns=['readCount'], dtype=int)
 
@@ -119,10 +122,10 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
             output_label_file = bam_file[:-4] + "/label_" + str(chr) + "_" + str(cls) + "_grid" + str(num_grid)+".lb"
 
             output_label_df_bef = pd.DataFrame(columns=['startGrid','endGrid'])
-            output_label_df_bef['startGrid'] = (label_data_by_class['start'] - region_start) / stride
-            output_label_df_bef['endGrid'] = (label_data_by_class['end'] - region_start) / stride
+            output_label_df_bef['startGrid'] = (label_data_by_class['start'] - region_start) / stride_label
+            output_label_df_bef['endGrid'] = (label_data_by_class['end'] - region_start) / stride_label
 
-            output_label_df = pd.DataFrame(columns=['peak','noPeak'], dtype=int, index=range(num_grid))
+            output_label_df = pd.DataFrame(columns=['peak','noPeak'], dtype=int, index=range(num_grid_label))
             output_label_df['peak'] = 0
             output_label_df['noPeak'] = 1
 
@@ -226,7 +229,7 @@ def createBamIndex(input_bam):
     if not os.path.isfile(input_bam+".sort"):
         subprocess.call(['sudo bamtools sort -in ' + input_bam + ' -out '+ input_bam+'.sort'], shell=True)
     else:
-        exit()
+        return 0
     subprocess.call(['sudo bamtools index -in ' + input_bam+".sort"], shell=True)
 
 
@@ -279,7 +282,7 @@ def parallel_execution(MAX_CORE, learning_process, learning_processes):
     :param learning_processes:
     :return:
     """
-    if len(learning_processes) < MAX_CORE - 1:
+    if len(learning_processes) < MAX_CORE:
         learning_processes.append(learning_process)
         learning_process.start()
     else:

@@ -19,10 +19,10 @@ def main():
     arg_parser.add_argument("-i","--inputDir", help="Input directory including labeled data and bam alignment files."
                                                     "\nIn case of callPeak mode, it will be input bam file to call peaks.")
     arg_parser.add_argument("-m","--savedModel", help="A saved CNN model file.")
-    arg_parser.add_argument("-g","--gridSize",default=4000, help="Define numbers of grid for each training data")
+    arg_parser.add_argument("-g","--gridSize",default=8000, help="Define numbers of grid for each training data")
     arg_parser.add_argument("-s","--searchingDist", help="")
     arg_parser.add_argument("-eps","--basePointEPS",help="")
-    arg_parser.add_argument("-w","--windowSize",default=80000,help="Window size for peak calling.")
+    arg_parser.add_argument("-w","--windowSize",default=100000,help="Window size for peak calling.")
 
     args = arg_parser.parse_args()
 

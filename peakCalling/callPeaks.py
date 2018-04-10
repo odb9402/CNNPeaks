@@ -22,14 +22,7 @@ def run(input_bam, logger, window_size, num_grid=4000):
     global num_peaks
     num_peaks = 0
     ##################### Hyperparameters #####################
-    global batch_size
-    global max_pool_size_stem
-    global max_pool_size1
-    global max_pool_size2
-    global max_pool_size3
-    global max_pool_size4
-    global max_pool_size5
-    global target_size
+    global batch_size, max_pool_size_stem, max_pool_size1, max_pool_size2, max_pool_size3, max_pool_size4, max_pool_size5, target_size
 
     batch_size = 1
     target_size = num_grid
@@ -70,73 +63,25 @@ def run(input_bam, logger, window_size, num_grid=4000):
 
     fully_connected_size1 = 800
     ###########################################################
-    global conv1_weight
-    global conv1_bias
+    global conv1_weight, conv1_bias, conv1a_weight, conv1a_bias, conv1b_weight, conv1b_bias,\
+        convMax1_weight, convMax1_bias, convAvg1_weight, convAvg1_bias
 
-    global conv1a_weight
-    global conv1a_bias
-    global conv1b_weight
-    global conv1b_bias
-    global convMax1_weight
-    global convMax1_bias
-    global convAvg1_weight
-    global convAvg1_bias
+    global conv2a_weight, conv2a_bias, conv2b_weight, conv2b_bias,\
+        convMax2_weight, convMax2_bias, convAvg2_weight, convAvg2_bias
 
-    global conv2a_weight
-    global conv2a_bias
-    global conv2b_weight
-    global conv2b_bias
-    global convMax2_weight
-    global convMax2_bias
-    global convAvg2_weight
-    global convAvg2_bias
+    global conv3a_weight, conv3a_bias, conv3b_weight, conv3b_bias,\
+        convMax3_weight, convMax3_bias, convAvg3_weight, convAvg3_bias
 
-    global conv3a_weight
-    global conv3a_bias
-    global conv3b_weight
-    global conv3b_bias
-    global convMax3_weight
-    global convMax3_bias
-    global convAvg3_weight
-    global convAvg3_bias
+    global conv4a_weight, conv4a_bias, conv4b_weight, conv4b_bias,\
+        convMax4_weight, convMax4_bias, convAvg4_weight, convAvg4_bias
 
-    global conv4a_weight
-    global conv4a_bias
-    global conv4b_weight
-    global conv4b_bias
-    global convMax4_weight
-    global convMax4_bias
-    global convAvg4_weight
-    global convAvg4_bias
+    global conv5a_weight, conv5a_bia, conv5b_weight, conv5b_bias,\
+        convMax5_weight, convMax5_bias, convAvg5_weight, convAvg5_bias
 
-    global conv5a_weight
-    global conv5a_bias
-    global conv5b_weight
-    global conv5b_bias
-    global convMax5_weight
-    global convMax5_bias
-    global convAvg5_weight
-    global convAvg5_bias
+    global full1_weight, full1_bias, full2_weight, full2_bias, full_hidden_weight, full_hidden_bias
 
-    global convMax1_weight
-    global convMax1_bias
-    global convAvg1_weight
-    global convAvg1_bias
-    global convMax1_weight
-    global convMax1_bias
-    global convAvg1_weight
-    global convAvg1_bias
-
-    global full1_weight
-    global full1_bias
-    global full2_weight
-    global full2_bias
-    global model_output
-    global input_data
-    global label_data
-    global p_dropout
-    global is_test
-    global iteration
+    global model_output, test_model_output, input_data_train, input_data_eval,\
+        label_data_train, label_data_eval, p_dropout, loss_weight, is_test
 
     tf.reset_default_graph()
 
@@ -201,12 +146,12 @@ def run(input_bam, logger, window_size, num_grid=4000):
     full1_weight = tf.get_variable("Full_W1", shape=[full1_input_size, fully_connected_size1])
     full1_bias = tf.Variable(tf.truncated_normal([fully_connected_size1], stddev=0.1, dtype=tf.float32))
 
-    full2_weight = tf.get_variable("Full_W2", shape=[fully_connected_size1, target_size])
+    full2_weight = tf.get_variable("Full_W2", shape=[fully_connected_size1, target_size//5])
     full2_bias = tf.Variable(tf.truncated_normal([target_size], stddev=0.1, dtype=tf.float32))
 
     sess = tf.Session()
     saver = tf.train.Saver()
-    saver.restore(sess, os.getcwd() + "/model.ckpt")
+    saver.restore(sess, os.getcwd() + "/model_3.ckpt")
 
     model_output = peakPredictConvModel(input_data, logger)
     prediction = tf.nn.sigmoid(model_output)
@@ -215,7 +160,7 @@ def run(input_bam, logger, window_size, num_grid=4000):
     if not os.path.isdir(input_bam[:-4]):
         os.makedirs(input_bam[:-4])
 
-    if not os.path.isfile(input_bam + '.bai'):
+    if not os.path.isfile(input_bam + '.sort.bai'):
         preProcessing.createBamIndex(input_bam)
         logger.info("Creating index file of [" + input_bam + "]")
     else:
@@ -225,11 +170,16 @@ def run(input_bam, logger, window_size, num_grid=4000):
 
     processes = []
 
+    MAX_CORE = cpu_count()
+
     for chr_no in range(22):
-        preProcessing.parallel_execution()
-        process = Process(target=call_peak,\
-                          args=(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size,))
-        preProcessing.parallel_execution(cpu_count()-1, process, processes)
+        call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size)
+        #process = Process(target=call_peak,\
+        #                  args=(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size,))
+        #preProcessing.parallel_execution(MAX_CORE-1, process, processes)
+
+    #for proc in processes:
+    #    proc.join()
 
 
 def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size):
@@ -251,7 +201,6 @@ def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess,
         read_count_by_grid = np.array(read_count_by_grid, dtype=int)
         read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
         result_dict = {input_data: read_count_by_grid, p_dropout: 1, is_test: True}
-
         preds = sess.run(prediction, feed_dict=result_dict)
         class_value_prediction = buildModel.classValueFilter(preds)
         predictionToBedString(input_bam, class_value_prediction, "chr" + str(chr_no + 1), window_count, stride,
@@ -350,13 +299,14 @@ def peakPredictConvModel(input_data, logger):
     flat_output = tf.reshape(concat5, [final_conv_shape[0] , final_shape])
 
     fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias)\
-                                        ,alpha=0.005, name="FullyConnected1")
+                                        ,alpha=0.003, name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
 
     final_model_output = tf.add(tf.matmul(fully_connected1,full2_weight), full2_bias)
     final_model_output = tf.reshape(final_model_output,[batch_size, 1, target_size], name="FullyConnected2")
 
     return (final_model_output)
+
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
