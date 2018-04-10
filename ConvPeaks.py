@@ -40,6 +40,7 @@ def main():
     else:
         logger.info("-mode ( --runMode ) must be one of : { preprocess, buildModel, peakCall }.")
 
+
 if __name__ == '__main__':
     logger = logging.getLogger("ConvLog")
     logger.setLevel(logging.DEBUG)               # The logger object only output logs which have

@@ -230,7 +230,21 @@ def run(dir_name, logger, num_grid=10000):
 
 def training(train_data_list, train_label_list, test_data_list, test_label_list, \
              train_step, loss, prediction, test_prediction, logger, num_grid, step_num):
+    """
 
+    :param train_data_list:
+    :param train_label_list:
+    :param test_data_list:
+    :param test_label_list:
+    :param train_step:
+    :param loss:
+    :param prediction:
+    :param test_prediction:
+    :param logger:
+    :param num_grid:
+    :param step_num:
+    :return:
+    """
     init = tf.global_variables_initializer()
     sess = tf.Session()
     sess.run(init)
@@ -601,6 +615,20 @@ def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train
     plt.show()
 
 
+def expandingPrediction(input_list, multiple=5):
+    """
+
+    :param input_list:
+    :param multiple:
+    :return:
+    """
+    expanded_list = []
+    for prediction in input_list:
+        for i in range(multiple):
+            expanded_list.append(prediction)
+
+    return expanded_list
+
 def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
                         test_prediction, k = 1):
     """
@@ -631,6 +659,8 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             show_y = classValueFilter(show_y, num_grid)
             for index in range(len(show_preds)):
                 show_preds[index] += 3
+            show_y = expandingPrediction(show_y)
+            show_preds = expandingPrediction(show_preds)
             plt.plot(show_x.reshape(num_grid).tolist())
             plt.plot(show_y, 'k.', label='Real prediction')
             plt.plot(show_preds, 'r.', label='Model prediction')

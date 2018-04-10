@@ -22,9 +22,20 @@ def run(input_bam, logger, window_size, num_grid=4000):
     global num_peaks
     num_peaks = 0
     ##################### Hyperparameters #####################
-    global batch_size, max_pool_size_stem, max_pool_size1, max_pool_size2, max_pool_size3, max_pool_size4, max_pool_size5, target_size
+    global batch_size, evaluation_size, generations, eval_every, learning_rate, target_size,\
+        conv1_features, conv1a_features, conv1b_features, convMax1_features, convAvg1_features,\
+        conv2a_features, conv2b_features, convMax2_features, convAvg2_features,\
+        conv3a_features, conv3b_features, convMax3_features, convAvg3_features,\
+        conv4a_features, conv4b_features, convMax4_features, convAvg4_features,\
+        conv5a_features, conv5b_features, convMax5_features, convAvg5_features,\
+        max_pool_size_stem, max_pool_size1, max_pool_size2, max_pool_size3, max_pool_size4, max_pool_size5,\
+        fully_connected_size1, fully_connected_size2
 
     batch_size = 1
+    evaluation_size = 1
+    generations = 15000
+    eval_every = 20
+    learning_rate = 0.005
     target_size = num_grid
 
     conv1_features = 8
@@ -62,7 +73,9 @@ def run(input_bam, logger, window_size, num_grid=4000):
     max_pool_size5 = 5
 
     fully_connected_size1 = 800
+    fully_connected_size2 = 500
     ###########################################################
+
     global conv1_weight, conv1_bias, conv1a_weight, conv1a_bias, conv1b_weight, conv1b_bias,\
         convMax1_weight, convMax1_bias, convAvg1_weight, convAvg1_bias
 
@@ -75,7 +88,7 @@ def run(input_bam, logger, window_size, num_grid=4000):
     global conv4a_weight, conv4a_bias, conv4b_weight, conv4b_bias,\
         convMax4_weight, convMax4_bias, convAvg4_weight, convAvg4_bias
 
-    global conv5a_weight, conv5a_bia, conv5b_weight, conv5b_bias,\
+    global conv5a_weight, conv5a_bias, conv5b_weight, conv5b_bias,\
         convMax5_weight, convMax5_bias, convAvg5_weight, convAvg5_bias
 
     global full1_weight, full1_bias, full2_weight, full2_bias, full_hidden_weight, full_hidden_bias
@@ -151,7 +164,7 @@ def run(input_bam, logger, window_size, num_grid=4000):
 
     sess = tf.Session()
     saver = tf.train.Saver()
-    saver.restore(sess, os.getcwd() + "/model_3.ckpt")
+    saver.restore(sess, os.getcwd() + "/model.ckpt")
 
     model_output = peakPredictConvModel(input_data, logger)
     prediction = tf.nn.sigmoid(model_output)
