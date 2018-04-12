@@ -10,12 +10,13 @@ import logging
 from buildModel.buildModel import run as buildModel
 from preProcessing.preProcessing import run as preProcessing
 from peakCalling.callPeaks import run as callPeaks
+from utility.checkData import run as checkData
 
 def main():
 
     #################### Setting arguments ########################
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("-mode","--runMode", choices=['preprocess','buildModel','peakCall'] ,help="Select a mode.")
+    arg_parser.add_argument("-mode","--runMode", choices=['preprocess','buildModel','peakCall','checkData'] ,help="Select a mode.")
     arg_parser.add_argument("-i","--inputDir", help="Input directory including labeled data and bam alignment files."
                                                     "\nIn case of callPeak mode, it will be input bam file to call peaks.")
     arg_parser.add_argument("-m","--savedModel", help="A saved CNN model file.")
@@ -37,6 +38,8 @@ def main():
         buildModel(args.inputDir, logger, num_grid=int(args.gridSize))
     elif args.runMode == 'peakCall':
         callPeaks(args.inputDir, logger, window_size=int(args.windowSize), num_grid=int(args.gridSize))
+    elif args.runMode == 'checkData':
+        checkData(args.inputDir,logger, num_grid=int(args.gridSize))
     else:
         logger.info("-mode ( --runMode ) must be one of : { preprocess, buildModel, peakCall }.")
 
