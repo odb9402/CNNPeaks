@@ -33,8 +33,9 @@ def run(dir_name, logger, num_grid=8000):
 
                 plt.plot(reads,'k')
                 plt.plot(label,'r.')
+                plt.title('{} {}-{}'.format(dir,chr,cls))
                 plt.show()
 
-                if input("save(s) or delete(d)  ::") == 'd':
+                if input("save(1) or delete(0)  ::") == '0':
                     os.remove(input_file_name)
                     os.remove(label_file_name)
