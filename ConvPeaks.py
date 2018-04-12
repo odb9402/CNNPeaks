@@ -12,8 +12,11 @@ from preProcessing.preProcessing import run as preProcessing
 from peakCalling.callPeaks import run as callPeaks
 from utility.checkData import run as checkData
 
-def main():
+num_grid = 8000
+windowSize = 100000
 
+def main():
+    global num_grid, windowSize
     #################### Setting arguments ########################
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("-mode","--runMode", choices=['preprocess','buildModel','peakCall','checkData'] ,help="Select a mode.")
@@ -32,14 +35,17 @@ def main():
         exit()
     ###############################################################
 
+    num_grid= int(args.gridSize)
+    windowSize = int(args.windowSize)
+
     if args.runMode == 'preprocess':
-        preProcessing(args.inputDir, logger, num_grid=int(args.gridSize))
+        preProcessing(args.inputDir, logger, num_grid=num_grid)
     elif args.runMode =='buildModel':
-        buildModel(args.inputDir, logger, num_grid=int(args.gridSize))
+        buildModel(args.inputDir, logger, num_grid=num_grid)
     elif args.runMode == 'peakCall':
-        callPeaks(args.inputDir, logger, window_size=int(args.windowSize), num_grid=int(args.gridSize))
+        callPeaks(args.inputDir, logger, window_size=num_grid, num_grid=windowSize)
     elif args.runMode == 'checkData':
-        checkData(args.inputDir,logger, num_grid=int(args.gridSize))
+        checkData(args.inputDir,logger, num_grid=num_grid)
     else:
         logger.info("-mode ( --runMode ) must be one of : { preprocess, buildModel, peakCall }.")
 
