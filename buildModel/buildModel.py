@@ -23,8 +23,8 @@ def run(dir_name, logger, num_grid=10000):
     label_files = glob.glob(PATH + '/*.txt')
 
     dir_list = []
-    for bam_file in bam_files:
-        dir_list.append(bam_file[:-4])
+    for label_file in label_files:
+        dir_list.append(label_file[:-4])
 
     for dir in dir_list:
         logger.info("DIRECTORY (TARGET) : <" + dir +">")
