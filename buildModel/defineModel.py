@@ -132,23 +132,24 @@ convAvg5_weight = tf.get_variable("Conv_avg_W5", shape=[1, 640, convAvg5_feature
                                   initializer=tf.contrib.layers.xavier_initializer())
 convAvg5_bias = tf.Variable(tf.zeros([convAvg5_features], dtype=tf.float32))
 
-conv6a_weight = tf.get_variable("Conv_6A", shape=[2, 1536, conv6a_features],
-                                initializer=tf.contrib.layers.xavier_initializer())
-conv6a_bias = tf.Variable(tf.zeros([conv6a_features], dtype=tf.float32))
-conv6b_weight = tf.get_variable("Conv_6B", shape=[2, 1536, conv6b_features],
-                                initializer=tf.contrib.layers.xavier_initializer())
-conv6b_bias = tf.Variable(tf.zeros([conv6b_features], dtype=tf.float32))
+#conv6a_weight = tf.get_variable("Conv_6A", shape=[2, 1536, conv6a_features],
+#                                initializer=tf.contrib.layers.xavier_initializer())
+#conv6a_bias = tf.Variable(tf.zeros([conv6a_features], dtype=tf.float32))
+#conv6b_weight = tf.get_variable("Conv_6B", shape=[2, 1536, conv6b_features],
+#                                initializer=tf.contrib.layers.xavier_initializer())
+#conv6b_bias = tf.Variable(tf.zeros([conv6b_features], dtype=tf.float32))
 
-resulting_width = target_size // (max_pool_size_stem * max_pool_size1 * max_pool_size2 * max_pool_size3 * max_pool_size4 * max_pool_size5 * max_pool_size6 )
-full1_input_size = resulting_width * (3328)
+resulting_width = target_size // (max_pool_size_stem * max_pool_size1 * max_pool_size2 * max_pool_size3
+                                  * max_pool_size4 * max_pool_size5)# * max_pool_size6 )
+full1_input_size = resulting_width * (1536)
 
 full1_weight = tf.get_variable("Full_W1", shape=[full1_input_size, fully_connected_size1],
                                initializer=tf.contrib.layers.xavier_initializer())
 full1_bias = tf.Variable(tf.truncated_normal([fully_connected_size1], stddev=0.1, dtype=tf.float32))
 
-full_hidden_weight = tf.get_variable("Full_Hidden", shape=[fully_connected_size1, fully_connected_size2],
-                                     initializer=tf.contrib.layers.xavier_initializer())
-full_hidden_bias = tf.Variable(tf.truncated_normal([fully_connected_size2], stddev=0.1, dtype=tf.float32))
+#full_hidden_weight = tf.get_variable("Full_Hidden", shape=[fully_connected_size1, fully_connected_size2],
+#                                     initializer=tf.contrib.layers.xavier_initializer())
+#full_hidden_bias = tf.Variable(tf.truncated_normal([fully_connected_size2], stddev=0.1, dtype=tf.float32))
 
 full2_weight = tf.get_variable("Full_W2", shape=[fully_connected_size1, target_size // 5],
                                initializer=tf.contrib.layers.xavier_initializer())

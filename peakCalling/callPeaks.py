@@ -29,7 +29,7 @@ def run(input_bam, logger, window_size, num_grid=4000):
 
     sess = tf.Session()
     saver = tf.train.Saver()
-    saver.restore(sess, os.getcwd() + "/model.ckpt")
+    saver.restore(sess, os.getcwd() + "/model_1.ckpt")
 
     model_output = peakPredictConvModel(input_data, logger)
     prediction = tf.nn.sigmoid(model_output)
@@ -78,15 +78,18 @@ def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess,
             read_count_by_grid.append(count)
         read_count_by_grid = np.array(read_count_by_grid, dtype=int)
         read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
+
         result_dict = {input_data: read_count_by_grid, p_dropout: 1, is_test: True}
         preds = sess.run(prediction, feed_dict=result_dict)
         class_value_prediction = buildModel.expandingPrediction(buildModel.classValueFilter(preds))
+
         predictionToBedString(input_bam, class_value_prediction, "chr" + str(chr_no + 1), window_count, stride,
                               num_grid, logger, read_count_by_grid.reshape(num_grid).tolist())
         eval_counter += 1
         if eval_counter == 100:
             logger.info("Reading . . . :[chr" + str(chr_no + 1) + ":" \
                         + str(window_count - (window_size * 99)) + "-" + str(window_count + window_size) + "]")
+            visualizeEachLayers(input_bam, class_value_prediction, logger)
             eval_counter = 0
         window_count += window_size
 
@@ -186,8 +189,55 @@ def peakPredictConvModel(input_data, logger):
     return (final_model_output)
 
 
-def visualizeEachLayers():
-    pass
+def visualizeEachLayers(input_bam, input_data, logger):
+    dir_name = "Layers_" + input_bam
+
+    if not os.path.isdir(dir_name):
+        os.mkdir(dir_name)
+
+    conv1 = tf.nn.conv1d(input_data, conv1_weight, stride=1, padding='SAME')
+    relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_bias))
+    max_pool1 = tf.nn.pool(relu1, [max_pool_size_stem], strides=[max_pool_size_stem],
+            padding='SAME', pooling_type='MAX')
+    layer_0 = tf.split(max_pool1,axis=2,num=8)
+
+    logger(layer_0)
+
+    ### Concat 1 ###
+    conv1a = tf.nn.conv1d(max_pool1, conv1a_weight, stride=max_pool_size1, padding='SAME')
+    relu1a = tf.nn.relu(tf.nn.bias_add(conv1a, conv1a_bias))
+    layer_1a = tf.split(relu1a,axis=2,num=8)
+
+    conv1b = tf.nn.conv1d(max_pool1, conv1b_weight, stride=max_pool_size1, padding='SAME')
+    relu1b = tf.nn.relu(tf.nn.bias_add(conv1b, conv1b_bias))
+    layer_1b = tf.split(relu1b,axis=2,num=8)
+
+    max_pool_1 = tf.nn.pool(max_pool1, [max_pool_size1], strides=[max_pool_size1],
+            padding='SAME', pooling_type='MAX')
+    conv_max_1 = tf.nn.conv1d(max_pool_1, convMax1_weight, stride=1, padding='SAME')
+    relu_max_1 = tf.nn.relu(tf.nn.bias_add(conv_max_1, convMax1_bias))
+    layer_max1 = tf.split(relu_max_1,axis=2,num=8)
+
+    avg_pool_1 = tf.nn.pool(max_pool1, [max_pool_size1], strides=[max_pool_size1],
+            padding='SAME', pooling_type='AVG')
+    conv_avg_1 = tf.nn.conv1d(avg_pool_1, convAvg1_weight, stride=1, padding='SAME')
+    relu_avg_1 = tf.nn.relu(tf.nn.bias_add(conv_avg_1, convAvg1_bias))
+    layer_avg1 = tf.split(relu_avg_1,axis=2,num=8)
+
+    concat_1 = tf.concat([relu1a,relu_max_1,relu1b,relu_avg_1],axis=2)
+
+    conv2a = tf.nn.conv1d(concat_1, conv2a_weight, stride=max_pool_size2, padding='SAME')
+    relu2a = tf.nn.relu(tf.nn.bias_add(conv2a, conv2a_bias))
+    layer_2a = tf.split(relu2a,axis=2)
+
+    conv2b = tf.nn.conv1d(concat_1, conv2b_weight, stride=max_pool_size2, padding='SAME')
+    relu2b = tf.nn.relu(tf.nn.bias_add(conv2b, conv2b_bias))
+
+    max_pool_2 = tf.nn.pool(concat_1, [max_pool_size2], strides=[max_pool_size2],
+                          padding='SAME', pooling_type='MAX')
+
+    avg_pool_2 = tf.nn.pool(concat_1, [max_pool_size2], strides=[max_pool_size2],
+                          padding='SAME', pooling_type='AVG')
 
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
