@@ -7,6 +7,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import random
 from .defineModel import *
+from .hyperparameters import *
 
 def run(dir_name, logger, num_grid=10000):
     """
@@ -124,7 +125,7 @@ def training(train_data_list, train_label_list, test_data_list, test_label_list,
         p_n_rate = pnRate(rand_y)
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y, \
-                      p_dropout: 0.7, loss_weight: p_n_rate, is_test: True}
+                      p_dropout: 0.7, loss_weight: p_n_rate}
 
         sess.run(train_step, feed_dict=train_dict)
         temp_train_loss, temp_train_preds = sess.run([loss, prediction],
@@ -149,7 +150,7 @@ def training(train_data_list, train_label_list, test_data_list, test_label_list,
             p_n_rate_eval = pnRate(rand_y)
 
             test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, \
-                         p_dropout: 1, loss_weight: p_n_rate_eval, is_test: False}
+                         p_dropout: 1, loss_weight: p_n_rate_eval}
 
             test_preds = sess.run(test_prediction, feed_dict=test_dict)
             temp_test_acc = getAccuracy(test_preds, eval_y, num_grid=num_grid//5)
@@ -212,7 +213,7 @@ def peakPredictConvModel(input_data, logger):
     flat_output = tf.reshape(concat5, [final_conv_shape[0] , final_shape])
 
     fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight),
-        full1_bias),alpha=0.005 ,name="FullyConnected1")
+        full1_bias),alpha=0.003 ,name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
 
     #fully_connected2 = tf.nn.selu(tf.add(tf.matmul(fully_connected1

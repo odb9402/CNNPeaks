@@ -1,55 +1,5 @@
 import tensorflow as tf
-
-##################### Hyperparameters #####################
-
-batch_size = 1
-evaluation_size = 1
-generations = 20000
-eval_every = 20
-learning_rate = 0.005
-target_size = 8000
-
-conv1_features = 8
-
-conv1a_features = 8
-conv1b_features = 8
-convMax1_features = 8
-convAvg1_features = 8
-
-conv2a_features = 16
-conv2b_features = 16
-convMax2_features = 32
-convAvg2_features = 32
-
-conv3a_features = 32
-conv3b_features = 32
-convMax3_features = 64
-convAvg3_features = 64
-
-conv4a_features = 64
-conv4b_features = 64
-convMax4_features = 128
-convAvg4_features = 128
-
-conv5a_features = 128
-conv5b_features = 128
-convMax5_features = 256
-convAvg5_features = 256
-
-conv6a_features = 128
-conv6b_features = 128
-
-max_pool_size_stem = 2
-max_pool_size1 = 2
-max_pool_size2 = 2
-max_pool_size3 = 2
-max_pool_size4 = 2
-max_pool_size5 = 2
-max_pool_size6 = 5
-
-fully_connected_size1 = 800
-fully_connected_size2 = 300
-
+from buildModel.hyperparameters import *
 ####################Defining tensor objects################
 
 input_data_train = tf.placeholder(tf.float32, shape=(batch_size, target_size, 1), name="trainingData")
@@ -140,8 +90,8 @@ convAvg5_bias = tf.Variable(tf.zeros([convAvg5_features], dtype=tf.float32))
 #conv6b_bias = tf.Variable(tf.zeros([conv6b_features], dtype=tf.float32))
 
 resulting_width = target_size // (max_pool_size_stem * max_pool_size1 * max_pool_size2 * max_pool_size3
-                                  * max_pool_size4 * max_pool_size5)# * max_pool_size6 )
-full1_input_size = resulting_width * (1536)
+                                  * max_pool_size4 * max_pool_size5 )# * max_pool_size6 )
+full1_input_size = resulting_width * 1536 #(3328)
 
 full1_weight = tf.get_variable("Full_W1", shape=[full1_input_size, fully_connected_size1],
                                initializer=tf.contrib.layers.xavier_initializer())

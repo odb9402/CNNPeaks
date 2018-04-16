@@ -43,7 +43,7 @@ def main():
     elif args.runMode =='buildModel':
         buildModel(args.inputDir, logger, num_grid=num_grid)
     elif args.runMode == 'peakCall':
-        callPeaks(args.inputDir, logger, window_size=num_grid, num_grid=windowSize)
+        callPeaks(args.inputDir, logger, window_size=windowSize, num_grid=num_grid)
     elif args.runMode == 'checkData':
         checkData(args.inputDir,logger, num_grid=num_grid)
     else:

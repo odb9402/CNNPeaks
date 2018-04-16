@@ -8,6 +8,7 @@ import random
 import string
 import matplotlib.pyplot as plt
 from multiprocessing import cpu_count, Process, Manager
+from buildModel.hyperparameters import *
 from buildModel.defineModel import *
 
 def run(input_bam, logger, window_size, num_grid=4000):
@@ -23,7 +24,7 @@ def run(input_bam, logger, window_size, num_grid=4000):
     global num_peaks
     num_peaks = 0
 
-    tf.reset_default_graph()
+    #tf.reset_default_graph()
 
     input_data = tf.placeholder(tf.float32, shape=(batch_size, num_grid, 1), name="testData")
 
@@ -31,7 +32,7 @@ def run(input_bam, logger, window_size, num_grid=4000):
     saver = tf.train.Saver()
     saver.restore(sess, os.getcwd() + "/model_1.ckpt")
 
-    model_output = peakPredictConvModel(input_data, logger)
+    model_output = buildModel.peakPredictConvModel(input_data, logger)
     prediction = tf.nn.sigmoid(model_output)
     ###################################################################################
 
@@ -62,7 +63,7 @@ def run(input_bam, logger, window_size, num_grid=4000):
 
 def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size):
 
-    window_count = 1
+    window_count = 203246600
     bam_alignment = pysam.AlignmentFile(input_bam + '.sort', 'rb', index_filename=input_bam + '.sort.bai')
     bam_length = bam_alignment.lengths
     stride = window_size / num_grid
@@ -76,7 +77,8 @@ def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess,
             count = bam_alignment.count(region=preProcessing.createRegionStr("chr" + str(chr_no + 1), \
                                                                              int(window_count + stride * step)))
             read_count_by_grid.append(count)
-        read_count_by_grid = np.array(read_count_by_grid, dtype=int)
+
+        read_count_by_grid = np.array(read_count_by_grid, dtype=float)
         read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
 
         result_dict = {input_data: read_count_by_grid, p_dropout: 1, is_test: True}
@@ -85,11 +87,11 @@ def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess,
 
         predictionToBedString(input_bam, class_value_prediction, "chr" + str(chr_no + 1), window_count, stride,
                               num_grid, logger, read_count_by_grid.reshape(num_grid).tolist())
+        visualizeEachLayers(input_bam, read_count_by_grid, sess, logger)
         eval_counter += 1
         if eval_counter == 100:
             logger.info("Reading . . . :[chr" + str(chr_no + 1) + ":" \
                         + str(window_count - (window_size * 99)) + "-" + str(window_count + window_size) + "]")
-            visualizeEachLayers(input_bam, class_value_prediction, logger)
             eval_counter = 0
         window_count += window_size
 
@@ -151,84 +153,66 @@ def removeCentromere():
     pass
 
 
-def peakPredictConvModel(input_data, logger):
-    """
+def visualizeEachLayers(input_bam, input_counts, sess, logger):
+    dir_name = os.getcwd() + "/fig/Layers_"
 
-    :param logger:
-    :param input_data:
-    :return:
-    """
-
-    #input_data = tf.nn.batch_normalization(input_data,0,1.,0,1,0.00001)
-    conv1 = tf.nn.conv1d(input_data, conv1_weight, stride=1, padding='SAME')
-    relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_bias))
-    max_pool1 = tf.nn.pool(relu1, [max_pool_size_stem], strides=[max_pool_size_stem], padding='SAME', pooling_type='MAX')
-
-    concat1 = buildModel.concatLayer_B(max_pool1, conv1a_weight, convMax1_weight, conv1b_weight, convAvg1_weight,\
-                            conv1a_bias, convMax1_bias, conv1b_bias, convAvg1_bias, max_pool_size1)
-
-    concat2 = buildModel.concatLayer_A(concat1, conv2a_weight, conv2b_weight, conv2a_bias, conv2b_bias, max_pool_size2)
-
-    concat3 = buildModel.concatLayer_A(concat2, conv3a_weight, conv3b_weight, conv3a_bias, conv3b_bias, max_pool_size3)
-
-    concat4 = buildModel.concatLayer_A(concat3, conv4a_weight, conv4b_weight, conv4a_bias, conv4b_bias, max_pool_size4)
-
-    concat5 = buildModel.concatLayer_A(concat4, conv5a_weight, conv5b_weight, conv5a_bias, conv5b_bias, max_pool_size5)
-
-    final_conv_shape = concat5.get_shape().as_list()
-    final_shape = final_conv_shape[1] * final_conv_shape[2]
-    flat_output = tf.reshape(concat5, [final_conv_shape[0] , final_shape])
-
-    fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias)\
-                                        ,alpha=0.003, name="FullyConnected1")
-    fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
-
-    final_model_output = tf.add(tf.matmul(fully_connected1,full2_weight), full2_bias)
-    final_model_output = tf.reshape(final_model_output,[batch_size, 1, target_size], name="FullyConnected2")
-
-    return (final_model_output)
+    if not os.path.isdir(os.getcwd()+"/fig"):
+        os.mkdir(os.getcwd()+"/fig")
+        if not os.path.isdir(dir_name + "STEM"):
+            os.mkdir(dir_name + "STEM")
+        for i in range(6):
+            if not os.path.isdir(dir_name + str(i+1)):
+                os.mkdir(dir_name + str(i+1))
 
 
-def visualizeEachLayers(input_bam, input_data, logger):
-    dir_name = "Layers_" + input_bam
+    plt.plot(input_counts.reshape(8000), label='Input read counts')
+    plt.savefig('{}/{}.png'.format(dir_name + "STEM",'Inputs'))
+    plt.clf()
 
-    if not os.path.isdir(dir_name):
-        os.mkdir(dir_name)
+    input_counts = input_counts - np.mean(input_counts)
 
-    conv1 = tf.nn.conv1d(input_data, conv1_weight, stride=1, padding='SAME')
+    conv1 = tf.nn.conv1d(input_data_eval, conv1_weight, stride=1, padding='SAME')
     relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_bias))
     max_pool1 = tf.nn.pool(relu1, [max_pool_size_stem], strides=[max_pool_size_stem],
             padding='SAME', pooling_type='MAX')
-    layer_0 = tf.split(max_pool1,axis=2,num=8)
 
-    logger(layer_0)
+    result_dict = {input_data_eval: input_counts, p_dropout: 1}
+    result = sess.run(max_pool1, feed_dict=result_dict)
+    layer_0 = np.split(result, 8, axis=2)
+
+    savePatternFig(dir_name+"STEM", layer_0, 8, 4000, "STEM")
 
     ### Concat 1 ###
     conv1a = tf.nn.conv1d(max_pool1, conv1a_weight, stride=max_pool_size1, padding='SAME')
     relu1a = tf.nn.relu(tf.nn.bias_add(conv1a, conv1a_bias))
-    layer_1a = tf.split(relu1a,axis=2,num=8)
 
     conv1b = tf.nn.conv1d(max_pool1, conv1b_weight, stride=max_pool_size1, padding='SAME')
     relu1b = tf.nn.relu(tf.nn.bias_add(conv1b, conv1b_bias))
-    layer_1b = tf.split(relu1b,axis=2,num=8)
 
     max_pool_1 = tf.nn.pool(max_pool1, [max_pool_size1], strides=[max_pool_size1],
             padding='SAME', pooling_type='MAX')
     conv_max_1 = tf.nn.conv1d(max_pool_1, convMax1_weight, stride=1, padding='SAME')
     relu_max_1 = tf.nn.relu(tf.nn.bias_add(conv_max_1, convMax1_bias))
-    layer_max1 = tf.split(relu_max_1,axis=2,num=8)
 
     avg_pool_1 = tf.nn.pool(max_pool1, [max_pool_size1], strides=[max_pool_size1],
             padding='SAME', pooling_type='AVG')
     conv_avg_1 = tf.nn.conv1d(avg_pool_1, convAvg1_weight, stride=1, padding='SAME')
     relu_avg_1 = tf.nn.relu(tf.nn.bias_add(conv_avg_1, convAvg1_bias))
-    layer_avg1 = tf.split(relu_avg_1,axis=2,num=8)
 
     concat_1 = tf.concat([relu1a,relu_max_1,relu1b,relu_avg_1],axis=2)
 
+    layer_avg1 = np.split(sess.run(relu_avg_1,feed_dict=result_dict), 8, axis=2)
+    layer_max1 = np.split(sess.run(relu_max_1,feed_dict=result_dict), 8, axis=2)
+    layer_1b = np.split(sess.run(relu1a,feed_dict=result_dict), 8, axis=2)
+    layer_1a = np.split(sess.run(relu1b,feed_dict=result_dict), 8, axis=2)
+
+    savePatternFig(dir_name+"1", layer_1a, 8, 2000, "Conv1_a")
+    savePatternFig(dir_name+"1", layer_1b, 8, 2000, "Conv1_b")
+    savePatternFig(dir_name+"1", layer_avg1, 8, 2000, "Conv1_max")
+    savePatternFig(dir_name+"1", layer_max1, 8, 2000, "Conv1_avg")
+
     conv2a = tf.nn.conv1d(concat_1, conv2a_weight, stride=max_pool_size2, padding='SAME')
     relu2a = tf.nn.relu(tf.nn.bias_add(conv2a, conv2a_bias))
-    layer_2a = tf.split(relu2a,axis=2)
 
     conv2b = tf.nn.conv1d(concat_1, conv2b_weight, stride=max_pool_size2, padding='SAME')
     relu2b = tf.nn.relu(tf.nn.bias_add(conv2b, conv2b_bias))
@@ -238,6 +222,95 @@ def visualizeEachLayers(input_bam, input_data, logger):
 
     avg_pool_2 = tf.nn.pool(concat_1, [max_pool_size2], strides=[max_pool_size2],
                           padding='SAME', pooling_type='AVG')
+
+    layer_avg2 = np.split(sess.run(avg_pool_2,feed_dict=result_dict), 32, axis=2)
+    layer_max2 = np.split(sess.run(max_pool_2,feed_dict=result_dict), 32, axis=2)
+    layer_2b = np.split(sess.run(relu2a,feed_dict=result_dict), 16, axis=2)
+    layer_2a = np.split(sess.run(relu2b,feed_dict=result_dict), 16, axis=2)
+
+    savePatternFig(dir_name+"2", layer_2a, 16, 1000, "Conv2_a")
+    savePatternFig(dir_name+"2", layer_2b, 16, 1000, "Conv2_b")
+    savePatternFig(dir_name+"2", layer_avg2, 32, 1000, "max2")
+    savePatternFig(dir_name+"2", layer_max2, 32, 1000, "avg2")
+
+    concat_2 = tf.concat([relu2a, max_pool_2, relu2b, avg_pool_2], axis=2)
+
+    conv3a = tf.nn.conv1d(concat_2, conv3a_weight, stride=max_pool_size3, padding='SAME')
+    relu3a = tf.nn.relu(tf.nn.bias_add(conv3a, conv3a_bias))
+
+    conv3b = tf.nn.conv1d(concat_2, conv3b_weight, stride=max_pool_size3, padding='SAME')
+    relu3b = tf.nn.relu(tf.nn.bias_add(conv3b, conv3b_bias))
+
+    max_pool_3 = tf.nn.pool(concat_2, [max_pool_size3], strides=[max_pool_size3],
+                            padding='SAME', pooling_type='MAX')
+
+    avg_pool_3 = tf.nn.pool(concat_2, [max_pool_size3], strides=[max_pool_size3],
+                            padding='SAME', pooling_type='AVG')
+
+    layer_avg3 = np.split(sess.run(avg_pool_3, feed_dict=result_dict), 96, axis=2)
+    layer_max3 = np.split(sess.run(max_pool_3, feed_dict=result_dict), 96, axis=2)
+    layer_3a = np.split(sess.run(relu3a, feed_dict=result_dict), 32, axis=2)
+    layer_3b = np.split(sess.run(relu3b, feed_dict=result_dict), 32, axis=2)
+
+    savePatternFig(dir_name + "3", layer_3a, 32, 500, "Conv3_a")
+    savePatternFig(dir_name + "3", layer_3b, 32, 500, "Conv3_b")
+    savePatternFig(dir_name + "3", layer_avg3, 96, 500, "max3")
+    savePatternFig(dir_name + "3", layer_max3, 96, 500, "avg3")
+
+    concat_3 = tf.concat([relu3a, max_pool_3, relu3b, avg_pool_3], axis=2)
+
+    conv4a = tf.nn.conv1d(concat_3, conv4a_weight, stride=max_pool_size4, padding='SAME')
+    relu4a = tf.nn.relu(tf.nn.bias_add(conv4a, conv4a_bias))
+
+    conv4b = tf.nn.conv1d(concat_3, conv4b_weight, stride=max_pool_size4, padding='SAME')
+    relu4b = tf.nn.relu(tf.nn.bias_add(conv4b, conv4b_bias))
+
+    max_pool_4 = tf.nn.pool(concat_3, [max_pool_size4], strides=[max_pool_size4],
+                          padding='SAME', pooling_type='MAX')
+
+    avg_pool_4 = tf.nn.pool(concat_3, [max_pool_size4], strides=[max_pool_size4],
+                          padding='SAME', pooling_type='AVG')
+
+    layer_avg4 = np.split(sess.run(avg_pool_4,feed_dict=result_dict), 256, axis=2)
+    layer_max4 = np.split(sess.run(max_pool_4,feed_dict=result_dict), 256, axis=2)
+    layer_4b = np.split(sess.run(relu4a,feed_dict=result_dict), 64, axis=2)
+    layer_4a = np.split(sess.run(relu4b,feed_dict=result_dict), 64, axis=2)
+
+    savePatternFig(dir_name+"4", layer_4a, 64, 250, "Conv4_a")
+    savePatternFig(dir_name+"4", layer_4b, 64, 250, "Conv4_b")
+    savePatternFig(dir_name+"4", layer_avg4, 256, 250, "max4")
+    savePatternFig(dir_name+"4", layer_max4, 256, 250, "avg4")
+
+    concat_4 = tf.concat([relu4a, max_pool_4, relu4b, avg_pool_4], axis=2)
+
+    conv5a = tf.nn.conv1d(concat_4, conv5a_weight, stride=max_pool_size5, padding='SAME')
+    relu5a = tf.nn.relu(tf.nn.bias_add(conv5a, conv5a_bias))
+
+    conv5b = tf.nn.conv1d(concat_4, conv5b_weight, stride=max_pool_size5, padding='SAME')
+    relu5b = tf.nn.relu(tf.nn.bias_add(conv5b, conv5b_bias))
+
+    max_pool_5 = tf.nn.pool(concat_4, [max_pool_size5], strides=[max_pool_size5],
+                            padding='SAME', pooling_type='MAX')
+
+    avg_pool_5 = tf.nn.pool(concat_4, [max_pool_size5], strides=[max_pool_size5],
+                            padding='SAME', pooling_type='AVG')
+
+    layer_avg5 = np.split(sess.run(avg_pool_5, feed_dict=result_dict), 640, axis=2)
+    layer_max5 = np.split(sess.run(max_pool_5, feed_dict=result_dict), 640, axis=2)
+    layer_5b = np.split(sess.run(relu5a, feed_dict=result_dict), 128, axis=2)
+    layer_5a = np.split(sess.run(relu5b, feed_dict=result_dict), 128, axis=2)
+
+    savePatternFig(dir_name + "5", layer_5a, 128, 125, "Conv5_a")
+    savePatternFig(dir_name + "5", layer_5b, 128, 125, "Conv5_b")
+    savePatternFig(dir_name + "5", layer_avg5, 640, 125, "max5")
+    savePatternFig(dir_name + "5", layer_max5, 640, 125, "avg5")
+
+
+def savePatternFig(dir_name, layer_0, feature, wide, name):
+    for i in range(feature):
+        plt.plot(layer_0[0].reshape(wide), label=name)
+        plt.savefig('{}/{}_{}.png'.format(dir_name, name, i))
+        plt.clf()
 
 
 def id_generator(size=6, chars=string.ascii_uppercase + string.digits):
