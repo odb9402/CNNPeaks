@@ -122,7 +122,7 @@ def training(train_data_list, train_label_list, test_data_list, test_label_list,
         rand_y = train_label_list[rand_index[0]][['peak']].as_matrix().transpose()
         rand_y = rand_y.reshape(label_data_train.shape)
 
-        p_n_rate = pnRate(rand_y)
+        p_n_rate = pnRate(rand_y)*1/2
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y, \
                       p_dropout: 0.7, loss_weight: p_n_rate}
@@ -175,7 +175,9 @@ def training(train_data_list, train_label_list, test_data_list, test_label_list,
     visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess,
             test_data_list, test_label_list,test_prediction, k=10, K_fold=str(step_num))
     saver = tf.train.Saver()
-    save_path = saver.save(sess, os.getcwd() + "/model_" + str(step_num) +".ckpt")
+    if not os.path.isdir(os.getcwd() + "/models"):
+        os.mkdir(os.getcwd() + "/models")
+    save_path = saver.save(sess, os.getcwd() + "/models/model_" + str(step_num) +".ckpt")
     logger.info("Model saved in path : %s" % save_path)
 
 
@@ -522,6 +524,8 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             show_index = np.random.choice(len(test_data_list), size=batch_size)
             show_x = test_data_list[show_index[0]]['readCount'].as_matrix()
             show_x = show_x.reshape(input_data_eval.shape)
+            show_x = np.maximum(show_x - np.mean(show_x), 0)
+
             show_y = test_label_list[show_index[0]][['peak']].as_matrix().transpose()
             show_y = show_y.reshape(label_data_eval.shape)
             show_dict = {input_data_eval: show_x, label_data_eval: show_y, \
