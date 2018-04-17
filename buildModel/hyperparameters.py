@@ -13,23 +13,23 @@ conv1b_features = 8
 convMax1_features = 8
 convAvg1_features = 8
 
-conv2a_features = 16
-conv2b_features = 16
+conv2a_features = 32
+conv2b_features = 32
 convMax2_features = 32
 convAvg2_features = 32
 
-conv3a_features = 32
-conv3b_features = 32
+conv3a_features = 64
+conv3b_features = 64
 convMax3_features = 64
 convAvg3_features = 64
 
-conv4a_features = 64
-conv4b_features = 64
+conv4a_features = 128
+conv4b_features = 128
 convMax4_features = 128
 convAvg4_features = 128
 
-conv5a_features = 128
-conv5b_features = 128
+conv5a_features = 256
+conv5b_features = 256
 convMax5_features = 256
 convAvg5_features = 256
 

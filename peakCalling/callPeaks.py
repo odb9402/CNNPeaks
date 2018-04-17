@@ -11,7 +11,7 @@ from multiprocessing import cpu_count, Process, Manager
 from buildModel.hyperparameters import *
 from buildModel.defineModel import *
 
-def run(input_bam, logger, window_size, num_grid=4000):
+def run(input_bam, logger, window_size=100000, num_grid=4000):
     """
 
     :param dir_name:
@@ -30,7 +30,7 @@ def run(input_bam, logger, window_size, num_grid=4000):
 
     sess = tf.Session()
     saver = tf.train.Saver()
-    saver.restore(sess, os.getcwd() + "/model_1.ckpt")
+    saver.restore(sess, os.getcwd() + "/model_0.ckpt")
 
     model_output = buildModel.peakPredictConvModel(input_data, logger)
     prediction = tf.nn.sigmoid(model_output)
@@ -63,7 +63,7 @@ def run(input_bam, logger, window_size, num_grid=4000):
 
 def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size):
 
-    window_count = 203246600
+    window_count = 106531627
     bam_alignment = pysam.AlignmentFile(input_bam + '.sort', 'rb', index_filename=input_bam + '.sort.bai')
     bam_length = bam_alignment.lengths
     stride = window_size / num_grid
@@ -80,6 +80,7 @@ def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess,
 
         read_count_by_grid = np.array(read_count_by_grid, dtype=float)
         read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
+        read_count_by_grid = read_count_by_grid - np.mean(read_count_by_grid)
 
         result_dict = {input_data: read_count_by_grid, p_dropout: 1, is_test: True}
         preds = sess.run(prediction, feed_dict=result_dict)
@@ -89,6 +90,7 @@ def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess,
                               num_grid, logger, read_count_by_grid.reshape(num_grid).tolist())
         visualizeEachLayers(input_bam, read_count_by_grid, sess, logger)
         eval_counter += 1
+        exit()
         if eval_counter == 100:
             logger.info("Reading . . . :[chr" + str(chr_no + 1) + ":" \
                         + str(window_count - (window_size * 99)) + "-" + str(window_count + window_size) + "]")
@@ -96,8 +98,9 @@ def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess,
         window_count += window_size
 
 
+
 def predictionToBedString(input_bam ,prediction, chromosome, region_start, stride, num_grid,\
-                          logger, reads, min_peak_size=10):
+                          logger, reads, min_peak_size=20):
     """
 
     :param prediction:

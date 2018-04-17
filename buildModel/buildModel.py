@@ -117,7 +117,7 @@ def training(train_data_list, train_label_list, test_data_list, test_label_list,
         rand_x = train_data_list[rand_index[0]]['readCount'].as_matrix()
         rand_x = rand_x.reshape(input_data_train.shape)
         mean_x = np.mean(rand_x)
-        rand_x = rand_x - mean_x
+        rand_x = np.maximum(rand_x - mean_x, 0)
 
         rand_y = train_label_list[rand_index[0]][['peak']].as_matrix().transpose()
         rand_y = rand_y.reshape(label_data_train.shape)
@@ -142,7 +142,7 @@ def training(train_data_list, train_label_list, test_data_list, test_label_list,
             eval_x = test_data_list[eval_index[0]]['readCount'].as_matrix()
             eval_x = eval_x.reshape(input_data_eval.shape)
             mean_eval_x = np.mean(eval_x)
-            eval_x = eval_x - mean_eval_x
+            eval_x = np.maximum(eval_x - mean_eval_x, 0)
 
             eval_y = test_label_list[eval_index[0]][['peak']].as_matrix().transpose()
             eval_y = (eval_y.reshape(label_data_eval.shape))
@@ -280,15 +280,15 @@ def concatLayer_B(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w,\
 
     max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size],
             padding='SAME', pooling_type='MAX')
-    conv_max = tf.nn.conv1d(max_pool, conv_max_w, stride=1, padding='SAME')
-    relu_max = tf.nn.relu(tf.nn.bias_add(conv_max, conv_max_b))
+    #conv_max = tf.nn.conv1d(max_pool, conv_max_w, stride=1, padding='SAME')
+    #relu_max = tf.nn.leaky_relu(tf.nn.bias_add(conv_max, conv_max_b))
 
     avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size],
             padding='SAME', pooling_type='AVG')
-    conv_avg = tf.nn.conv1d(avg_pool, conv_avg_w, stride=1, padding='SAME')
-    relu_avg = tf.nn.relu(tf.nn.bias_add(conv_avg, conv_avg_b))
+    #conv_avg = tf.nn.conv1d(avg_pool, conv_avg_w, stride=1, padding='SAME')
+    #relu_avg = tf.nn.leaky_relu(tf.nn.bias_add(conv_avg, conv_avg_b))
 
-    concat = tf.concat([relu1, relu_max, relu2, relu_avg], axis=2)
+    concat = tf.concat([relu1, max_pool, relu2, avg_pool], axis=2)
     return concat
 
 
@@ -467,7 +467,7 @@ def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train
     eval_indices = range(0, generations, eval_every)
 
     plt.plot(eval_indices, train_loss, 'k-')
-    plt.axis([0,generations,0,3])
+    plt.axis([0,generations,0,10])
     plt.title('L1 Loss per generation')
     plt.xlabel('Generation')
     plt.ylabel('Loss')
