@@ -476,7 +476,7 @@ def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train
     plt.xlabel('Generation')
     plt.ylabel('Loss')
     plt.show()
-    plt.savefig('/models/model_{}/LossPerGen.png'.format(K_fold))
+    plt.savefig('models/model_{}/LossPerGen.png'.format(K_fold))
     plt.clf()
 
     plt.plot(eval_indices, train_acc, 'k-', label='Train Set Accuracy')
@@ -486,7 +486,7 @@ def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train
     plt.ylabel('Accuracy')
     plt.legend(loc='lower right')
     plt.show()
-    plt.savefig('/models/model_{}/AccPerGen.png'.format(K_fold))
+    plt.savefig('models/model_{}/AccPerGen.png'.format(K_fold))
     plt.clf()
 
 
@@ -562,5 +562,5 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             plt.ylabel('Read Count')
             plt.legend(loc='lower right')
             plt.show()
-            plt.savefig('/models/model_{}/peak{}.png'.format(K_fold,i))
+            plt.savefig('models/model_{}/peak{}.png'.format(K_fold,i))
             plt.clf()

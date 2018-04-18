@@ -63,24 +63,18 @@ def run(input_bam, logger, window_size=100000, num_grid=4000):
 
 def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size):
 
-    window_count = 106531627
+    window_count = 1
     bam_alignment = pysam.AlignmentFile(input_bam + '.sort', 'rb', index_filename=input_bam + '.sort.bai')
     bam_length = bam_alignment.lengths
     stride = window_size / num_grid
     eval_counter = 0
 
     while True:
-        read_count_by_grid = []
         if window_count + window_size > bam_length[chr_no]:
             break
-        for step in range(num_grid):
-            count = bam_alignment.count(region=preProcessing.createRegionStr("chr" + str(chr_no + 1), \
-                                                                             int(window_count + stride * step)))
-            read_count_by_grid.append(count)
 
-        read_count_by_grid = np.array(read_count_by_grid, dtype=float)
-        read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
-        read_count_by_grid = np.maximum(read_count_by_grid - np.mean(read_count_by_grid), 0)
+        read_count_by_grid = generateReadcounts(input_data, window_count, window_count + window_size,
+                                                chr_no, bam_alignment, num_grid)
 
         result_dict = {input_data: read_count_by_grid, p_dropout: 1, is_test: True}
         preds = sess.run(prediction, feed_dict=result_dict)
@@ -88,7 +82,9 @@ def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess,
 
         predictionToBedString(input_bam, class_value_prediction, "chr" + str(chr_no + 1), window_count, stride,
                               num_grid, logger, read_count_by_grid.reshape(num_grid).tolist())
+
         visualizeEachLayers(input_bam, read_count_by_grid, sess, logger)
+
         eval_counter += 1
         exit()
         if eval_counter == 100:
@@ -97,6 +93,21 @@ def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess,
             eval_counter = 0
         window_count += window_size
 
+
+def generateReadcounts(input_data, region_start, region_end, chr_no, alignments, num_grid):
+    read_count_by_grid = []
+    stride = (region_end - region_start) / num_grid
+
+    for step in range(num_grid):
+        count = alignments.count(region=preProcessing.createRegionStr("chr" + str(chr_no + 1), \
+                                                                         int(region_start + stride * step)))
+        read_count_by_grid.append(count)
+
+    read_count_by_grid = np.array(read_count_by_grid, dtype=float)
+    read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
+    read_count_by_grid = np.maximum(read_count_by_grid - np.mean(read_count_by_grid), 0)
+
+    return read_count_by_grid
 
 
 def predictionToBedString(input_bam ,prediction, chromosome, region_start, stride, num_grid,\
