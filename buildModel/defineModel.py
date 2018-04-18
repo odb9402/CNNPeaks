@@ -42,10 +42,10 @@ convAvg1_bias = tf.Variable(tf.zeros([convAvg1_features], dtype=tf.float32))
 
 
 ############################ Inception 2 ###############################
-layer2_width = 32
-conv2a_weight = tf.get_variable("Conv_2A", shape=[4, 32, conv2a_features], initializer=tf.contrib.layers.xavier_initializer())
+layer2_width = 48
+conv2a_weight = tf.get_variable("Conv_2A", shape=[4, layer2_width, conv2a_features], initializer=tf.contrib.layers.xavier_initializer())
 conv2a_bias = tf.Variable(tf.zeros([conv2a_features], dtype=tf.float32))
-conv2b_weight = tf.get_variable("Conv_2B", shape=[2, 32, conv2b_features], initializer=tf.contrib.layers.xavier_initializer())
+conv2b_weight = tf.get_variable("Conv_2B", shape=[2, layer2_width, conv2b_features], initializer=tf.contrib.layers.xavier_initializer())
 conv2b_bias = tf.Variable(tf.zeros([conv2b_features], dtype=tf.float32))
 #convMax2_weight = tf.get_variable("Conv_max_W2", shape=[1, 32, convMax2_features], initializer=tf.contrib.layers.xavier_initializer())
 #convMax2_bias = tf.Variable(tf.zeros([convMax2_features], dtype=tf.float32))

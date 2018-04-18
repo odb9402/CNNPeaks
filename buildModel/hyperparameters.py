@@ -8,8 +8,8 @@ target_size = 8000
 
 conv1_features = 8
 
-conv1a_features = 8
-conv1b_features = 8
+conv1a_features = 16
+conv1b_features = 16
 convMax1_features = 8
 convAvg1_features = 8
 
@@ -28,8 +28,8 @@ conv4b_features = 128
 convMax4_features = 128
 convAvg4_features = 128
 
-conv5a_features = 256
-conv5b_features = 256
+conv5a_features = 128
+conv5b_features = 128
 convMax5_features = 256
 convAvg5_features = 256
 
