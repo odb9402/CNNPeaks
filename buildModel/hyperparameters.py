@@ -1,7 +1,7 @@
 
 batch_size = 1
 evaluation_size = 1
-generations = 15000
+generations = 10000
 eval_every = 20
 learning_rate = 0.005
 target_size = 8000

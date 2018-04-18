@@ -58,8 +58,11 @@ def run(dir_name, logger, num_grid=10000):
                 train_data_list.append(pd.read_csv(input_file_name))
                 train_label_list.append(pd.read_csv(label_file_name))
 
-    K_fold = 4
+    K_fold = 10
     test_data_list, test_label_list = splitTrainingData(train_data_list, train_label_list, Kfold=K_fold)
+
+    if not os.path.isdir(os.getcwd() + "/models"):
+        os.mkdir(os.getcwd() + "/models")
 
     #K_fold Cross Validation
     for i in range(K_fold):
@@ -75,8 +78,8 @@ def run(dir_name, logger, num_grid=10000):
                 training_data += test_data_list[j]
                 training_label += test_label_list[j]
 
-        if not os.path.isdir("model_{}".format(i)):
-            os.mkdir("model_{}".format(i))
+        if not os.path.isdir(os.getcwd() + "/models/model_{}".format(i)):
+            os.mkdir(os.getcwd() + "/models/model_{}".format(i))
 
         training(training_data, training_label , test_data, test_label, \
                  train_step, loss, prediction, test_prediction, logger, num_grid, i)
@@ -122,7 +125,7 @@ def training(train_data_list, train_label_list, test_data_list, test_label_list,
         rand_y = train_label_list[rand_index[0]][['peak']].as_matrix().transpose()
         rand_y = rand_y.reshape(label_data_train.shape)
 
-        p_n_rate = pnRate(rand_y)*1/2
+        p_n_rate = pnRate(rand_y)
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y, \
                       p_dropout: 0.7, loss_weight: p_n_rate}
@@ -173,11 +176,10 @@ def training(train_data_list, train_label_list, test_data_list, test_label_list,
     visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss,
             K_fold=str(step_num))
     visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess,
-            test_data_list, test_label_list,test_prediction, k=10, K_fold=str(step_num))
+            test_data_list, test_label_list,test_prediction, k=len(test_data_list), K_fold=str(step_num))
+
     saver = tf.train.Saver()
-    if not os.path.isdir(os.getcwd() + "/models"):
-        os.mkdir(os.getcwd() + "/models")
-    save_path = saver.save(sess, os.getcwd() + "/models/model_" + str(step_num) +".ckpt")
+    save_path = saver.save(sess, os.getcwd() + "/models/model_{}/model{}.ckpt".format(step_num,step_num))
     logger.info("Model saved in path : %s" % save_path)
 
 
@@ -474,7 +476,7 @@ def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train
     plt.xlabel('Generation')
     plt.ylabel('Loss')
     plt.show()
-    plt.savefig('model_{}/LossPerGen.png'.format(K_fold))
+    plt.savefig('/models/model_{}/LossPerGen.png'.format(K_fold))
     plt.clf()
 
     plt.plot(eval_indices, train_acc, 'k-', label='Train Set Accuracy')
@@ -484,7 +486,7 @@ def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train
     plt.ylabel('Accuracy')
     plt.legend(loc='lower right')
     plt.show()
-    plt.savefig('model_{}/AccPerGen.png'.format(K_fold))
+    plt.savefig('/models/model_{}/AccPerGen.png'.format(K_fold))
     plt.clf()
 
 
@@ -560,5 +562,5 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             plt.ylabel('Read Count')
             plt.legend(loc='lower right')
             plt.show()
-            plt.savefig('model_{}/peak{}.png'.format(K_fold,i))
+            plt.savefig('/models/model_{}/peak{}.png'.format(K_fold,i))
             plt.clf()
