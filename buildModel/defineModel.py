@@ -30,6 +30,7 @@ conv1_bias = tf.Variable(tf.zeros([conv1_features], dtype=tf.float32))
 
 
 ############################ Inception 1 ###############################
+layer1_width = conv1_features
 conv1a_weight = tf.get_variable("Conv_1A", shape=[4, conv1_features, conv1a_features], initializer=tf.contrib.layers.xavier_initializer())
 conv1a_bias = tf.Variable(tf.zeros([conv1a_features], dtype=tf.float32))
 conv1b_weight = tf.get_variable("Conv_1B", shape=[2, conv1_features, conv1b_features], initializer=tf.contrib.layers.xavier_initializer())
@@ -42,7 +43,7 @@ convAvg1_bias = tf.Variable(tf.zeros([convAvg1_features], dtype=tf.float32))
 
 
 ############################ Inception 2 ###############################
-layer2_width = 48
+layer2_width = conv1a_features + conv1b_features + (layer1_width*2)
 conv2a_weight = tf.get_variable("Conv_2A", shape=[4, layer2_width, conv2a_features], initializer=tf.contrib.layers.xavier_initializer())
 conv2a_bias = tf.Variable(tf.zeros([conv2a_features], dtype=tf.float32))
 conv2b_weight = tf.get_variable("Conv_2B", shape=[2, layer2_width, conv2b_features], initializer=tf.contrib.layers.xavier_initializer())
@@ -94,16 +95,18 @@ conv5b_bias = tf.Variable(tf.zeros([conv5b_features], dtype=tf.float32))
 
 
 ############################ Inception 6 ###############################
-#conv6a_weight = tf.get_variable("Conv_6A", shape=[2, 1536, conv6a_features], initializer=tf.contrib.layers.xavier_initializer())
-#conv6a_bias = tf.Variable(tf.zeros([conv6a_features], dtype=tf.float32))
-#conv6b_weight = tf.get_variable("Conv_6B", shape=[2, 1536, conv6b_features], initializer=tf.contrib.layers.xavier_initializer())
-#conv6b_bias = tf.Variable(tf.zeros([conv6b_features], dtype=tf.float32))
+layer6_width = conv5a_features + conv5b_features + (layer5_width*2)
+conv6a_weight = tf.get_variable("Conv_6A", shape=[2, layer6_width, conv6a_features], initializer=tf.contrib.layers.xavier_initializer())
+conv6a_bias = tf.Variable(tf.zeros([conv6a_features], dtype=tf.float32))
+conv6b_weight = tf.get_variable("Conv_6B", shape=[2, layer6_width, conv6b_features], initializer=tf.contrib.layers.xavier_initializer())
+conv6b_bias = tf.Variable(tf.zeros([conv6b_features], dtype=tf.float32))
 
 
 
 ############################ Fully Connected ###############################
+layer_full_width = conv6a_features + conv6b_features + (layer6_width*2)
 resulting_width = target_size // (max_pool_size_stem * max_pool_size1 * max_pool_size2 * max_pool_size3* max_pool_size4 * max_pool_size5 )
-full1_input_size = resulting_width * ( conv5a_features + conv5b_features + layer5_width*2)
+full1_input_size = resulting_width * ( layer_full_width )
 full1_weight = tf.get_variable("Full_W1", shape=[full1_input_size, fully_connected_size1],initializer=tf.contrib.layers.xavier_initializer())
 full1_bias = tf.Variable(tf.truncated_normal([fully_connected_size1], stddev=0.1, dtype=tf.float32))
 

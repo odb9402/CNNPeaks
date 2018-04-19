@@ -210,11 +210,11 @@ def peakPredictConvModel(input_data, logger):
 
     concat5 = concatLayer_A(concat4, conv5a_weight, conv5b_weight, conv5a_bias, conv5b_bias, max_pool_size5)
 
-    #concat6 = concatLayer_A(concat5, conv6a_weight, conv6b_weight, conv6a_bias, conv6b_bias,max_pool_size6)
+    concat6 = concatLayer_A(concat5, conv6a_weight, conv6b_weight, conv6a_bias, conv6b_bias,max_pool_size6)
 
-    final_conv_shape = concat5.get_shape().as_list()
+    final_conv_shape = concat6.get_shape().as_list()
     final_shape = final_conv_shape[1] * final_conv_shape[2]
-    flat_output = tf.reshape(concat5, [final_conv_shape[0] , final_shape])
+    flat_output = tf.reshape(concat6, [final_conv_shape[0] , final_shape])
 
     fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight),
         full1_bias),alpha=0.003 ,name="FullyConnected1")

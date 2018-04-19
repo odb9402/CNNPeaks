@@ -6,15 +6,15 @@ eval_every = 20
 learning_rate = 0.005
 target_size = 8000
 
-conv1_features = 8
+conv1_features = 32
 
-conv1a_features = 16
-conv1b_features = 16
+conv1a_features = 64
+conv1b_features = 64
 convMax1_features = 8
 convAvg1_features = 8
 
-conv2a_features = 32
-conv2b_features = 32
+conv2a_features = 64
+conv2b_features = 64
 convMax2_features = 32
 convAvg2_features = 32
 
@@ -23,8 +23,8 @@ conv3b_features = 64
 convMax3_features = 64
 convAvg3_features = 64
 
-conv4a_features = 128
-conv4b_features = 128
+conv4a_features = 64
+conv4b_features = 64
 convMax4_features = 128
 convAvg4_features = 128
 
