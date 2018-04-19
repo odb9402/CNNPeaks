@@ -105,7 +105,8 @@ conv6b_bias = tf.Variable(tf.zeros([conv6b_features], dtype=tf.float32))
 
 ############################ Fully Connected ###############################
 layer_full_width = conv6a_features + conv6b_features + (layer6_width*2)
-resulting_width = target_size // (max_pool_size_stem * max_pool_size1 * max_pool_size2 * max_pool_size3* max_pool_size4 * max_pool_size5 )
+resulting_width = target_size // (max_pool_size_stem * max_pool_size1 * max_pool_size2 * max_pool_size3* max_pool_size4
+                                  * max_pool_size5 * max_pool_size6 )
 full1_input_size = resulting_width * ( layer_full_width )
 full1_weight = tf.get_variable("Full_W1", shape=[full1_input_size, fully_connected_size1],initializer=tf.contrib.layers.xavier_initializer())
 full1_bias = tf.Variable(tf.truncated_normal([fully_connected_size1], stddev=0.1, dtype=tf.float32))
