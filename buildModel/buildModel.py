@@ -120,7 +120,7 @@ def training(train_data_list, train_label_list, test_data_list, test_label_list,
         rand_x = train_data_list[rand_index[0]]['readCount'].as_matrix()
         rand_x = rand_x.reshape(input_data_train.shape)
         mean_x = np.mean(rand_x)
-        rand_x = np.maximum(rand_x - mean_x, 0)
+        rand_x = np.maximum(rand_x - np.sqrt(mean_x), 0)
 
         rand_y = train_label_list[rand_index[0]][['peak']].as_matrix().transpose()
         rand_y = rand_y.reshape(label_data_train.shape)
@@ -145,7 +145,7 @@ def training(train_data_list, train_label_list, test_data_list, test_label_list,
             eval_x = test_data_list[eval_index[0]]['readCount'].as_matrix()
             eval_x = eval_x.reshape(input_data_eval.shape)
             mean_eval_x = np.mean(eval_x)
-            eval_x = np.maximum(eval_x - mean_eval_x, 0)
+            eval_x = np.maximum(eval_x - np.sqrt(mean_eval_x), 0)
 
             eval_y = test_label_list[eval_index[0]][['peak']].as_matrix().transpose()
             eval_y = (eval_y.reshape(label_data_eval.shape))
@@ -179,7 +179,7 @@ def training(train_data_list, train_label_list, test_data_list, test_label_list,
             test_data_list, test_label_list,test_prediction, k=len(test_data_list), K_fold=str(step_num))
 
     saver = tf.train.Saver()
-    save_path = saver.save(sess, os.getcwd() + "/models/model_{}/model{}.ckpt".format(step_num,step_num))
+    save_path = saver.save(sess, os.getcwd() + "/models/model{}.ckpt".format(step_num,step_num))
     logger.info("Model saved in path : %s" % save_path)
 
 
@@ -216,12 +216,10 @@ def peakPredictConvModel(input_data, logger):
     final_shape = final_conv_shape[1] * final_conv_shape[2]
     flat_output = tf.reshape(concat6, [final_conv_shape[0] , final_shape])
 
-    fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight),
-        full1_bias),alpha=0.003 ,name="FullyConnected1")
+    fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias),alpha=0.001 ,name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
 
-    #fully_connected2 = tf.nn.selu(tf.add(tf.matmul(fully_connected1
-    #    ,full_hidden_weight), full_hidden_bias),name = "FullyConnectedHidden")
+    #fully_connected2 = tf.nn.selu(tf.add(tf.matmul(fully_connected1,full_hidden_weight), full_hidden_bias),name = "FullyConnectedHidden")
     #fully_connected2 = tf.nn.dropout(fully_connected2, keep_prob=p_dropout)
 
     final_model_output = (tf.add(tf.matmul(fully_connected1,full2_weight), full2_bias))
@@ -284,15 +282,16 @@ def concatLayer_B(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w,\
 
     max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size],
             padding='SAME', pooling_type='MAX')
-    #conv_max = tf.nn.conv1d(max_pool, conv_max_w, stride=1, padding='SAME')
-    #relu_max = tf.nn.leaky_relu(tf.nn.bias_add(conv_max, conv_max_b))
+    conv_max = tf.nn.conv1d(max_pool, conv_max_w, stride=1, padding='SAME')
+    relu_max = tf.nn.leaky_relu(tf.nn.bias_add(conv_max, conv_max_b))
 
     avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size],
             padding='SAME', pooling_type='AVG')
-    #conv_avg = tf.nn.conv1d(avg_pool, conv_avg_w, stride=1, padding='SAME')
-    #relu_avg = tf.nn.leaky_relu(tf.nn.bias_add(conv_avg, conv_avg_b))
+    conv_avg = tf.nn.conv1d(avg_pool, conv_avg_w, stride=1, padding='SAME')
+    relu_avg = tf.nn.leaky_relu(tf.nn.bias_add(conv_avg, conv_avg_b))
 
     concat = tf.concat([relu1, max_pool, relu2, avg_pool], axis=2)
+    print(concat.shape)
     return concat
 
 
@@ -312,9 +311,9 @@ def getAccuracy(logits, targets, num_grid=2000):
     correct_num = 0.
 
     for index in range(len(logits[0])):
-        if (logits[0][index]) >= 0.5 and targets[0][index] >= 0.5:
+        if (logits[0][index]) >= class_threshold and targets[0][index] >= class_threshold:
             correct_num += 1
-        elif (logits[0][index]) < 0.5 and targets[0][index] < 0.5:
+        elif (logits[0][index]) < class_threshold and targets[0][index] < class_threshold:
             correct_num += 1
         else:
             pass
@@ -346,11 +345,11 @@ def tpTnRate(logits, targets, num_grid=2000):
     for index in range(len(logits[0])):
         if targets[0][index] > 0:
             P_num += 1
-            if logits[0][index] >= 0.5:
+            if logits[0][index] >= class_threshold:
                 TP_num += 1
         else:
             N_num += 1
-            if logits[0][index] < 0.5:
+            if logits[0][index] < class_threshold:
                 TN_num += 1
 
     if P_num == 0.:
@@ -393,9 +392,9 @@ def classValueFilter(output_value, num_grid=2000):
     class_value_list = []
 
     for index in range(output_value.shape[2]):
-        if output_value[0][0][index] >= 0.5:
+        if output_value[0][0][index] >= class_threshold:
             class_value_list.append(1)
-        elif output_value[0][0][index] < 0.5:
+        elif output_value[0][0][index] < class_threshold:
             class_value_list.append(0)
 
     return class_value_list
@@ -526,12 +525,12 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             show_index = np.random.choice(len(test_data_list), size=batch_size)
             show_x = test_data_list[show_index[0]]['readCount'].as_matrix()
             show_x = show_x.reshape(input_data_eval.shape)
-            show_x = np.maximum(show_x - np.mean(show_x), 0)
+            show_x = np.maximum(show_x - np.sqrt(np.mean(show_x)), 0)
 
             show_y = test_label_list[show_index[0]][['peak']].as_matrix().transpose()
             show_y = show_y.reshape(label_data_eval.shape)
             show_dict = {input_data_eval: show_x, label_data_eval: show_y, \
-                         p_dropout: 0.5, is_test: False}
+                         p_dropout: 1, is_test: False}
             show_preds = sess.run(test_prediction, feed_dict=show_dict)
 
             show_preds = expandingPrediction(classValueFilter(show_preds, num_grid))

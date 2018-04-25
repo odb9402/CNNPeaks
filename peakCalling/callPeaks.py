@@ -30,7 +30,7 @@ def run(input_bam, logger, window_size=100000, num_grid=4000):
 
     sess = tf.Session()
     saver = tf.train.Saver()
-    saver.restore(sess, os.getcwd() + "/model_0.ckpt")
+    saver.restore(sess, os.getcwd() + "/models/model8.ckpt")
 
     model_output = buildModel.peakPredictConvModel(input_data, logger)
     prediction = tf.nn.sigmoid(model_output)
@@ -69,8 +69,13 @@ def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess,
     stride = window_size / num_grid
     eval_counter = 0
 
+    output_file_name = "{}.bed".format(input_bam.rsplit('.')[0])
+    peaks = []
+
     while True:
         if window_count + window_size > bam_length[chr_no]:
+            logger.info("Reading . . . :[chr" + str(chr_no + 1) + ":" + str(window_count - (window_size * (eval_counter -1))) + "-" + str(window_count + window_size) + "]")
+            writeBed(output_file_name, peaks, logger, printout=True)
             break
 
         read_count_by_grid = generateReadcounts(input_data, window_count, window_count + window_size,
@@ -80,17 +85,20 @@ def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess,
         preds = sess.run(prediction, feed_dict=result_dict)
         class_value_prediction = buildModel.expandingPrediction(buildModel.classValueFilter(preds))
 
-        predictionToBedString(input_bam, class_value_prediction, "chr" + str(chr_no + 1), window_count, stride,
+        peaks += predictionToBedString(input_bam, class_value_prediction, "chr" + str(chr_no + 1), window_count, stride,
                               num_grid, logger, read_count_by_grid.reshape(num_grid).tolist())
 
-        visualizeEachLayers(input_bam, read_count_by_grid, sess, logger)
+        #visualizeEachLayers(input_bam, read_count_by_grid, sess, logger)
 
         eval_counter += 1
-        exit()
+
+        #exit()
         if eval_counter == 100:
-            logger.info("Reading . . . :[chr" + str(chr_no + 1) + ":" \
-                        + str(window_count - (window_size * 99)) + "-" + str(window_count + window_size) + "]")
+            logger.info("Reading . . . :[chr" + str(chr_no + 1) + ":" + str(window_count - (window_size * 99)) + "-" + str(window_count + window_size) + "]")
+            writeBed(output_file_name, peaks, logger, printout=True)
             eval_counter = 0
+            peaks =[]
+
         window_count += window_size
 
 
@@ -99,19 +107,18 @@ def generateReadcounts(input_data, region_start, region_end, chr_no, alignments,
     stride = (region_end - region_start) / num_grid
 
     for step in range(num_grid):
-        count = alignments.count(region=preProcessing.createRegionStr("chr" + str(chr_no + 1), \
-                                                                         int(region_start + stride * step)))
+        count = alignments.count(region=preProcessing.createRegionStr("chr" + str(chr_no + 1), int(region_start + stride * step)))
         read_count_by_grid.append(count)
 
     read_count_by_grid = np.array(read_count_by_grid, dtype=float)
     read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
-    read_count_by_grid = np.maximum(read_count_by_grid - np.mean(read_count_by_grid), 0)
+    read_count_by_grid = np.maximum(read_count_by_grid - np.sqrt(np.mean(read_count_by_grid)), 0)
 
     return read_count_by_grid
 
 
-def predictionToBedString(input_bam ,prediction, chromosome, region_start, stride, num_grid,\
-                          logger, reads, min_peak_size=20):
+def predictionToBedString(input_bam ,prediction, chromosome, region_start, stride,
+        num_grid,logger, reads, min_peak_size=20):
     """
 
     :param prediction:
@@ -128,7 +135,13 @@ def predictionToBedString(input_bam ,prediction, chromosome, region_start, strid
 
     while True:
         if step > num_grid - 1:
-            break
+            if len(peaks) == 0:
+                return []
+            elif len(peaks) >= 10:
+                return []
+            else:
+                return peaks
+
         if prediction[step] is 1:
             peak_size += 1
         else:
@@ -136,14 +149,9 @@ def predictionToBedString(input_bam ,prediction, chromosome, region_start, strid
                 if peak_size > min_peak_size:
                     end_point = region_start + ( stride * step )
                     start_point = end_point - ( peak_size * stride )
-                    peak_size = 0
-                    peak_switch = True
                     num_peaks += 1
-
-                    logger.info("{}:{:,}-{:,} , # peaks :{}".format(chromosome, int(start_point), int(end_point), num_peaks))
+                    peak_size = 0
                     peaks.append("{}\t{}\t{}\n".format(chromosome, int(start_point), int(end_point)))
-                    writeBed(output_file_name, peaks)
-                    peaks = []
                 else:
                     peak_size = 0
         step += 1
@@ -154,13 +162,21 @@ def predictionToBedString(input_bam ,prediction, chromosome, region_start, strid
     #    plt.show()
 
 
-def writeBed(output_file, peaks):
+def writeBed(output_file, peaks, logger, printout=False):
+    global num_peaks
+
     if not os.path.isfile(output_file):
         bed_file = open(output_file, 'w')
     else:
         bed_file = open(output_file, 'a')
+
+    if printout == True:
+        logger.info("# peaks:{}, #peaks in window: {}".format(num_peaks, len(peaks)))
+
     for peak in peaks:
         bed_file.write(peak)
+        if printout == True:
+            logger.info("{}".format(peak[:-1]))
 
 
 def removeCentromere():
@@ -211,15 +227,15 @@ def visualizeEachLayers(input_bam, input_counts, sess, logger):
 
     concat_1 = tf.concat([relu1a,max_pool_1,relu1b,avg_pool_1],axis=2)
 
-    layer_avg1 = np.split(sess.run(max_pool_1,feed_dict=result_dict), 8, axis=2)
-    layer_max1 = np.split(sess.run(avg_pool_1,feed_dict=result_dict), 8, axis=2)
-    layer_1b = np.split(sess.run(relu1a,feed_dict=result_dict), 8, axis=2)
-    layer_1a = np.split(sess.run(relu1b,feed_dict=result_dict), 8, axis=2)
+    layer_avg1 = np.split(sess.run(max_pool_1,feed_dict=result_dict), layer1_width, axis=2)
+    layer_max1 = np.split(sess.run(avg_pool_1,feed_dict=result_dict), layer1_width, axis=2)
+    layer_1b = np.split(sess.run(relu1a,feed_dict=result_dict), conv1b_features, axis=2)
+    layer_1a = np.split(sess.run(relu1b,feed_dict=result_dict), conv1a_features, axis=2)
 
-    savePatternFig(dir_name+"1", layer_1a, 8, 2000, "Conv1_a")
-    savePatternFig(dir_name+"1", layer_1b, 8, 2000, "Conv1_b")
-    savePatternFig(dir_name+"1", layer_avg1, 8, 2000, "Conv1_max")
-    savePatternFig(dir_name+"1", layer_max1, 8, 2000, "Conv1_avg")
+    savePatternFig(dir_name+"1", layer_1a, conv1b_features, 2000, "Conv1_a")
+    savePatternFig(dir_name+"1", layer_1b, conv1a_features, 2000, "Conv1_b")
+    savePatternFig(dir_name+"1", layer_avg1, layer1_width, 2000, "Conv1_max")
+    savePatternFig(dir_name+"1", layer_max1, layer1_width, 2000, "Conv1_avg")
 
     conv2a = tf.nn.conv1d(concat_1, conv2a_weight, stride=max_pool_size2, padding='SAME')
     relu2a = tf.nn.relu(tf.nn.bias_add(conv2a, conv2a_bias))
@@ -233,15 +249,15 @@ def visualizeEachLayers(input_bam, input_counts, sess, logger):
     avg_pool_2 = tf.nn.pool(concat_1, [max_pool_size2], strides=[max_pool_size2],
                           padding='SAME', pooling_type='AVG')
 
-    layer_avg2 = np.split(sess.run(avg_pool_2,feed_dict=result_dict), 32, axis=2)
-    layer_max2 = np.split(sess.run(max_pool_2,feed_dict=result_dict), 32, axis=2)
+    layer_avg2 = np.split(sess.run(avg_pool_2,feed_dict=result_dict), layer2_width, axis=2)
+    layer_max2 = np.split(sess.run(max_pool_2,feed_dict=result_dict), layer2_width, axis=2)
     layer_2b = np.split(sess.run(relu2a,feed_dict=result_dict), conv2b_features, axis=2)
     layer_2a = np.split(sess.run(relu2b,feed_dict=result_dict), conv2a_features, axis=2)
 
     savePatternFig(dir_name+"2", layer_2a, conv2a_features, 1000, "Conv2_a")
     savePatternFig(dir_name+"2", layer_2b, conv2b_features, 1000, "Conv2_b")
-    savePatternFig(dir_name+"2", layer_avg2, 32, 1000, "avg2")
-    savePatternFig(dir_name+"2", layer_max2, 32, 1000, "max2")
+    savePatternFig(dir_name+"2", layer_avg2, layer2_width, 1000, "avg2")
+    savePatternFig(dir_name+"2", layer_max2, layer2_width, 1000, "max2")
 
     concat_2 = tf.concat([relu2a, max_pool_2, relu2b, avg_pool_2], axis=2)
 
