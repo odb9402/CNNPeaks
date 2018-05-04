@@ -41,3 +41,8 @@ Before you try to call peaks with your ChIP-Seq Data, CNN-peaks model should be 
 > - H3K36me3_A549.bam
 
 Each file must follow a format of filename that is **Target_CellName.bam**. The case of labeled data, it must be like this :**Target_AnyString.txt**. The labeled data of this example H3K36me3_None.txt has data which includes both of K562 and A549.
+
+
+
+>**CITATION**
+1. HOCKING, Toby Dylan, et al. Optimizing ChIP-seq peak detectors using visual labels and supervised machine learning. Bioinformatics, 2016, 33.4: 491-499.
