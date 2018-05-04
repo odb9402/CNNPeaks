@@ -11,7 +11,7 @@ CNN-peaks is a **Convolution Neural Network(CNN)** based ChIP-Seq peak calling s
 Install
 -------------
 
-CNN-peaks has no extra install. You can use it just by making clone of this repository.
+CNN-peaks has no extra Installation. You can use it just by making clone of this repository.
 
 Labeled data
 --------------- 
