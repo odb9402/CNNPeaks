@@ -13,6 +13,18 @@ Install
 
 CNN-peaks has no extra Installation. You can use it just by making clone of this repository.
 
+Quick start
+-------------
+An example of CNN-peaks command:
+> **preprocessing:**
+> python CNNpeaks.py -mode preprocess -i testdir/
+>
+> **CNN model building:**
+> python CNNpeaks.py -mode buildModel -i testdir/
+> 
+> **peak calling with trained model**
+> python CNNpeaks.py -mode peakCall -i myOwnChIPSeq.bam -model 3
+
 Labeled data
 --------------- 
 CNN-peaks uses labeled data which has its own format. All these approach that use labeled data for marking is from [1]. Examples of labeled data is as the following below. (It based on ASCII)
@@ -41,6 +53,12 @@ Before you try to call peaks with your ChIP-Seq Data, CNN-peaks model should be 
 > - H3K36me3_A549.bam
 
 Each file must follow a format of filename that is **Target_CellName.bam**. The case of labeled data, it must be like this :**Target_AnyString.txt**. The labeled data of this example H3K36me3_None.txt has data which includes both of K562 and A549.
+
+**2. Build CNN-peaks model with preprocessed data**
+
+After you created your own training data with our **preprocess** module, you can build CNN-peaks model by using our **buildModel** module. The module run as 10-cross validation so it will throw 10 models.  Results of running the module include visualization of peak predictions about test data, train and test accuracy during training process and trained models.
+
+**3. Peak calling with a trained model**
 
 
 
