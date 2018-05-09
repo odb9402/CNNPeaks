@@ -30,7 +30,7 @@ def run(input_bam, logger, window_size=100000, num_grid=4000):
 
     sess = tf.Session()
     saver = tf.train.Saver()
-    saver.restore(sess, os.getcwd() + "/models/model8.ckpt")
+    saver.restore(sess, os.getcwd() + "/models/model0.ckpt")
 
     model_output = buildModel.peakPredictConvModel(input_data, logger)
     prediction = tf.nn.sigmoid(model_output)
@@ -39,9 +39,10 @@ def run(input_bam, logger, window_size=100000, num_grid=4000):
     if not os.path.isdir(input_bam[:-4]):
         os.makedirs(input_bam[:-4])
 
-    if not os.path.isfile(input_bam + '.sort.bai'):
+    if not os.path.isfile(input_bam + '.bai'):
+        logger.info("Creating index file of [{}]".format(input_bam))
         preProcessing.createBamIndex(input_bam)
-        logger.info("Creating index file of [" + input_bam + "]")
+        logger.info("[{} was created.]".format(input_bam+".bai"))
     else:
         logger.info("[" + input_bam + "] already has index file.")
 
@@ -52,6 +53,7 @@ def run(input_bam, logger, window_size=100000, num_grid=4000):
     MAX_CORE = cpu_count()
 
     for chr_no in range(22):
+        logger.info("Peak calling in chromosome chr{}:".format(chr_no + 1))
         call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size)
         #process = Process(target=call_peak,\
         #                  args=(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size,))
@@ -64,7 +66,7 @@ def run(input_bam, logger, window_size=100000, num_grid=4000):
 def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size):
 
     window_count = 1
-    bam_alignment = pysam.AlignmentFile(input_bam + '.sort', 'rb', index_filename=input_bam + '.sort.bai')
+    bam_alignment = pysam.AlignmentFile(input_bam , 'rb', index_filename=input_bam + '.bai')
     bam_length = bam_alignment.lengths
     stride = window_size / num_grid
     eval_counter = 0
@@ -73,8 +75,11 @@ def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess,
     peaks = []
 
     while True:
+        if (eval_counter % 100) == 0:
+            logger.info("Reading . . . :[chr{}:{}-{}]".format(chr_no+1,window_count,window_count+window_size*100))
+
         if window_count + window_size > bam_length[chr_no]:
-            logger.info("Reading . . . :[chr" + str(chr_no + 1) + ":" + str(window_count - (window_size * (eval_counter -1))) + "-" + str(window_count + window_size) + "]")
+            logger.info("Reading . . . :[chr{}:{}-{}]".format(chr_no+1,window_count-(window_size*(eval_counter -1)), window_count + window_size))
             writeBed(output_file_name, peaks, logger, printout=True)
             break
 
@@ -94,7 +99,6 @@ def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess,
 
         #exit()
         if eval_counter == 100:
-            logger.info("Reading . . . :[chr" + str(chr_no + 1) + ":" + str(window_count - (window_size * 99)) + "-" + str(window_count + window_size) + "]")
             writeBed(output_file_name, peaks, logger, printout=True)
             eval_counter = 0
             peaks =[]
@@ -130,6 +134,7 @@ def predictionToBedString(input_bam ,prediction, chromosome, region_start, strid
     step = 0
     peak_switch = False
     peaks = []
+    num_peaks_in_window = 0
 
     output_file_name = input_bam.rsplit('.')[0] + "_" +str(chromosome) + ".bed"
 
@@ -140,6 +145,7 @@ def predictionToBedString(input_bam ,prediction, chromosome, region_start, strid
             elif len(peaks) >= 10:
                 return []
             else:
+                num_peaks += num_peaks_in_window
                 return peaks
 
         if prediction[step] is 1:
@@ -149,7 +155,7 @@ def predictionToBedString(input_bam ,prediction, chromosome, region_start, strid
                 if peak_size > min_peak_size:
                     end_point = region_start + ( stride * step )
                     start_point = end_point - ( peak_size * stride )
-                    num_peaks += 1
+                    num_peaks_in_window += 1
                     peak_size = 0
                     peaks.append("{}\t{}\t{}\n".format(chromosome, int(start_point), int(end_point)))
                 else:

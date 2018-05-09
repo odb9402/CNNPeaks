@@ -79,7 +79,7 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
     if not os.path.isdir(bam_file[:-4]):
         os.makedirs(bam_file[:-4])
 
-    if not os.path.isfile(bam_file + '.sort.bai'):
+    if not os.path.isfile(bam_file + '.bai'):
         createBamIndex(bam_file)
         logger.info("Creating index file of [" + bam_file + "]")
     else:
@@ -226,11 +226,11 @@ def createBamIndex(input_bam):
 
     :param input_bam: A input bam file name.
     """
-    if not os.path.isfile(input_bam+".sort"):
-        subprocess.call(['sudo bamtools sort -in ' + input_bam + ' -out '+ input_bam+'.sort'], shell=True)
-    else:
-        return 0
-    subprocess.call(['sudo bamtools index -in ' + input_bam+".sort"], shell=True)
+    #if not os.path.isfile(input_bam+".sort"):
+    #    subprocess.call(['sudo bamtools sort -in ' + input_bam + ' -out '+ input_bam+'.sort'], shell=True)
+    #else:
+    #    return 0
+    subprocess.call(['sudo bamtools index -in ' + input_bam], shell=True)
 
 
 

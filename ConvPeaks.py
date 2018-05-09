@@ -12,6 +12,7 @@ from preProcessing.preProcessing import run as preProcessing
 from peakCalling.callPeaks import run as callPeaks
 from utility.checkData import run as checkData
 
+
 num_grid = 8000
 windowSize = 100000
 
