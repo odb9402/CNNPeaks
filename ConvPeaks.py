@@ -11,9 +11,7 @@ from buildModel.buildModel import run as buildModel
 from preProcessing.preProcessing import run as preProcessing
 from peakCalling.callPeaks import run as callPeaks
 from utility.checkData import run as checkData
-from utility.calculateError import run as calculateError
-from utility.loadPeak import run as loadPeak
-from utility.loadLabel import run as loadLabel
+from utility.errorCall import run as errorCall
 
 
 
@@ -53,28 +51,11 @@ def main():
     elif args.runMode == 'checkData':
         checkData(args.inputDir,logger, num_grid=num_grid)
     elif args.runMode == 'errorCall':
-        peaks = loadPeak(args.inputDir)
-        error = 0
-        total = 0
-        N = 0
-        P = 0
-        FN = 0
-        FP = 0
-        for i in range(22):
-            chr_labels = loadLabel(args.labelData, input_chromosome="chr{}".format(i+1))
-            print("chr{}".format(i + 1))
-            chr_peaks = list(filter(lambda peak : peak['chr']=='chr{}'.format(i+1), peaks))
-            temp_x, temp_y , FNFP = calculateError(chr_peaks, chr_labels)
-            error += temp_x
-            total += temp_y
-            N += FNFP['negativeNum']
-            P += FNFP['positiveNum']
-            FN += FNFP['FN']
-            FP += FNFP['FP']
-        logger.info("\nACC: {} , FN_Rate: {} , FP_Rate: {}".format(1. - error/total , FN/N , FP/P))
+        errorCall(args.inputDir, args.labelData, logger)
 
     else:
         logger.info("-m ( --runMode ) must be one of : { preprocess, buildModel, peakCall , checkData, errorCall }.")
+
 
 
 if __name__ == '__main__':
