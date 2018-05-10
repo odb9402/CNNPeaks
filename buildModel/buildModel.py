@@ -58,7 +58,7 @@ def run(dir_name, logger, num_grid=10000):
                 train_data_list.append(pd.read_csv(input_file_name))
                 train_label_list.append(pd.read_csv(label_file_name))
 
-    K_fold = 10
+    K_fold = -1
     test_data_list, test_label_list = splitTrainingData(train_data_list, train_label_list, Kfold=K_fold)
 
     if not os.path.isdir(os.getcwd() + "/models"):
@@ -430,6 +430,9 @@ def splitTrainingData(data_list, label_list, Kfold=4):
     :return:
     """
     print("##################NUMBER OF LABEL DATA : {}".format(len(data_list)))
+
+    if Kfold < 0:
+        return [],[]
 
     size = len(data_list)
     counter = size / Kfold

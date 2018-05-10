@@ -1,6 +1,5 @@
 import os
 
-
 def calculate_error(peak_data, labeled_data):
     """
     calculate actual error by numbering to wrong label
@@ -48,6 +47,7 @@ def calculate_error(peak_data, labeled_data):
 
         elif label['peakStat'] == 'noPeak':
             possible_FP += 1
+
             state = is_noPeak(peak_data, label['regions'])
             # print state
             if not (state == True):
@@ -63,14 +63,16 @@ def calculate_error(peak_data, labeled_data):
     print("possible FN " + str(possible_FN), "possible FP " + str(possible_FP))
     print("FN_Error: " + str(FN_error), "FP_Error: " + str(FP_error))
 
-    return len(labeled_data) - scores, len(labeled_data)
+    FNFP_dict = {"negativeNum": possible_FN , "positiveNum" : possible_FP, "FN" : FN_error, "FP" : FP_error}
+
+    return len(labeled_data) - scores, len(labeled_data) , FNFP_dict
 
 
-def is_peak(target, value, tolerance=500, weak_predict=False):
+def is_peak(target, labelRegion, tolerance=0, weak_predict=False):
     """
     Checking the label is peak or not.
     :param target:
-    :param value:
+    :param labelRegion:
     :param tolerance:
     :param weak_predict:
     :return:
@@ -78,37 +80,37 @@ def is_peak(target, value, tolerance=500, weak_predict=False):
     """this function will find to regions in target bed set by using binary search"""
     """the similarity allow the distance of bed file row between label area as long as own value"""
 
-    index = len(target) / 2
+    index = len(target) // 2
     min_index = 0
     max_index = len(target)
 
     # if find correct one, return True
     while True:
-        correct_ness = is_same(target, value, index, tolerance)
-        # print index,min_index ,  max_index, len(target)
+        correct_ness = is_same(target, labelRegion, index, tolerance)
+
         if correct_ness is 'less':
             max_index = index
-            index = (min_index + index) / 2
+            index = (min_index + index) // 2
         elif correct_ness is 'upper':
             min_index = index
-            index = (max_index + index) / 2
+            index = (max_index + index) // 2
         # find correct regions
         else:
             if (weak_predict == True):
-                return calculate_sum_of_weights(index, target, tolerance, value, mode='bonus')
+                return 1 #calculate_sum_of_weights(index, target, tolerance, labelRegion, mode='bonus')
 
             # find one peak
             else:
                 if (index + 1) is not len(target) \
-                        and is_same(target, value, index + 1, tolerance) is 'in' \
-                        or is_same(target, value, index - 1, tolerance) is 'in':
+                        and is_same(target, labelRegion, index + 1, tolerance) is 'in' \
+                        or is_same(target, labelRegion, index - 1, tolerance) is 'in':
                     return "False Positive"
                 else:
-                    return 1 + bonus_weight(value, target[index], 'peakStart')
+                    return 1 # + bonus_weight(labelRegion, target[index], 'peakStart')
 
         if max_index <= min_index + 1:
-            if is_same(target, value, index, tolerance) is 'in':
-                return 1 + bonus_weight(value, target[index], 'peakStart')
+            if is_same(target, labelRegion, index, tolerance) is 'in':
+                return 1 # + bonus_weight(labelRegion, target[index], 'peakStart')
             else:
                 return "False Negative"
 
@@ -123,9 +125,9 @@ def is_noPeak(target, value, tolerance=0):
     region_min = value[0]
     region_max = value[1]
 
-    index = len(target) / 2
+    index = int(len(target) // 2)
     min_index = 0
-    max_index = len(target)
+    max_index = int(len(target))
     steps = 1
 
     while True:
@@ -133,10 +135,10 @@ def is_noPeak(target, value, tolerance=0):
 
         if find_matched is 'less':
             max_index = index
-            index = (min_index + index) / 2
+            index = (min_index + index) // 2
         elif find_matched is 'upper':
             min_index = index
-            index = (max_index + index) / 2
+            index = (max_index + index) // 2
         # find correct regions , so it is fail
         else:
             return calculate_sum_of_weights(index, target, tolerance, value, mode='bias')
@@ -204,9 +206,9 @@ def is_same(target, value, index, tolerance):
     :return:
     """
 
-    if value[1] + tolerance <= float(target[index]['region_s']):
+    if value[1] + tolerance <= int(target[index]['region_s']):
         return 'less'
-    elif value[0] - tolerance >= float(target[index]['region_e']):
+    elif value[0] - tolerance >= int(target[index]['region_e']):
         return 'upper'
     else:
         return 'in'
@@ -295,6 +297,6 @@ def run(input_peaks, input_labels):
     if len(input_labels) is 0:
         return 0, 0
 
-    error_num, total_label = calculate_error(input_peaks, input_labels)
+    error_num, total_label , FNFP = calculate_error(input_peaks, input_labels)
 
-    return error_num, total_label
+    return error_num, total_label , FNFP

@@ -95,13 +95,12 @@ def peak_label_load(label_file_name):
         if '#' not in peak and 'chr' in peak:
             peak = peak.rstrip('\r\n')
             peak_labels.append(peak)
-    valid_file.close()
 
-    peak_labels = peak_labels.sort()
+    valid_file.close()
     return peak_labels
 
 
-def run(validSet, file_name, input_chromosome = None, input_cellType = None):
+def run(file_name, input_chromosome = None, input_cellType = None):
     """
     :param validSet:
     :param file_name:
@@ -119,6 +118,8 @@ def run(validSet, file_name, input_chromosome = None, input_cellType = None):
         cellType = parse_cellType(file_name)
     else:
         cellType = input_cellType
+
+    validSet = peak_label_load(file_name)
 
     peak_labels = parse_peak_labels(validSet, chromosome, cellType)
 

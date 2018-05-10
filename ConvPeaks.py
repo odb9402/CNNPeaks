@@ -11,6 +11,10 @@ from buildModel.buildModel import run as buildModel
 from preProcessing.preProcessing import run as preProcessing
 from peakCalling.callPeaks import run as callPeaks
 from utility.checkData import run as checkData
+from utility.calculateError import run as calculateError
+from utility.loadPeak import run as loadPeak
+from utility.loadLabel import run as loadLabel
+
 
 num_grid = 8000
 windowSize = 100000
@@ -19,10 +23,11 @@ def main():
     global num_grid, windowSize
     #################### Setting arguments ########################
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("-mode","--runMode", choices=['preprocess','buildModel','peakCall','checkData'] ,help="Select a mode.")
+    arg_parser.add_argument("-m","--runMode", choices=['preprocess','buildModel','peakCall','checkData','errorCall'] ,
+                            help="Select a mode.")
     arg_parser.add_argument("-i","--inputDir", help="Input directory including labeled data and bam alignment files."
                                                     "\nIn case of callPeak mode, it will be input bam file to call peaks.")
-    arg_parser.add_argument("-m","--savedModel", help="A saved CNN model file.")
+    arg_parser.add_argument("-l","--labelData", help="Label data for error calling.")
     arg_parser.add_argument("-g","--gridSize",default=8000, help="Define numbers of grid for each training data")
     arg_parser.add_argument("-s","--searchingDist", help="")
     arg_parser.add_argument("-eps","--basePointEPS",help="")
@@ -46,8 +51,29 @@ def main():
         callPeaks(args.inputDir, logger, window_size=windowSize, num_grid=num_grid)
     elif args.runMode == 'checkData':
         checkData(args.inputDir,logger, num_grid=num_grid)
+    elif args.runMode == 'errorCall':
+        peaks = loadPeak(args.inputDir)
+        error = 0
+        total = 0
+        N = 0
+        P = 0
+        FN = 0
+        FP = 0
+        for i in range(22):
+            chr_labels = loadLabel(args.labelData, input_chromosome="chr{}".format(i+1))
+            print("chr{}".format(i + 1))
+            chr_peaks = list(filter(lambda peak : peak['chr']=='chr{}'.format(i+1), peaks))
+            temp_x, temp_y , FNFP = calculateError(chr_peaks, chr_labels)
+            error += temp_x
+            total += temp_y
+            N += FNFP['negativeNum']
+            P += FNFP['positiveNum']
+            FN += FNFP['FN']
+            FP += FNFP['FP']
+        logger.info("\nACC: {} , FN_Rate: {} , FP_Rate: {}".format(1. - error/total , FN/N , FP/P))
+
     else:
-        logger.info("-mode ( --runMode ) must be one of : { preprocess, buildModel, peakCall }.")
+        logger.info("-m ( --runMode ) must be one of : { preprocess, buildModel, peakCall , checkData, errorCall }.")
 
 
 if __name__ == '__main__':
