@@ -299,4 +299,8 @@ def run(input_peaks, input_labels):
 
     error_num, total_label , FNFP = calculate_error(input_peaks, input_labels)
 
+<<<<<<< HEAD
     return error_num, total_label , FNFP
+=======
+    return error_num, total_label
+>>>>>>> e9ee65ff22ba827a42f7d519269ce72850fb6559
