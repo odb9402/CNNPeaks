@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup_requires = []
 
-install_requires = []
+install_requires = ['pysam','scipy','numpy','sklearn','tensorflow','pandas']
 
 dependency_links =[]
 
