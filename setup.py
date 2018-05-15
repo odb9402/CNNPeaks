@@ -8,7 +8,7 @@ dependency_links =[]
 
 setup(
         name = 'CNNpeaks',
-        version='0.1',
+        version='0.2',
         author='dongpin',
         author_email='dhehdqls@gmail.com',
         packages=find_packages(),

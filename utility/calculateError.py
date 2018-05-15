@@ -60,8 +60,8 @@ def calculate_error(peak_data, labeled_data):
             print("label type error")
             exit()
 
-    print("possible FN {} possible FP {}".format(possible_FN,possible_FP))
-    print("FN_Error: {} FP_Error: {}\n".format(FN_error,FP_error))
+    #print("possible FN {} possible FP {}".format(possible_FN,possible_FP))
+    #print("FN_Error: {} FP_Error: {}\n".format(FN_error,FP_error))
 
     FNFP_dict = {"negativeNum": possible_FN , "positiveNum" : possible_FP, "FN" : FN_error, "FP" : FP_error}
 
