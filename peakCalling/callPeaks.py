@@ -30,7 +30,7 @@ def run(input_bam, logger, window_size=100000, num_grid=4000):
 
     sess = tf.Session()
     saver = tf.train.Saver()
-    saver.restore(sess, os.getcwd() + "/models/model0.ckpt")
+    saver.restore(sess, os.getcwd() + "/models/model1.ckpt")
 
     model_output = buildModel.peakPredictConvModel(input_data, logger)
     prediction = tf.nn.sigmoid(model_output)

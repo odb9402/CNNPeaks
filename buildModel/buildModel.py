@@ -58,11 +58,12 @@ def run(dir_name, logger, num_grid=10000):
                 train_data_list.append(pd.read_csv(input_file_name))
                 train_label_list.append(pd.read_csv(label_file_name))
 
-    K_fold = -1
+    K_fold = 30
     test_data_list, test_label_list = splitTrainingData(train_data_list, train_label_list, Kfold=K_fold)
 
     if not os.path.isdir(os.getcwd() + "/models"):
         os.mkdir(os.getcwd() + "/models")
+
 
     #K_fold Cross Validation
     for i in range(K_fold):
@@ -72,17 +73,16 @@ def run(dir_name, logger, num_grid=10000):
         test_label = []
         for j in range(K_fold):
             if i == j:
-                test_label += test_label_list[j]
                 test_data += test_data_list[j]
+                test_label += test_label_list[j]
             else:
                 training_data += test_data_list[j]
                 training_label += test_label_list[j]
-
         if not os.path.isdir(os.getcwd() + "/models/model_{}".format(i)):
             os.mkdir(os.getcwd() + "/models/model_{}".format(i))
 
-        training(training_data, training_label , test_data, test_label, \
-                 train_step, loss, prediction, test_prediction, logger, num_grid, i)
+        training(training_data, training_label , test_data, test_label, train_step, loss, prediction,
+                test_prediction, logger, num_grid, i)
 
 
 def training(train_data_list, train_label_list, test_data_list, test_label_list, \
@@ -431,14 +431,12 @@ def splitTrainingData(data_list, label_list, Kfold=4):
     """
     print("##################NUMBER OF LABEL DATA : {}".format(len(data_list)))
 
-    if Kfold < 0:
-        return [],[]
-
     size = len(data_list)
     counter = size / Kfold
 
     test_data = []
     test_label = []
+
     for i in range(Kfold - 1):
         test_data_temp = []
         test_label_temp = []
@@ -446,7 +444,7 @@ def splitTrainingData(data_list, label_list, Kfold=4):
             if counter <= 0:
                 test_data.append(test_data_temp)
                 test_label.append(test_label_temp)
-                counter = size / Kfold
+                counter = size // Kfold
                 break
 
             pop_index = random.randint(0,len(test_data))

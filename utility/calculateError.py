@@ -284,6 +284,7 @@ def run(input_peaks, input_labels):
         Accuracy of result file.
     """
 
+
     # case of input label size is 0, error num error rate is zero.
     if input_labels is -1:
         return 0, 0
@@ -297,4 +298,5 @@ def run(input_peaks, input_labels):
     if len(input_labels) is 0:
         return 0, 0
 
-    error_num, total_label , FNFP = calculate_error(input_peaks, input_labels)
+    return calculate_error(input_peaks, input_labels)
+
