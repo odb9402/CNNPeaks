@@ -1,4 +1,4 @@
-class_threshold = 0.6
+class_threshold = 0.55
 
 batch_size = 1
 evaluation_size = 1

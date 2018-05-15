@@ -60,8 +60,8 @@ def calculate_error(peak_data, labeled_data):
             print("label type error")
             exit()
 
-    print("possible FN " + str(possible_FN), "possible FP " + str(possible_FP))
-    print("FN_Error: " + str(FN_error), "FP_Error: " + str(FP_error))
+    print("possible FN {} possible FP {}".format(possible_FN,possible_FP))
+    print("FN_Error: {} FP_Error: {}\n".format(FN_error,FP_error))
 
     FNFP_dict = {"negativeNum": possible_FN , "positiveNum" : possible_FP, "FN" : FN_error, "FP" : FP_error}
 
@@ -287,16 +287,16 @@ def run(input_peaks, input_labels):
 
     # case of input label size is 0, error num error rate is zero.
     if input_labels is -1:
-        return 0, 0
+        return 0, 0, None
 
     if input_peaks is -1:
-        return 0, 0
+        return 0, 0, None
 
     if len(input_peaks) is 0:
-        return 0, 0
+        return 0, 0, None
 
     if len(input_labels) is 0:
-        return 0, 0
+        return 0, 0, None
 
     return calculate_error(input_peaks, input_labels)
 
