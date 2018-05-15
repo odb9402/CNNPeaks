@@ -122,7 +122,7 @@ def generateReadcounts(input_data, region_start, region_end, chr_no, alignments,
 
 
 def predictionToBedString(input_bam ,prediction, chromosome, region_start, stride,
-        num_grid,logger, reads, min_peak_size=20):
+        num_grid,logger, reads, min_peak_size=10, max_peak_num=15):
     """
 
     :param prediction:
@@ -142,7 +142,7 @@ def predictionToBedString(input_bam ,prediction, chromosome, region_start, strid
         if step > num_grid - 1:
             if len(peaks) == 0:
                 return []
-            elif len(peaks) >= 10:
+            elif len(peaks) > max_peak_num:
                 return []
             else:
                 num_peaks += num_peaks_in_window
