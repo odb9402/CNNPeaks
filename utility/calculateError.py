@@ -18,10 +18,12 @@ def calculate_error(peak_data, labeled_data):
     # number of Error label about each error type.
     FP_error = 0.0
     FN_error = 0.0
+    TP = 0.0
+    TN = 0.0
 
     # number of label which can occur error about each error type.
-    possible_FP = 0
-    possible_FN = 0
+    possible_FP = 0.0
+    possible_FN = 0.0
 
     for label in labeled_data:
         if label['peakStat'] == 'peaks':
@@ -32,6 +34,7 @@ def calculate_error(peak_data, labeled_data):
                 FN_error += 1
             else:
                 scores += state
+                TP += 1
 
         elif (label['peakStat'] == 'peakStart') or (label['peakStat'] == 'peakEnd'):
             possible_FP += 1
@@ -55,6 +58,7 @@ def calculate_error(peak_data, labeled_data):
                 scores += state
             else:
                 scores += 1
+                TN += 1
 
         else:
             print("label type error")
@@ -63,7 +67,7 @@ def calculate_error(peak_data, labeled_data):
     print("possible FN {} possible FP {}".format(possible_FN,possible_FP))
     print("FN_Error: {} FP_Error: {}\n".format(FN_error,FP_error))
 
-    FNFP_dict = {"negativeNum": possible_FN , "positiveNum" : possible_FP, "FN" : FN_error, "FP" : FP_error}
+    FNFP_dict = {"negativeNum": possible_FN , "positiveNum" : possible_FP, "FN" : FN_error, "FP" : FP_error, "TN" : TN , "TP" : TP}
 
     return len(labeled_data) - scores, len(labeled_data) , FNFP_dict
 
@@ -77,8 +81,6 @@ def is_peak(target, labelRegion, tolerance=0, weak_predict=False):
     :param weak_predict:
     :return:
     """
-    """this function will find to regions in target bed set by using binary search"""
-    """the similarity allow the distance of bed file row between label area as long as own value"""
 
     index = len(target) // 2
     min_index = 0
