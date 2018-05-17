@@ -48,13 +48,15 @@ def run(input_bam, logger, window_size=100000, num_grid=4000):
 
     input_bam = os.path.abspath(input_bam)
 
-    processes = []
+    #processes = []
 
     MAX_CORE = cpu_count()
 
+    bam_alignment = pysam.AlignmentFile(input_bam , 'rb', index_filename=input_bam + '.bai')
+
     for chr_no in range(22):
         logger.info("Peak calling in chromosome chr{}:".format(chr_no + 1))
-        call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size)
+        call_peak(chr_no, bam_alignment, input_data, logger, num_grid, prediction, sess, window_size)
         #process = Process(target=call_peak,\
         #                  args=(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size,))
         #preProcessing.parallel_execution(MAX_CORE-1, process, processes)
@@ -63,10 +65,8 @@ def run(input_bam, logger, window_size=100000, num_grid=4000):
     #    proc.join()
 
 
-def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size):
-
+def call_peak(chr_no, bam_alignment, input_data, logger, num_grid, prediction, sess, window_size):
     window_count = 1
-    bam_alignment = pysam.AlignmentFile(input_bam , 'rb', index_filename=input_bam + '.bai')
     bam_length = bam_alignment.lengths
     stride = window_size / num_grid
     eval_counter = 0
@@ -83,8 +83,7 @@ def call_peak(chr_no, input_bam, input_data, logger, num_grid, prediction, sess,
             writeBed(output_file_name, peaks, logger, printout=True)
             break
 
-        read_count_by_grid = generateReadcounts(input_data, window_count, window_count + window_size,
-                                                chr_no, bam_alignment, num_grid)
+        read_count_by_grid = generateReadcounts(input_data, window_count, window_count + window_size, chr_no, bam_alignment, num_grid)
 
         result_dict = {input_data: read_count_by_grid, p_dropout: 1, is_test: True}
         preds = sess.run(prediction, feed_dict=result_dict)
@@ -111,7 +110,10 @@ def generateReadcounts(input_data, region_start, region_end, chr_no, alignments,
     stride = (region_end - region_start) / num_grid
 
     for step in range(num_grid):
-        count = alignments.count(region=preProcessing.createRegionStr("chr" + str(chr_no + 1), int(region_start + stride * step)))
+        count = alignments.count(region=preProcessing.createRegionStr("chr{}".format(chr_no + 1), int(region_start + stride * step)),
+                        contig='chr{}'.format(chr_no + 1),
+                        start=int(region_start + stride * step),
+                        stop=int(region_start + stride * step + 1))
         read_count_by_grid.append(count)
 
     read_count_by_grid = np.array(read_count_by_grid, dtype=float)
