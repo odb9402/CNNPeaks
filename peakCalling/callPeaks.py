@@ -89,7 +89,7 @@ def call_peak(chr_no, bam_alignment, file_name, input_data, logger, num_grid, pr
         preds = sess.run(prediction, feed_dict=result_dict)
         class_value_prediction = buildModel.expandingPrediction(buildModel.classValueFilter(preds))
 
-        peaks += predictionToBedString(input_bam, class_value_prediction, "chr" + str(chr_no + 1), window_count, stride,
+        peaks += predictionToBedString(class_value_prediction, "chr" + str(chr_no + 1), window_count, stride,
                               num_grid, logger, read_count_by_grid.reshape(num_grid).tolist())
 
         #visualizeEachLayers(input_bam, read_count_by_grid, sess, logger)
