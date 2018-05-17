@@ -56,7 +56,7 @@ def run(input_bam, logger, window_size=100000, num_grid=4000):
 
     for chr_no in range(22):
         logger.info("Peak calling in chromosome chr{}:".format(chr_no + 1))
-        call_peak(chr_no, bam_alignment, input_data, logger, num_grid, prediction, sess, window_size)
+        call_peak(chr_no, bam_alignment, input_bam, input_data, logger, num_grid, prediction, sess, window_size)
         #process = Process(target=call_peak,\
         #                  args=(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size,))
         #preProcessing.parallel_execution(MAX_CORE-1, process, processes)
@@ -65,13 +65,13 @@ def run(input_bam, logger, window_size=100000, num_grid=4000):
     #    proc.join()
 
 
-def call_peak(chr_no, bam_alignment, input_data, logger, num_grid, prediction, sess, window_size):
+def call_peak(chr_no, bam_alignment, file_name, input_data, logger, num_grid, prediction, sess, window_size):
     window_count = 1
     bam_length = bam_alignment.lengths
     stride = window_size / num_grid
     eval_counter = 0
 
-    output_file_name = "{}.bed".format(input_bam.rsplit('.')[0])
+    output_file_name = "{}.bed".format(file_name.rsplit('.')[0])
     peaks = []
 
     while True:
