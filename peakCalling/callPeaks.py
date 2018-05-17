@@ -123,7 +123,7 @@ def generateReadcounts(input_data, region_start, region_end, chr_no, alignments,
     return read_count_by_grid
 
 
-def predictionToBedString(input_bam ,prediction, chromosome, region_start, stride,
+def predictionToBedString(prediction, chromosome, region_start, stride,
         num_grid,logger, reads, min_peak_size=10, max_peak_num=15):
     """
 
@@ -137,8 +137,6 @@ def predictionToBedString(input_bam ,prediction, chromosome, region_start, strid
     peak_switch = False
     peaks = []
     num_peaks_in_window = 0
-
-    output_file_name = input_bam.rsplit('.')[0] + "_" +str(chromosome) + ".bed"
 
     while True:
         if step > num_grid - 1:
