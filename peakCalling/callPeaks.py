@@ -75,6 +75,7 @@ def call_peak(chr_no, bam_alignment, file_name, input_data, logger, num_grid, pr
     peaks = []
 
     while True:
+        print(eval_counter)
         if (eval_counter % 100) == 0:
             logger.info("Reading . . . :[chr{}:{}-{}]".format(chr_no+1,window_count,window_count+window_size*100))
 
@@ -110,16 +111,20 @@ def generateReadcounts(input_data, region_start, region_end, chr_no, alignments,
     stride = (region_end - region_start) / num_grid
 
     for step in range(num_grid):
-        count = alignments.count(region=preProcessing.createRegionStr("chr{}".format(chr_no + 1), int(region_start + stride * step)),
-                        contig='chr{}'.format(chr_no + 1),
-                        start=int(region_start + stride * step),
-                        stop=int(region_start + stride * step + 1))
+        print(step)
+        count = alignments.count(region=preProcessing.createRegionStr("chr{}".format(chr_no + 1), int(region_start), int(region_end*100)),until_eof=True)#,
+        count = alignments.count(region=preProcessing.createRegionStr("chr{}".format(chr_no + 1), int(region_start + stride * step)),until_eof=True)#,
+                        #contig='chr{}'.format(chr_no + 1),
+                        #start=int(region_start + stride * step),
+                        #stop=int(region_start + stride * step + 1))
         read_count_by_grid.append(count)
+
 
     read_count_by_grid = np.array(read_count_by_grid, dtype=float)
     read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
     read_count_by_grid = np.maximum(read_count_by_grid - np.sqrt(np.mean(read_count_by_grid)), 0)
 
+    print(read_count_by_grid)
     return read_count_by_grid
 
 

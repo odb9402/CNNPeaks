@@ -20,18 +20,16 @@ def run(dir_name, logger, num_grid=10000):
     :return:
     """
     PATH = os.path.abspath(dir_name)
-    bam_files = glob.glob(PATH + '/*.bam')
-    label_files = glob.glob(PATH + '/*.txt')
 
-    dir_list = []
-    for bam_file in bam_files:
-        dir_list.append(bam_file[:-4])
+    dir_list = os.listdir(PATH)
 
     for dir in dir_list:
+        dir = PATH + '/' + dir
         logger.info("DIRECTORY (TARGET) : <" + dir +">")
 
     input_list = {}
     for dir in dir_list:
+        dir = PATH + '/' + dir
         input_list[dir] = extractChrClass(dir)
 
     model_output = peakPredictConvModel(input_data_train, logger)
