@@ -61,8 +61,6 @@ def parse_peak_labels(peak_labels, chromosome_num, cell_type):
             label_map = dict(zip(label_table, label[1]))
             result_labels_list.append(label_map)
 
-    #print "%d`s label data is found.i" % len(result_labels_list)
-
     if len(result_labels_list) == 0:
         #print "there are matched label data. so cannot handle it"
         return -1
@@ -76,7 +74,6 @@ def parse_peak_labels(peak_labels, chromosome_num, cell_type):
         label['regions'][0] = int(label['regions'][0].replace(',',''))
         label['regions'][1] = int(label['regions'][1].replace(',',''))
 
-    #mark a copy number on the label.
 
     return result_labels_list
 

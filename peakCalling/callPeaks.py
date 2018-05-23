@@ -2,14 +2,18 @@ import preProcessing.preProcessing as preProcessing
 import buildModel.buildModel as buildModel
 import tensorflow as tf
 import numpy as np
+import pandas as pd
 import pysam
 import os
 import random
 import string
 import matplotlib.pyplot as plt
+import subprocess as sp
+
 from multiprocessing import cpu_count, Process, Manager
 from buildModel.hyperparameters import *
 from buildModel.defineModel import *
+
 
 def run(input_bam, logger, window_size=100000, num_grid=4000):
     """
@@ -84,7 +88,7 @@ def call_peak(chr_no, bam_alignment, file_name, input_data, logger, num_grid, pr
             writeBed(output_file_name, peaks, logger, printout=True)
             break
 
-        read_count_by_grid = generateReadcounts(input_data, window_count, window_count + window_size, chr_no, bam_alignment, num_grid)
+        read_count_by_grid = generateReadcounts(input_data, window_count, window_count + window_size, chr_no, file_name, num_grid)
 
         result_dict = {input_data: read_count_by_grid, p_dropout: 1, is_test: True}
         preds = sess.run(prediction, feed_dict=result_dict)
@@ -106,25 +110,23 @@ def call_peak(chr_no, bam_alignment, file_name, input_data, logger, num_grid, pr
         window_count += window_size
 
 
-def generateReadcounts(input_data, region_start, region_end, chr_no, alignments, num_grid):
+def generateReadcounts(input_data, region_start, region_end, chr_no, file_name, num_grid):
     read_count_by_grid = []
     stride = (region_end - region_start) / num_grid
 
-    for step in range(num_grid):
-        print(step)
-        count = alignments.count(region=preProcessing.createRegionStr("chr{}".format(chr_no + 1), int(region_start), int(region_end*100)),until_eof=True)#,
-        count = alignments.count(region=preProcessing.createRegionStr("chr{}".format(chr_no + 1), int(region_start + stride * step)),until_eof=True)#,
-                        #contig='chr{}'.format(chr_no + 1),
-                        #start=int(region_start + stride * step),
-                        #stop=int(region_start + stride * step + 1))
-        read_count_by_grid.append(count)
+    samtools_call = ['samtools depth {} {} > tmp_depth'.format(
+        preProcessing.createRegionStr("chr{}".format(chr_no + 1), int(region_start, region_end)), file_name)]
+    sp.call(samtools_call)
 
+    depth_data = pd.read_table('tmp_depth', header=None, usecols=[2], names=['depth'])
+
+    for step in range(num_grid):
+        read_count_by_grid.append(depth_data['depth'][step * stride])
 
     read_count_by_grid = np.array(read_count_by_grid, dtype=float)
     read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
     read_count_by_grid = np.maximum(read_count_by_grid - np.sqrt(np.mean(read_count_by_grid)), 0)
 
-    print(read_count_by_grid)
     return read_count_by_grid
 
 

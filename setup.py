@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-setup_requires = []
+setup_requires = ['samtools', 'bamtools']
 
 install_requires = ['pysam','scipy','numpy','sklearn','tensorflow','pandas']
 
