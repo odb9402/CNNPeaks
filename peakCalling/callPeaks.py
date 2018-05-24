@@ -9,6 +9,7 @@ import random
 import string
 import matplotlib.pyplot as plt
 import subprocess as sp
+import progressbar as pgb
 
 from multiprocessing import cpu_count, Process, Manager
 from buildModel.hyperparameters import *
@@ -34,7 +35,7 @@ def run(input_bam, logger, window_size=100000, num_grid=4000):
 
     sess = tf.Session()
     saver = tf.train.Saver()
-    saver.restore(sess, os.getcwd() + "/models/model1.ckpt")
+    saver.restore(sess, os.getcwd() + "/models/model0.ckpt")
 
     model_output = buildModel.peakPredictConvModel(input_data, logger)
     prediction = tf.nn.sigmoid(model_output)
@@ -79,8 +80,8 @@ def call_peak(chr_no, bam_alignment, file_name, input_data, logger, num_grid, pr
     peaks = []
 
     while True:
-        print(eval_counter)
         if (eval_counter % 100) == 0:
+            bar = pgb.ProgressBar(max_value=100)
             logger.info("Reading . . . :[chr{}:{}-{}]".format(chr_no+1,window_count,window_count+window_size*100))
 
         if window_count + window_size > bam_length[chr_no]:
@@ -99,11 +100,11 @@ def call_peak(chr_no, bam_alignment, file_name, input_data, logger, num_grid, pr
 
         #visualizeEachLayers(input_bam, read_count_by_grid, sess, logger)
 
+        bar.update(eval_counter)
         eval_counter += 1
 
-        #exit()
         if eval_counter == 100:
-            writeBed(output_file_name, peaks, logger, printout=True)
+            writeBed(output_file_name, peaks, logger, printout=False)
             eval_counter = 0
             peaks =[]
 
@@ -112,16 +113,16 @@ def call_peak(chr_no, bam_alignment, file_name, input_data, logger, num_grid, pr
 
 def generateReadcounts(input_data, region_start, region_end, chr_no, file_name, num_grid):
     read_count_by_grid = []
-    stride = (region_end - region_start) / num_grid
+    stride = (region_end - (region_start + 1)) / num_grid
 
-    samtools_call = ['samtools depth {} {} > tmp_depth'.format(
-        preProcessing.createRegionStr("chr{}".format(chr_no + 1), int(region_start, region_end)), file_name)]
-    sp.call(samtools_call)
+    samtools_call = ['samtools depth -aa -r {} {} > tmp_depth'.format(
+        preProcessing.createRegionStr("chr{}".format(chr_no + 1), int(region_start),int(region_end - 1)), file_name)]
+    sp.call(samtools_call, shell=True)
 
     depth_data = pd.read_table('tmp_depth', header=None, usecols=[2], names=['depth'])
 
     for step in range(num_grid):
-        read_count_by_grid.append(depth_data['depth'][step * stride])
+        read_count_by_grid.append(depth_data['depth'][int(step * stride)])
 
     read_count_by_grid = np.array(read_count_by_grid, dtype=float)
     read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
