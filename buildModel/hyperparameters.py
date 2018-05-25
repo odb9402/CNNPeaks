@@ -2,9 +2,9 @@ class_threshold = 0.6
 
 batch_size = 1
 evaluation_size = 1
-generations = 15000
+generations = 30000
 eval_every = 20
-learning_rate = 0.003
+learning_rate = 0.005
 target_size = 8000
 
 conv1_features = 8

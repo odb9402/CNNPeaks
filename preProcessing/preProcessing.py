@@ -3,8 +3,9 @@ import pysam
 import glob
 import os
 import re
-import subprocess
+import subprocess as sp
 import random
+import progressbar as pgb
 import time
 
 from multiprocessing import cpu_count, Process, Manager
