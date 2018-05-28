@@ -149,24 +149,15 @@ def predictionToBedString(prediction, chromosome, region_start, stride,
     """
     global num_peaks
     peak_size = 0
-    step = 0
     peaks = []
     num_peaks_in_window = 0
 
-    while True:
-        if step > num_grid - 1:
-            if len(peaks) == 0:
-                return []
-            elif len(peaks) > max_peak_num:
-                return []
-            else:
-                num_peaks += num_peaks_in_window
-                return peaks
-
+    for step in range(num_grid):
         if prediction[step] is 1:
             peak_size += 1
         else:
             if peak_size is not 0:
+                # Condition 2: peak size should be higher than min_peak_size
                 if peak_size > min_peak_size:
                     end_point = region_start + ( stride * step )
                     start_point = end_point - ( peak_size * stride )
@@ -176,12 +167,14 @@ def predictionToBedString(prediction, chromosome, region_start, stride,
                     peaks.append("{}\t{}\t{}\t{}\t{}\t{}\n".format(chromosome, int(start_point), int(end_point),
                         "chr{}_{:5}".format(chromosome,random.randint(0,100000)), avg_depth, '.'))
                     num_peaks_in_window += 1
-                    peak_size = 0
 
-                else:
-                    peak_size = 0
-        step += 1
+                peak_size = 0
 
+    if len(peaks) > max_peak_num:
+        return []
+    else:
+        num_peaks += num_peaks_in_window
+        return peaks
     #if peak_switch is True:
     #    plt.plot(prediction, 'r.')
     #    plt.plot(reads)
