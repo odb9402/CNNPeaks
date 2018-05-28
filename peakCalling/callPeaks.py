@@ -134,6 +134,14 @@ def generateReadcounts(input_data, region_start, region_end, chr_no, file_name, 
 def predictionToBedString(prediction, chromosome, region_start, stride,
         num_grid,logger, reads, min_peak_size=10, max_peak_num=15):
     """
+    Python list "prediction" which has binary values will will be changed
+    as bed-file string. There are two conditions to accept as peak for each
+    prediction.
+    
+    1. Peak size must be higher than min_peak_size.
+    2. The number of peak in the single window cannot be higher than max_peak_num.
+
+    If "predicition" cannot satisfy these conditions, the function return empty list.
 
     :param prediction:
     :param logger:
@@ -142,7 +150,6 @@ def predictionToBedString(prediction, chromosome, region_start, stride,
     global num_peaks
     peak_size = 0
     step = 0
-    peak_switch = False
     peaks = []
     num_peaks_in_window = 0
 
@@ -163,9 +170,14 @@ def predictionToBedString(prediction, chromosome, region_start, stride,
                 if peak_size > min_peak_size:
                     end_point = region_start + ( stride * step )
                     start_point = end_point - ( peak_size * stride )
+
+                    avg_depth = np.mean(reads[step - peak_size : step])
+
+                    peaks.append("{}\t{}\t{}\t{}\t{}\t{}\n".format(chromosome, int(start_point), int(end_point),
+                        "chr{}_{:5}".format(chromosome,random.randint(0,100000)), avg_depth, '.'))
                     num_peaks_in_window += 1
                     peak_size = 0
-                    peaks.append("{}\t{}\t{}\n".format(chromosome, int(start_point), int(end_point)))
+
                 else:
                     peak_size = 0
         step += 1
