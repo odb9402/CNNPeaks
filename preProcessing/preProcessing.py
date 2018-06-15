@@ -9,7 +9,6 @@ import progressbar as pgb
 import time
 
 from multiprocessing import cpu_count, Process, Manager
-
 from sklearn.cluster import DBSCAN
 
 def run(dir_name, logger, bp_eps=30000, searching_dist=80000, num_grid=2000):
@@ -18,6 +17,7 @@ def run(dir_name, logger, bp_eps=30000, searching_dist=80000, num_grid=2000):
     input directory dir_name was specified by a user. The results will
     be saved in directories which have same name with input bam files.
     e. g) /H3K4me3_1_K562.bam `s results is saved in /H3K4me3_1_K562/chrn_n_gridxxxx.csv
+    
     :param dir_name:
     :param logger:
     :param bp_eps:
@@ -65,6 +65,7 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
     length of a small fragment from bam_file is 50000 + searching dist.
     If (regions of the label cluster / 5) is lower than searchine dist,
     the bias is not a searching dist but (regions of the label cluster / 5).
+
     :param bam_files: bam_files MUST be a absPath.
     :param label_data_df:
     :param searching_dist:
@@ -75,6 +76,7 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
     num_grid_label = num_grid // 5
 
     chr_list = set(label_data_df['chr'].tolist())
+
     if not os.path.isdir(bam_file[:-4]):
         os.makedirs(bam_file[:-4])
 
@@ -85,6 +87,8 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
         logger.info("[" + bam_file + "] already has index file.")
 
     bam_alignment = pysam.AlignmentFile(bam_file , 'rb', index_filename=bam_file +'.bai')
+
+    refGenePd = pd.read_table("geneRef_sort.bed", names=['chr','start','end'] ,header=['chr','start','end'], usecols=[0,1,2])
 
     for chr in chr_list:
         label_data_by_chr = label_data_df[label_data_df['chr'] == chr]
@@ -119,12 +123,13 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
 
             output_count_file = bam_file[:-4] + "/" + str(chr) + "_" + str(cls) + "_grid" + str(num_grid)+".ct"
             output_label_file = bam_file[:-4] + "/label_" + str(chr) + "_" + str(cls) + "_grid" + str(num_grid)+".lb"
+            output_refGene_file = bam_file[:-4] + "/ref_" + str(chr) + "_" + str(cls) + "_grid" + str(num_grid)+".ref"
 
             output_label_df_bef = pd.DataFrame(columns=['startGrid','endGrid'])
             output_label_df_bef['startGrid'] = (label_data_by_class['start'] - region_start) / stride_label
             output_label_df_bef['endGrid'] = (label_data_by_class['end'] - region_start) / stride_label
 
-            output_label_df = pd.DataFrame(columns=['peak','noPeak'], dtype=int, index=range(num_grid_label))
+            output_label_df = pd.DataFrame(columns=['peak', 'noPeak'], dtype=int, index=range(num_grid_label))
             output_label_df['peak'] = 0
             output_label_df['noPeak'] = 1
 
@@ -134,11 +139,39 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
                     output_label_df.loc[int(row['startGrid']):int(row['endGrid']), 'peak'] = 1
                     output_label_df.loc[int(row['startGrid']):int(row['endGrid']), 'noPeak'] = 0
                 index_count += 1
+
+            sub_refGene = makeRefGeneTags(
+                refGenePd[refGenePd['chr'] == chr][refGenePd['start'] > region_start][refGenePd['end'] < region_end],
+                region_start, region_end, stride, num_grid)
+
+            sub_refGene.to_csv(output_refGene_file)
             read_count_by_grid.to_csv(output_count_file)
             output_label_df.to_csv(output_label_file)
 
             logger.info("["+output_count_file+"] is created.")
-            logger.info("["+output_label_file+"] is created.\n")
+            logger.info("["+output_label_file+"] is created.")
+            logger.info("["+output_refGene_file+"] is created.")
+
+
+def makeRefGeneTags(refGene_df, start, end, stride, num_grid):
+    """
+
+    :param refGene_df:
+    :param start:
+    :param end:
+    :param stride:
+    :param num_grid:
+    :return:
+    """
+    refGene_depth = pd.DataFrame(columns=['refGeneCount'], dtype=int)
+
+    for step in range(num_grid):
+        location = int(start + stride*step)
+        refGene_depth.append({'refGeneCount' : len(refGene_df[refGene_df['start'] < location][refGene_df['end'] > location])}
+                             ,ignore_index=True)
+
+    return refGene_depth
+
 
 
 def clusteringLabels(label_data_df, bp_eps):
@@ -221,9 +254,7 @@ def createBamIndex(input_bam):
     "input_bam".
     :param input_bam: A input bam file name.
     """
-    subprocess.call(['sudo bamtools index -in ' + input_bam], shell=True)
-
-
+    sp.call(['sudo bamtools index -in ' + input_bam], shell=True)
 
 
 def createRegionStr(chr, start, end=None):
