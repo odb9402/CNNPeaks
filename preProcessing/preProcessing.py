@@ -10,7 +10,6 @@ import time
 
 from multiprocessing import cpu_count, Process, Manager
 from sklearn.cluster import DBSCAN
-from peakCalling.callPeaks import generateReadcounts
 
 def run(dir_name, logger, bp_eps=30000, searching_dist=80000, num_grid=2000):
     """
