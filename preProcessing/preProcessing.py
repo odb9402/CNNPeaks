@@ -18,7 +18,7 @@ def run(dir_name, logger, bp_eps=30000, searching_dist=80000, num_grid=2000):
     input directory dir_name was specified by a user. The results will
     be saved in directories which have same name with input bam files.
     e. g) /H3K4me3_1_K562.bam `s results is saved in /H3K4me3_1_K562/chrn_n_gridxxxx.csv
-    
+
     :param dir_name:
     :param logger:
     :param bp_eps:
@@ -51,7 +51,7 @@ def run(dir_name, logger, bp_eps=30000, searching_dist=80000, num_grid=2000):
                             + str(searching_dist) + ", "+ str(num_grid)+" ]\n")
                 process = Process(target=makeTrainFrags, \
                                   args=(bam_file, label_data, searching_dist, num_grid, cellType_string ,logger,))
-                parallel_execution(MAX_CORE - 1, process, processes)
+                parallel_execution(1, process, processes)
 
     for proc in processes:
         proc.join()
