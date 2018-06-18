@@ -132,7 +132,7 @@ def generateReadcounts(input_data, region_start, region_end, chr_no, file_name, 
 
 
 def predictionToBedString(prediction, chromosome, region_start, stride,
-        num_grid,logger, reads, min_peak_size=10, max_peak_num=15):
+        num_grid,logger, reads, min_peak_size=8, max_peak_num=15):
     """
     Python list "prediction" which has binary values will will be changed
     as bed-file string. There are two conditions to accept as peak for each

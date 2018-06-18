@@ -15,7 +15,7 @@ from utility.errorCall import run as errorCall
 
 
 
-num_grid = 8000
+num_grid = 12000
 windowSize = 100000
 
 def main():

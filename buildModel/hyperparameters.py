@@ -5,7 +5,7 @@ evaluation_size = 1
 generations = 30000
 eval_every = 20
 learning_rate = 0.005
-target_size = 8000
+target_size = 12000
 
 conv1_features = 8
 
