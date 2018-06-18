@@ -71,6 +71,19 @@ def run(input_bam, logger, window_size=100000, num_grid=4000):
 
 
 def call_peak(chr_no, bam_alignment, file_name, input_data, logger, num_grid, prediction, sess, window_size):
+    """
+
+    :param chr_no: Chromosome number of regions
+    :param bam_alignment: pysam bam alignment class
+    :param file_name: file name of bam file
+    :param input_data:
+    :param logger:
+    :param num_grid:
+    :param prediction:
+    :param sess:
+    :param window_size:
+    :return:
+    """
     window_count = 1
     bam_length = bam_alignment.lengths
     stride = window_size / num_grid
@@ -119,14 +132,14 @@ def generateReadcounts(input_data, region_start, region_end, chr_no, file_name, 
         preProcessing.createRegionStr("chr{}".format(chr_no + 1), int(region_start),int(region_end - 1)), file_name)]
     sp.call(samtools_call, shell=True)
 
-    depth_data = pd.read_table('tmp_depth', header=None, usecols=[2], names=['depth'])
+    depth_data = pd.read_table('tmp_depth', header=None, usecols=[2], names=['readCount'])
 
     for step in range(num_grid):
-        read_count_by_grid.append(depth_data['depth'][int(step * stride)])
+        read_count_by_grid.append(depth_data['readCount'][int(step * stride)])
 
     read_count_by_grid = np.array(read_count_by_grid, dtype=float)
     read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
-    read_count_by_grid = np.maximum(read_count_by_grid - np.sqrt(np.mean(read_count_by_grid)), 0)
+    #read_count_by_grid = np.maximum(read_count_by_grid - np.sqrt(np.mean(read_count_by_grid)), 0)
 
     return read_count_by_grid
 

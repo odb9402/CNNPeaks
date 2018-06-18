@@ -10,6 +10,7 @@ import time
 
 from multiprocessing import cpu_count, Process, Manager
 from sklearn.cluster import DBSCAN
+from peakCalling.callPeaks import generateReadcounts
 
 def run(dir_name, logger, bp_eps=30000, searching_dist=80000, num_grid=2000):
     """
@@ -86,9 +87,9 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
     else:
         logger.info("[" + bam_file + "] already has index file.")
 
-    bam_alignment = pysam.AlignmentFile(bam_file , 'rb', index_filename=bam_file +'.bai')
+    #bam_alignment = pysam.AlignmentFile(bam_file , 'rb', index_filename=bam_file +'.bai')
 
-    refGenePd = pd.read_table("geneRef_sort.bed", names=['chr','start','end'] ,header=['chr','start','end'], usecols=[0,1,2])
+    refGenePd = pd.read_table("geneRef_sort.bed", names=['chr','start','end'] ,header=None, usecols=[0,1,2])
 
     for chr in chr_list:
         label_data_by_chr = label_data_df[label_data_df['chr'] == chr]
@@ -117,9 +118,16 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
             logger.debug("STRIDE :" + str(stride) + "           REGION SIZE :" + str(region_size))
             read_count_by_grid = pd.DataFrame(columns=['readCount'], dtype=int)
 
+            samtools_call = ['samtools depth -aa -r {} {} > tmp_depth'.format(
+                createRegionStr("chr{}".format(chr), int(region_start), int(region_end - 1)),
+                bam_file)]
+            sp.call(samtools_call, shell=True)
+            depth_data = pd.read_table('tmp_depth', header=None, usecols=[2], names=['readCount'])
+
             for step in range(num_grid):
-                count = bam_alignment.count(region=createRegionStr(chr, int(region_start + stride*step)))
-                read_count_by_grid = read_count_by_grid.append({'readCount' : count}, ignore_index=True)
+                #count = bam_alignment.count(region=createRegionStr(chr, int(region_start + stride*step)))
+                #read_count_by_grid = read_count_by_grid.append({'readCount' : count}, ignore_index=True)
+                read_count_by_grid.append(depth_data['readCount'][int(step * stride)])
 
             output_count_file = bam_file[:-4] + "/" + str(chr) + "_" + str(cls) + "_grid" + str(num_grid)+".ct"
             output_label_file = bam_file[:-4] + "/label_" + str(chr) + "_" + str(cls) + "_grid" + str(num_grid)+".lb"

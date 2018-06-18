@@ -27,6 +27,8 @@ def run(dir_name, logger, num_grid=8000):
             for cls in input_list[dir][chr]:
                 input_file_name = (dir + "/" + chr + "_" + cls + "_grid" + str(num_grid) + ".ct")
                 label_file_name = (dir + "/label_" + chr + "_" + cls + "_grid" + str(num_grid) + ".lb")
+                output_refGene_file = bam_file[:-4] + "/ref_" + str(chr) + "_" + str(cls) + "_grid" + str(
+                    num_grid) + ".ref"
                 reads = (pd.read_csv(input_file_name))['readCount'].as_matrix().reshape(num_grid)
                 label = (pd.read_csv(label_file_name))['peak'].as_matrix().transpose()
                 label = buildModel.expandingPrediction(label)
@@ -39,3 +41,4 @@ def run(dir_name, logger, num_grid=8000):
                 if input("save(1) or delete(0)  ::") == '0':
                     os.remove(input_file_name)
                     os.remove(label_file_name)
+                    os.remove(output_refGene_file)
