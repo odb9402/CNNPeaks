@@ -48,12 +48,13 @@ def run(dir_name, logger, bp_eps=30000, searching_dist=80000, num_grid=2000):
 
                 logger.info("Making fragments for training with <searching distance, grid> : [ " \
                             + str(searching_dist) + ", "+ str(num_grid)+" ]\n")
-                process = Process(target=makeTrainFrags, \
-                                  args=(bam_file, label_data, searching_dist, num_grid, cellType_string ,logger,))
-                parallel_execution(1, process, processes)
+                makeTrainFrags(bam_file, label_data, searching_dist, num_grid, cellType_string, logger)
+                #process = Process(target=makeTrainFrags, \
+                #                  args=(bam_file, label_data, searching_dist, num_grid, cellType_string ,logger,))
+                #parallel_execution(1, process, processes)
 
-    for proc in processes:
-        proc.join()
+    #for proc in processes:
+    #    proc.join()
 
 
 def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type, logger):
@@ -88,11 +89,12 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
 
     #bam_alignment = pysam.AlignmentFile(bam_file , 'rb', index_filename=bam_file +'.bai')
 
-    refGenePd = pd.read_table("geneRef_sort.bed", names=['chr','start','end'] ,header=None, usecols=[0,1,2])
+    #refGenePd = pd.read_table("geneRef_sort.bed", names=['chr','start','end'] ,header=None, usecols=[0,1,2])
 
     for chr in chr_list:
         label_data_by_chr = label_data_df[label_data_df['chr'] == chr]
         class_list = set(label_data_by_chr['class'].tolist())
+        refGenePd = pd.read_table("geneRef/chr{}.bed".format(chr), names=['chr','start','end'] ,header=None, usecols=[0,1,2])
 
         for cls in class_list:
             label_data_by_class = label_data_by_chr[label_data_by_chr['class'] == cls]
@@ -115,18 +117,22 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
             stride_label = region_size / num_grid_label
 
             logger.debug("STRIDE :" + str(stride) + "           REGION SIZE :" + str(region_size))
-            read_count_by_grid = pd.DataFrame(columns=['readCount'], dtype=int)
+            #read_count_by_grid = pd.DataFrame(columns=['readCount'])
 
             samtools_call = ['samtools depth -aa -r {} {} > tmp_depth'.format(
-                createRegionStr("chr{}".format(chr), int(region_start), int(region_end - 1)),
+                createRegionStr("{}".format(chr), int(region_start), int(region_end - 1)),
                 bam_file)]
             sp.call(samtools_call, shell=True)
             depth_data = pd.read_table('tmp_depth', header=None, usecols=[2], names=['readCount'])
 
+            read_count_list = []
             for step in range(num_grid):
                 #count = bam_alignment.count(region=createRegionStr(chr, int(region_start + stride*step)))
                 #read_count_by_grid = read_count_by_grid.append({'readCount' : count}, ignore_index=True)
-                read_count_by_grid.append(depth_data['readCount'][int(step * stride)])
+                read_count_list.append(int(depth_data['readCount'][int(step * stride)]))
+
+            read_count_by_grid = pd.DataFrame(read_count_list, columns=['readCount'])
+            os.remove('tmp_depth')
 
             output_count_file = bam_file[:-4] + "/" + str(chr) + "_" + str(cls) + "_grid" + str(num_grid)+".ct"
             output_label_file = bam_file[:-4] + "/label_" + str(chr) + "_" + str(cls) + "_grid" + str(num_grid)+".lb"
@@ -148,7 +154,7 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
                 index_count += 1
 
             sub_refGene = makeRefGeneTags(
-                refGenePd[refGenePd['chr'] == chr][refGenePd['start'] > region_start][refGenePd['end'] < region_end],
+                refGenePd[(refGenePd['chr'] == chr) & (refGenePd['start'] > region_start) &( refGenePd['end'] < region_end)],
                 region_start, region_end, stride, num_grid)
 
             sub_refGene.to_csv(output_refGene_file)
@@ -174,7 +180,7 @@ def makeRefGeneTags(refGene_df, start, end, stride, num_grid):
 
     for step in range(num_grid):
         location = int(start + stride*step)
-        refGene_depth.append({'refGeneCount' : len(refGene_df[refGene_df['start'] < location][refGene_df['end'] > location])}
+        refGene_depth.append({'refGeneCount' : len(refGene_df[(refGene_df['start'] < location)&(refGene_df['end'] > location)])}
                              ,ignore_index=True)
 
     return refGene_depth
