@@ -32,8 +32,8 @@ def run(dir_name, logger, num_grid=10000):
         dir = PATH + '/' + dir
         input_list[dir] = extractChrClass(dir)
 
-    model_output = peakPredictConvModel(input_data_train, logger)
-    test_model_output = peakPredictConvModel(input_data_eval, logger)
+    model_output = peakPredictConvModel(input_data_train, input_ref_data_train, logger)
+    test_model_output = peakPredictConvModel(input_data_eval, input_ref_data_eval, logger)
 
     prediction = tf.nn.sigmoid(model_output)
     test_prediction = tf.nn.sigmoid(test_model_output)
@@ -181,7 +181,7 @@ def training(train_data_list, train_label_list, test_data_list, test_label_list,
     logger.info("Model saved in path : %s" % save_path)
 
 
-def peakPredictConvModel(input_data, logger):
+def peakPredictConvModel(input_data_depth, input_data_ref, logger):
     """
     Define structure of convolution model.
 
@@ -190,11 +190,17 @@ def peakPredictConvModel(input_data, logger):
     :return: Tensor of the output layer
     """
 
-    #Stem of model
-    conv1 = tf.nn.conv1d(input_data, conv1_weight, stride=1, padding='SAME')
+    #Stem of read depth data
+    conv1 = tf.nn.conv1d(input_data_depth, conv1_weight, stride=1, padding='SAME')
     relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_bias))
     max_pool1 = tf.nn.pool(relu1, [max_pool_size_stem], strides=[max_pool_size_stem],
             padding='SAME', pooling_type='MAX')
+
+    #Stem of ref gene data
+    conv1_ref = tf.nn.conv1d(input_data_ref, conv1_weight, stride=1, padding='SAME')
+    max_pool1_ref = tf.nn.pool(relu1, [max_pool_size_stem], strides=[max_pool_size_stem],
+            padding='SAME', pooling_type='MAX')
+
 
     # Inception modules 1 to 6
     concat1 = concatLayer_B(max_pool1, conv1a_weight, convMax1_weight, conv1b_weight,

@@ -150,7 +150,7 @@ def predictionToBedString(prediction, chromosome, region_start, stride,
     Python list "prediction" which has binary values will will be changed
     as bed-file string. There are two conditions to accept as peak for each
     prediction.
-    
+
     1. Peak size must be higher than min_peak_size.
     2. The number of peak in the single window cannot be higher than max_peak_num.
 

@@ -7,6 +7,15 @@ eval_every = 20
 learning_rate = 0.005
 target_size = 12000
 
+conv1_ref_features = 16
+conv2_ref_features = 16
+conv3_ref_features = 16
+conv4_ref_features = 16
+
+max_pool_size_ref1 = 2
+max_pool_size_ref2 = 2
+max_pool_size_ref3 = 2
+
 conv1_features = 8
 
 conv1a_features = 16

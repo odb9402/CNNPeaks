@@ -21,12 +21,22 @@ input_data_eval = tf.placeholder(tf.float32, shape=(batch_size, target_size, 1),
 label_data_train = tf.placeholder(tf.float32, shape=(evaluation_size, 1, target_size // 5))
 label_data_eval = tf.placeholder(tf.float32, shape=(evaluation_size, 1, target_size // 5))
 
+input_ref_data_train = tf.placeholder(tf.float32, shape=(batch_size, target_size, 1), name="TrainReferenceGenesDepth")
+input_ref_data_eval = tf.placeholder(tf.float32, shape=(batch_size, target_size, 1), name="TestReferenceGenesDepth")
+
+
+###################### STEM FOR REFGENEDEPTH ###########################
+conv1_ref_weight = tf.get_variable("Conv_REF_1", shape=[4, 1, conv1_ref_features], initializer=tf.contrib.layers.xavier_initializer())
+conv1_ref_bias = tf.Variable(tf.zeros([conv1_ref_features], dtype=tf.float32))
+
+conv2_ref_weight = tf.get_variable("Conv_REF_2", shape=[4, 1, conv2_ref_features], initializer=tf.contrib.layers.xavier_initializer())
+conv2_ref_bias = tf.Variable(tf.zeros([conv2_ref_features], dtype=tf.float32))
+
 
 
 ############################ STEM Layer  ###############################
 conv1_weight = tf.get_variable("Conv_STEM", shape=[4, 1, conv1_features], initializer=tf.contrib.layers.xavier_initializer())
 conv1_bias = tf.Variable(tf.zeros([conv1_features], dtype=tf.float32))
-
 
 
 ############################ Inception 1 ###############################

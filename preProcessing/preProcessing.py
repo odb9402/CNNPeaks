@@ -89,12 +89,10 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
 
     #bam_alignment = pysam.AlignmentFile(bam_file , 'rb', index_filename=bam_file +'.bai')
 
-    #refGenePd = pd.read_table("geneRef_sort.bed", names=['chr','start','end'] ,header=None, usecols=[0,1,2])
-
     for chr in chr_list:
         label_data_by_chr = label_data_df[label_data_df['chr'] == chr]
         class_list = set(label_data_by_chr['class'].tolist())
-        refGenePd = pd.read_table("geneRef/chr{}.bed".format(chr), names=['chr','start','end'] ,header=None, usecols=[0,1,2])
+        refGenePd = pd.read_table("geneRef/{}.bed".format(chr), names=['chr','start','end'] ,header=None, usecols=[0,1,2])
 
         for cls in class_list:
             label_data_by_class = label_data_by_chr[label_data_by_chr['class'] == cls]
@@ -154,7 +152,7 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
                 index_count += 1
 
             sub_refGene = makeRefGeneTags(
-                refGenePd[(refGenePd['chr'] == chr) & (refGenePd['start'] > region_start) &( refGenePd['end'] < region_end)],
+                refGenePd[(refGenePd['start'] > region_start)&(refGenePd['end'] < region_end)],
                 region_start, region_end, stride, num_grid)
 
             sub_refGene.to_csv(output_refGene_file)
@@ -176,12 +174,30 @@ def makeRefGeneTags(refGene_df, start, end, stride, num_grid):
     :param num_grid:
     :return:
     """
-    refGene_depth = pd.DataFrame(columns=['refGeneCount'], dtype=int)
+
+    refGene_depth_list = []
+
+    start_point = 0
 
     for step in range(num_grid):
         location = int(start + stride*step)
-        refGene_depth.append({'refGeneCount' : len(refGene_df[(refGene_df['start'] < location)&(refGene_df['end'] > location)])}
-                             ,ignore_index=True)
+        index = start_point
+        depth = 0
+        while True:
+            if len(refGene_df) <= index :
+                start_point = index
+                refGene_depth_list.append(depth)
+                break
+
+            if location < refGene_df.iloc[index]['start']:
+                start_point = index
+                refGene_depth_list.append(depth)
+                break
+            elif refGene_df.iloc[index]['start'] <= location and location <= refGene_df.iloc[index]['end']:
+                depth = 1
+            index += 1
+
+    refGene_depth = pd.DataFrame(refGene_depth_list, columns=['refGeneCount'], dtype=int)
 
     return refGene_depth
 
