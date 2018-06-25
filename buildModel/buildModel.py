@@ -47,17 +47,22 @@ def run(dir_name, logger, num_grid=10000):
 
     ###################### Training start with cross validation ##########################################
     train_data_list = []
+    train_ref_list = []
     train_label_list = []
+
     for dir in input_list:
         for chr in input_list[dir]:
             for cls in input_list[dir][chr]:
-                input_file_name = (dir + "/" + chr + "_" + cls + "_grid" + str(num_grid) + ".ct")
-                label_file_name = (dir + "/label_" + chr + "_" + cls + "_grid" + str(num_grid) + ".lb")
+                input_file_name = "{}/{}_{}_grid{}.ct".format(dir, chr, cls, num_grid)
+                ref_file_name = "{}/ref_{}_{}_grid{}.ref".format(dir, chr, cls, num_grid)
+                label_file_name = "{}/label_{}_{}_grid{}.lb".format(dir, chr, cls, num_grid)
                 train_data_list.append(pd.read_csv(input_file_name))
+                train_ref_list.append(pd.read_csv(ref_file_name))
                 train_label_list.append(pd.read_csv(label_file_name))
 
+
     K_fold = 10
-    test_data_list, test_label_list = splitTrainingData(train_data_list, train_label_list, Kfold=K_fold)
+    test_data_list, test_label_list, test_ref_list = splitTrainingData(train_data_list, train_label_list, train_ref_list, Kfold=K_fold)
 
     if not os.path.isdir(os.getcwd() + "/models"):
         os.mkdir(os.getcwd() + "/models")
@@ -66,24 +71,28 @@ def run(dir_name, logger, num_grid=10000):
     #K_fold Cross Validation
     for i in range(K_fold):
         training_data = []
+        training_ref = []
         training_label = []
         test_data = []
+        test_ref = []
         test_label = []
         for j in range(K_fold):
             if i == j:
                 test_data += test_data_list[j]
+                test_ref += test_ref_list[j]
                 test_label += test_label_list[j]
             else:
                 training_data += test_data_list[j]
+                training_ref += test_ref_list[j]
                 training_label += test_label_list[j]
         if not os.path.isdir(os.getcwd() + "/models/model_{}".format(i)):
             os.mkdir(os.getcwd() + "/models/model_{}".format(i))
 
-        training(training_data, training_label , test_data, test_label, train_step, loss, prediction,
+        training(training_data, training_label , training_ref, test_data, test_label, test_ref, train_step, loss, prediction,
                 test_prediction, logger, num_grid, i)
 
 
-def training(train_data_list, train_label_list, test_data_list, test_label_list, \
+def training(train_data_list, train_label_list, train_ref_list, test_data_list, test_label_list, test_ref_list, \
              train_step, loss, prediction, test_prediction, logger, num_grid, step_num):
     """
 
@@ -117,15 +126,15 @@ def training(train_data_list, train_label_list, test_data_list, test_label_list,
 
         rand_x = train_data_list[rand_index[0]]['readCount'].as_matrix()
         rand_x = rand_x.reshape(input_data_train.shape)
-        mean_x = np.mean(rand_x)
-        rand_x = np.maximum(rand_x - np.sqrt(mean_x), 0)
+        rand_ref = train_ref_list[rand_index[0]]['refGeneCount'].as_matrix()
+        rand_ref = rand_ref.reshape(input_ref_data_train.shape)
 
         rand_y = train_label_list[rand_index[0]][['peak']].as_matrix().transpose()
         rand_y = rand_y.reshape(label_data_train.shape)
 
         p_n_rate = pnRate(rand_y)
 
-        train_dict = {input_data_train: rand_x, label_data_train: rand_y, \
+        train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref,\
                       p_dropout: 0.7, loss_weight: p_n_rate}
 
         sess.run(train_step, feed_dict=train_dict)
@@ -142,15 +151,15 @@ def training(train_data_list, train_label_list, test_data_list, test_label_list,
 
             eval_x = test_data_list[eval_index[0]]['readCount'].as_matrix()
             eval_x = eval_x.reshape(input_data_eval.shape)
-            mean_eval_x = np.mean(eval_x)
-            eval_x = np.maximum(eval_x - np.sqrt(mean_eval_x), 0)
+            eval_ref = test_ref_list[eval_index[0]]['refGeneCount'].as_matrix()
+            eval_ref = eval_ref.reshape(input_ref_data_eval.shape)
 
             eval_y = test_label_list[eval_index[0]][['peak']].as_matrix().transpose()
             eval_y = (eval_y.reshape(label_data_eval.shape))
 
             p_n_rate_eval = pnRate(rand_y)
 
-            test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, \
+            test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref, \
                          p_dropout: 1, loss_weight: p_n_rate_eval}
 
             test_preds = sess.run(test_prediction, feed_dict=test_dict)
@@ -174,7 +183,7 @@ def training(train_data_list, train_label_list, test_data_list, test_label_list,
     visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss,
             K_fold=str(step_num))
     visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess,
-            test_data_list, test_label_list,test_prediction, k=len(test_data_list), K_fold=str(step_num))
+            test_data_list, test_label_list, test_ref_list, test_prediction, k=len(test_data_list), K_fold=str(step_num))
 
     saver = tf.train.Saver()
     save_path = saver.save(sess, os.getcwd() + "/models/model{}.ckpt".format(step_num,step_num))
@@ -199,17 +208,19 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger):
     #Stem of ref gene data
     conv1_ref = tf.nn.conv1d(input_data_ref, conv1_ref_weight, stride=1, padding='SAME')
     relu1_ref = tf.nn.relu(tf.nn.bias_add(conv1_ref, conv1_ref_bias))
-
-    conv2_ref = tf.nn.conv1d(relu1_ref, conv2_ref_weight, stride=1, padding='SAME')
-    relu2_ref = tf.nn.relu(tf.nn.bias_add(conv2_ref, conv2_ref_bias))
-
-    conv3_ref = tf.nn.conv1d(relu2_ref, conv3_ref_weight, stride=1, padding='SAME')
-    relu3_ref = tf.nn.relu(tf.nn.bias_add(conv3_ref, conv3_ref_bias))
-    max_pool3_ref = tf.nn.pool(relu3_ref, [max_pool_size_ref2], strides=[max_pool_size_stem],
+    max_pool1_ref = tf.nn.pool(relu1_ref, [max_pool_size_stem], strides=[max_pool_size_stem],
             padding='SAME', pooling_type='MAX')
 
+    #conv2_ref = tf.nn.conv1d(relu1_ref, conv2_ref_weight, stride=1, padding='SAME')
+    #relu2_ref = tf.nn.relu(tf.nn.bias_add(conv2_ref, conv2_ref_bias))
+
+    #conv3_ref = tf.nn.conv1d(relu2_ref, conv3_ref_weight, stride=1, padding='SAME')
+    #relu3_ref = tf.nn.relu(tf.nn.bias_add(conv3_ref, conv3_ref_bias))
+    #max_pool3_ref = tf.nn.pool(relu3_ref, [max_pool_size_ref2], strides=[max_pool_size_stem],
+    #        padding='SAME', pooling_type='MAX')
+
     #Concat layer between read depth data and ref gene data.
-    input_concat = tf.concat([max_pool1, max_pool3_ref],axis = 2)
+    input_concat = tf.concat([max_pool1, max_pool1_ref],axis = 2)
     print(input_concat.shape)
 
     # Inception modules 1 to 6
@@ -433,7 +444,7 @@ def extractChrClass(dir):
     return data_direction
 
 
-def splitTrainingData(data_list, label_list, Kfold=4):
+def splitTrainingData(data_list, label_list, ref_list, Kfold=4):
     """
 
     :param list_data:
@@ -447,26 +458,31 @@ def splitTrainingData(data_list, label_list, Kfold=4):
 
     test_data = []
     test_label = []
+    test_ref = []
 
     for i in range(Kfold - 1):
         test_data_temp = []
+        test_ref_temp = []
         test_label_temp = []
         while True:
             if counter <= 0:
+                test_ref.append(test_ref_temp)
                 test_data.append(test_data_temp)
                 test_label.append(test_label_temp)
                 counter = size // Kfold
                 break
 
             pop_index = random.randint(0,len(test_data))
+            test_ref_temp.append(ref_list.pop(pop_index))
             test_data_temp.append(data_list.pop(pop_index))
             test_label_temp.append(label_list.pop(pop_index))
             counter -= 1
 
     test_data.append(data_list)
+    test_ref.append(ref_list)
     test_label.append(label_list)
 
-    return test_data, test_label
+    return test_data, test_label, test_ref
 
 
 def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss, K_fold =""):
@@ -517,7 +533,7 @@ def expandingPrediction(input_list, multiple=5):
 
 
 def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess,
-        test_data_list, test_label_list, test_prediction, k = 1, K_fold=""):
+        test_data_list, test_label_list, test_ref_list, test_prediction, k = 1, K_fold=""):
     """
 
     :param batch_size:
@@ -537,7 +553,8 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             show_index = np.random.choice(len(test_data_list), size=batch_size)
             show_x = test_data_list[show_index[0]]['readCount'].as_matrix()
             show_x = show_x.reshape(input_data_eval.shape)
-            show_x = np.maximum(show_x - np.sqrt(np.mean(show_x)), 0)
+            show_ref = test_ref_list[show_index[0]]['refGeneCount'].as_matrix()
+            show_ref = show_ref.reshape(input_data_eval.shape)
 
             show_y = test_label_list[show_index[0]][['peak']].as_matrix().transpose()
             show_y = show_y.reshape(label_data_eval.shape)
