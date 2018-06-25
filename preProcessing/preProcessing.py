@@ -87,8 +87,6 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
     else:
         logger.info("[" + bam_file + "] already has index file.")
 
-    #bam_alignment = pysam.AlignmentFile(bam_file , 'rb', index_filename=bam_file +'.bai')
-
     for chr in chr_list:
         label_data_by_chr = label_data_df[label_data_df['chr'] == chr]
         class_list = set(label_data_by_chr['class'].tolist())
@@ -115,18 +113,15 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
             stride_label = region_size / num_grid_label
 
             logger.debug("STRIDE :" + str(stride) + "           REGION SIZE :" + str(region_size))
-            #read_count_by_grid = pd.DataFrame(columns=['readCount'])
 
             samtools_call = ['samtools depth -aa -r {} {} > tmp_depth'.format(
-                createRegionStr("{}".format(chr), int(region_start), int(region_end - 1)),
+                createRegionStr("{}".format(chr), int(region_start), int(region_end)),
                 bam_file)]
             sp.call(samtools_call, shell=True)
             depth_data = pd.read_table('tmp_depth', header=None, usecols=[2], names=['readCount'])
 
             read_count_list = []
             for step in range(num_grid):
-                #count = bam_alignment.count(region=createRegionStr(chr, int(region_start + stride*step)))
-                #read_count_by_grid = read_count_by_grid.append({'readCount' : count}, ignore_index=True)
                 read_count_list.append(int(depth_data['readCount'][int(step * stride)]))
 
             read_count_by_grid = pd.DataFrame(read_count_list, columns=['readCount'])

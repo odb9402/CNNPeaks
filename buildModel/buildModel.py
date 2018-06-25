@@ -196,10 +196,26 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger):
     max_pool1 = tf.nn.pool(relu1, [max_pool_size_stem], strides=[max_pool_size_stem],
             padding='SAME', pooling_type='MAX')
 
+    print(max_pool1.shape)
+
     #Stem of ref gene data
-    conv1_ref = tf.nn.conv1d(input_data_ref, conv1_weight, stride=1, padding='SAME')
-    max_pool1_ref = tf.nn.pool(relu1, [max_pool_size_stem], strides=[max_pool_size_stem],
+    conv1_ref = tf.nn.conv1d(input_data_ref, conv1_ref_weight, stride=1, padding='SAME')
+    relu1_ref = tf.nn.relu(tf.nn.bias_add(conv1_ref, conv1_ref_bias))
+    max_pool1_ref = tf.nn.pool(relu1_ref, [max_pool_size_ref1], strides=[max_pool_size_stem],
             padding='SAME', pooling_type='MAX')
+
+    conv2_ref = tf.nn.conv1d(max_pool1_ref, conv2_ref_weight, stride=1, padding='SAME')
+    relu2_ref = tf.nn.relu(tf.nn.bias_add(conv2_ref, conv2_ref_bias))
+
+    conv3_ref = tf.nn.conv1d(relu2_ref, conv3_ref_weight, stride=1, padding='SAME')
+    relu3_ref = tf.nn.relu(tf.nn.bias_add(conv1_ref, conv1_ref_bias))
+    max_pool3_ref = tf.nn.pool(relu3_ref, [max_pool_size_ref2], strides=[max_pool_size_stem],
+            padding='SAME', pooling_type='MAX')
+
+    print(max_pool3_ref.shape)
+
+    #Concat layer between read depth data and ref gene data.
+    input_concat = tf.concat([max_pool1, max_pool3_ref],axis = 2)
 
 
     # Inception modules 1 to 6
@@ -222,9 +238,6 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger):
 
     fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias),alpha=0.001 ,name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
-
-    #fully_connected2 = tf.nn.selu(tf.add(tf.matmul(fully_connected1,full_hidden_weight), full_hidden_bias),name = "FullyConnectedHidden")
-    #fully_connected2 = tf.nn.dropout(fully_connected2, keep_prob=p_dropout)
 
     final_model_output = (tf.add(tf.matmul(fully_connected1,full2_weight), full2_bias))
     final_model_output = tf.reshape(final_model_output,[batch_size, 1, target_size//5], name="FullyConnected2")
