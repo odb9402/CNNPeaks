@@ -196,30 +196,24 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger):
     max_pool1 = tf.nn.pool(relu1, [max_pool_size_stem], strides=[max_pool_size_stem],
             padding='SAME', pooling_type='MAX')
 
-    print(max_pool1.shape)
-
     #Stem of ref gene data
     conv1_ref = tf.nn.conv1d(input_data_ref, conv1_ref_weight, stride=1, padding='SAME')
     relu1_ref = tf.nn.relu(tf.nn.bias_add(conv1_ref, conv1_ref_bias))
-    max_pool1_ref = tf.nn.pool(relu1_ref, [max_pool_size_ref1], strides=[max_pool_size_stem],
-            padding='SAME', pooling_type='MAX')
 
-    conv2_ref = tf.nn.conv1d(max_pool1_ref, conv2_ref_weight, stride=1, padding='SAME')
+    conv2_ref = tf.nn.conv1d(relu1_ref, conv2_ref_weight, stride=1, padding='SAME')
     relu2_ref = tf.nn.relu(tf.nn.bias_add(conv2_ref, conv2_ref_bias))
 
     conv3_ref = tf.nn.conv1d(relu2_ref, conv3_ref_weight, stride=1, padding='SAME')
-    relu3_ref = tf.nn.relu(tf.nn.bias_add(conv1_ref, conv1_ref_bias))
+    relu3_ref = tf.nn.relu(tf.nn.bias_add(conv3_ref, conv3_ref_bias))
     max_pool3_ref = tf.nn.pool(relu3_ref, [max_pool_size_ref2], strides=[max_pool_size_stem],
             padding='SAME', pooling_type='MAX')
 
-    print(max_pool3_ref.shape)
-
     #Concat layer between read depth data and ref gene data.
     input_concat = tf.concat([max_pool1, max_pool3_ref],axis = 2)
-
+    print(input_concat.shape)
 
     # Inception modules 1 to 6
-    concat1 = concatLayer_B(max_pool1, conv1a_weight, convMax1_weight, conv1b_weight,
+    concat1 = concatLayer_B(input_concat, conv1a_weight, convMax1_weight, conv1b_weight,
             convAvg1_weight,conv1a_bias, convMax1_bias, conv1b_bias, convAvg1_bias, max_pool_size1)
 
     concat2 = concatLayer_A(concat1, conv2a_weight, conv2b_weight, conv2a_bias, conv2b_bias, max_pool_size2)

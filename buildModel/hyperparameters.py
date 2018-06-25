@@ -16,7 +16,7 @@ max_pool_size_ref1 = 2
 max_pool_size_ref2 = 2
 max_pool_size_ref3 = 2
 
-conv1_features = 8
+conv1_features = 16
 
 conv1a_features = 16
 conv1b_features = 16
@@ -47,12 +47,12 @@ conv6a_features = 128
 conv6b_features = 128
 
 max_pool_size_stem = 2
-max_pool_size1 = 2
-max_pool_size2 = 2
+max_pool_size1 = 5
+max_pool_size2 = 3
 max_pool_size3 = 2
 max_pool_size4 = 2
 max_pool_size5 = 2
-max_pool_size6 = 5
+max_pool_size6 = 2
 
 fully_connected_size1 = 1000
 fully_connected_size2 = 300
