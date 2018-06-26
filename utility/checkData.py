@@ -9,15 +9,15 @@ def run(dir_name, logger, num_grid=8000):
     bam_files = glob.glob(PATH + '/*.bam')
     label_files = glob.glob(PATH + '/*.txt')
 
-    dir_list = []
-    for bam_file in bam_files:
-        dir_list.append(bam_file[:-4])
+    dir_list = os.listdir(PATH)
 
     for dir in dir_list:
-        logger.info("DIRECTORY (TARGET) : <" + dir + ">")
+        dir = PATH + '/' + dir
+        logger.info("DIRECTORY (TARGET) : <" + dir +">")
 
     input_list = {}
     for dir in dir_list:
+        dir = PATH + '/' + dir
         input_list[dir] = buildModel.extractChrClass(dir)
 
     train_data_list = []
@@ -25,10 +25,10 @@ def run(dir_name, logger, num_grid=8000):
     for dir in input_list:
         for chr in input_list[dir]:
             for cls in input_list[dir][chr]:
-                input_file_name = (dir + "/" + chr + "_" + cls + "_grid" + str(num_grid) + ".ct")
-                label_file_name = (dir + "/label_" + chr + "_" + cls + "_grid" + str(num_grid) + ".lb")
-                output_refGene_file = bam_file[:-4] + "/ref_" + str(chr) + "_" + str(cls) + "_grid" + str(
-                    num_grid) + ".ref"
+                input_file_name = "{}/{}_{}_grid{}.ct".format(dir, chr, cls, num_grid)
+                ref_file_name = "{}/ref_{}_{}_grid{}.ref".format(dir, chr, cls, num_grid)
+                label_file_name = "{}/label_{}_{}_grid{}.lb".format(dir, chr, cls, num_grid)
+
                 reads = (pd.read_csv(input_file_name))['readCount'].as_matrix().reshape(num_grid)
                 label = (pd.read_csv(label_file_name))['peak'].as_matrix().transpose()
                 label = buildModel.expandingPrediction(label)
@@ -41,4 +41,4 @@ def run(dir_name, logger, num_grid=8000):
                 if input("save(1) or delete(0)  ::") == '0':
                     os.remove(input_file_name)
                     os.remove(label_file_name)
-                    os.remove(output_refGene_file)
+                    os.remove(ref_file_name)
