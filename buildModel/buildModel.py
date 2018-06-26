@@ -132,7 +132,7 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
         rand_y = train_label_list[rand_index[0]][['peak']].as_matrix().transpose()
         rand_y = rand_y.reshape(label_data_train.shape)
 
-        p_n_rate = pnRate(rand_y)
+        p_n_rate = pnRate(rand_y) + 1
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref,\
                       p_dropout: 0.7, loss_weight: p_n_rate}
@@ -157,7 +157,7 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
             eval_y = test_label_list[eval_index[0]][['peak']].as_matrix().transpose()
             eval_y = (eval_y.reshape(label_data_eval.shape))
 
-            p_n_rate_eval = pnRate(rand_y)
+            p_n_rate_eval = pnRate(rand_y) + 1
 
             test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref, \
                          p_dropout: 1, loss_weight: p_n_rate_eval}
@@ -235,11 +235,11 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger):
 
     concat5 = concatLayer_A(concat4, conv5a_weight, conv5b_weight, conv5a_bias, conv5b_bias, max_pool_size5)
 
-    concat6 = concatLayer_A(concat5, conv6a_weight, conv6b_weight, conv6a_bias, conv6b_bias,max_pool_size6)
+    #concat6 = concatLayer_A(concat5, conv6a_weight, conv6b_weight, conv6a_bias, conv6b_bias,max_pool_size6)
 
-    final_conv_shape = concat6.get_shape().as_list()
+    final_conv_shape = concat5.get_shape().as_list()
     final_shape = final_conv_shape[1] * final_conv_shape[2]
-    flat_output = tf.reshape(concat6, [final_conv_shape[0] , final_shape])
+    flat_output = tf.reshape(concat5, [final_conv_shape[0] , final_shape])
 
     fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias),alpha=0.001 ,name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
