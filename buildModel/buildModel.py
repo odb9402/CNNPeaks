@@ -9,7 +9,7 @@ import random
 from .defineModel import *
 from .hyperparameters import *
 
-def run(dir_name, logger, num_grid=10000):
+def run(dir_name, logger, num_grid=0):
     """
     This is the main function to build convolution neural network model
     for peak prediction.
@@ -132,7 +132,7 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
         rand_y = train_label_list[rand_index[0]][['peak']].as_matrix().transpose()
         rand_y = rand_y.reshape(label_data_train.shape)
 
-        p_n_rate = pnRate(rand_y) + 1
+        p_n_rate = pnRate(rand_y)
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref,\
                       p_dropout: 0.7, loss_weight: p_n_rate}
@@ -157,7 +157,7 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
             eval_y = test_label_list[eval_index[0]][['peak']].as_matrix().transpose()
             eval_y = (eval_y.reshape(label_data_eval.shape))
 
-            p_n_rate_eval = pnRate(rand_y) + 1
+            p_n_rate_eval = pnRate(eval_y)
 
             test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref, \
                          p_dropout: 1, loss_weight: p_n_rate_eval}
@@ -224,20 +224,34 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger):
     print(input_concat.shape)
 
     # Inception modules 1 to 6
-    concat1 = concatLayer_B(input_concat, conv1a_weight, convMax1_weight, conv1b_weight,
-            convAvg1_weight,conv1a_bias, convMax1_bias, conv1b_bias, convAvg1_bias, max_pool_size1)
+    concat1 = concatLayer_C(input_concat, conv1a_weight, convMax1_weight, conv1b_weight,
+            convAvg1_weight, conv1c_weight, conv1a_bias, convMax1_bias, conv1b_bias, convAvg1_bias, conv1c_bias, max_pool_size1)
+    #concat1 = tf.nn.pool(concat1, [2], strides=[2], padding='SAME', pooling_type='MAX')
 
-    concat2 = concatLayer_A(concat1, conv2a_weight, conv2b_weight, conv2a_bias, conv2b_bias, max_pool_size2)
+    concat2 = concatLayer_B(concat1, conv2a_weight, convMax2_weight, conv2b_weight,
+            convAvg2_weight, conv2a_bias, convMax2_bias, conv2b_bias, convAvg2_bias, max_pool_size2)
+    concat2 = tf.nn.pool(concat2, [2], strides=[2], padding='SAME', pooling_type='MAX')
 
-    concat3 = concatLayer_A(concat2, conv3a_weight, conv3b_weight, conv3a_bias, conv3b_bias, max_pool_size3)
+    #concat3 = concatLayer_B(concat2, conv3a_weight, conv3b_weight, conv3a_bias, conv3b_bias, max_pool_size3)
+    concat3 = concatLayer_B(concat2, conv3a_weight, convMax3_weight, conv3b_weight,
+            convAvg3_weight, conv3a_bias, convMax3_bias, conv3b_bias, convAvg3_bias, max_pool_size3)
 
-    concat4 = concatLayer_A(concat3, conv4a_weight, conv4b_weight, conv4a_bias, conv4b_bias, max_pool_size4)
+    #concat4 = concatLayer_A(concat3, conv4a_weight, conv4b_weight, conv4a_bias, conv4b_bias, max_pool_size4)
+    concat4 = concatLayer_B(concat3, conv4a_weight, convMax4_weight, conv4b_weight,
+            convAvg4_weight, conv4a_bias, convMax4_bias, conv4b_bias, convAvg4_bias, max_pool_size4)
+    concat4 = tf.nn.pool(concat4, [2], strides=[2], padding='SAME', pooling_type='MAX')
 
-    concat5 = concatLayer_A(concat4, conv5a_weight, conv5b_weight, conv5a_bias, conv5b_bias, max_pool_size5)
+    concat5 = concatLayer_B(concat4, conv5a_weight, convMax5_weight, conv5b_weight,
+            convAvg5_weight, conv5a_bias, convMax5_bias, conv5b_bias, convAvg5_bias, 2)
 
-    #concat6 = concatLayer_A(concat5, conv6a_weight, conv6b_weight, conv6a_bias, conv6b_bias,max_pool_size6)
+    concat6 = concatLayer_B(concat5, conv6a_weight, convMax6_weight, conv6b_weight,
+            convAvg6_weight, conv6a_bias, convMax6_bias, conv6b_bias, convAvg6_bias, 2)
+    concat6 = tf.nn.pool(concat6, [2], strides=[2], padding='SAME', pooling_type='MAX')
 
-    final_conv_shape = concat5.get_shape().as_list()
+    concat7 = concatLayer_B(concat6, conv7a_weight, convMax7_weight, conv7b_weight,
+            convAvg7_weight, conv7a_bias, convMax7_bias, conv7b_bias, convAvg7_bias, 2)
+
+    final_conv_shape = concat7.get_shape().as_list()
     final_shape = final_conv_shape[1] * final_conv_shape[2]
     flat_output = tf.reshape(concat5, [final_conv_shape[0] , final_shape])
 
@@ -296,28 +310,78 @@ def concatLayer_B(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w,\
     :param pooling_size:
     :return:
     """
-    conv1 = tf.nn.conv1d(source_layer, conv1_w, stride=pooling_size, padding='SAME')
+    conv1 = tf.nn.conv1d(source_layer, conv1_w, stride=1, padding='SAME')
     relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_b))
+    print(relu1.shape)
 
-    conv2 = tf.nn.conv1d(source_layer, conv2_w, stride=pooling_size, padding='SAME')
+    conv2 = tf.nn.conv1d(source_layer, conv2_w, stride=1, padding='SAME')
     relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_b))
+    print(relu2.shape)
 
-    max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size],
+    max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[1],
             padding='SAME', pooling_type='MAX')
     conv_max = tf.nn.conv1d(max_pool, conv_max_w, stride=1, padding='SAME')
     relu_max = tf.nn.leaky_relu(tf.nn.bias_add(conv_max, conv_max_b))
+    print(relu_max.shape)
 
-    avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size],
+    avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[1],
             padding='SAME', pooling_type='AVG')
     conv_avg = tf.nn.conv1d(avg_pool, conv_avg_w, stride=1, padding='SAME')
     relu_avg = tf.nn.leaky_relu(tf.nn.bias_add(conv_avg, conv_avg_b))
+    print(relu_avg.shape)
 
-    concat = tf.concat([relu1, max_pool, relu2, avg_pool], axis=2)
+    concat = tf.concat([relu1, relu_max, relu2, relu_avg], axis=2)
     print(concat.shape)
     return concat
 
 
-def getAccuracy(logits, targets, num_grid=2000):
+def concatLayer_C(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_w,\
+                  conv1_b, conv_max_b, conv2_b, conv_avg_b, conv3_b, pooling_size):
+    """
+    Define concat layer which like Inception module.
+
+    :param source_layer:
+    :param conv1_w:
+    :param conv_max_w:
+    :param conv2_w:
+    :param conv_avg_w:
+    :param conv1_b:
+    :param conv_max_b:
+    :param conv2_b:
+    :param conv_avg_b:
+    :param pooling_size:
+    :return:
+    """
+    conv1 = tf.nn.conv1d(source_layer, conv1_w, stride=1, padding='SAME')
+    relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_b))
+    print(relu1.shape)
+
+    conv2 = tf.nn.conv1d(source_layer, conv2_w, stride=1, padding='SAME')
+    relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_b))
+    print(relu2.shape)
+
+    conv3 = tf.nn.conv1d(source_layer, conv3_w, stride=1, padding='SAME')
+    relu3 = tf.nn.relu(tf.nn.bias_add(conv3, conv3_b))
+    print(relu2.shape)
+
+    max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[1],
+            padding='SAME', pooling_type='MAX')
+    conv_max = tf.nn.conv1d(max_pool, conv_max_w, stride=1, padding='SAME')
+    relu_max = tf.nn.leaky_relu(tf.nn.bias_add(conv_max, conv_max_b))
+    print(relu_max.shape)
+
+    avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[1],
+            padding='SAME', pooling_type='AVG')
+    conv_avg = tf.nn.conv1d(avg_pool, conv_avg_w, stride=1, padding='SAME')
+    relu_avg = tf.nn.leaky_relu(tf.nn.bias_add(conv_avg, conv_avg_b))
+    print(relu_avg.shape)
+
+    concat = tf.concat([relu1, max_pool, relu2, avg_pool, relu3], axis=2)
+    print(concat.shape)
+    return concat
+
+
+def getAccuracy(logits, targets, num_grid=0):
     """
     Return accuracy of the result.
     Acc = ( TP + TF ) / ( TP + TF + FN + FF )
@@ -343,7 +407,7 @@ def getAccuracy(logits, targets, num_grid=2000):
     return correct_num / len(logits[0])
 
 
-def tpTnRate(logits, targets, num_grid=2000):
+def tpTnRate(logits, targets, num_grid=0):
     """
     Return true positive rate and true negative rate.
     By adjusting value from tpTnRate function, the loss function can get
@@ -380,7 +444,7 @@ def tpTnRate(logits, targets, num_grid=2000):
         return (TP_num/ P_num , TN_num/ N_num)
 
 
-def pnRate(targets, num_grid=2000):
+def pnRate(targets, num_grid=0):
     """
     Return the The ratio of Negative#/ Positive#.
     It will be used for weights of loss function to adjust
@@ -402,7 +466,7 @@ def pnRate(targets, num_grid=2000):
     return (len(targets[0][0]) - count) / count
 
 
-def classValueFilter(output_value, num_grid=2000):
+def classValueFilter(output_value, num_grid=0):
     """
     For output of final softmax layer,
 
@@ -558,7 +622,7 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
 
             show_y = test_label_list[show_index[0]][['peak']].as_matrix().transpose()
             show_y = show_y.reshape(label_data_eval.shape)
-            show_dict = {input_data_eval: show_x, label_data_eval: show_y, \
+            show_dict = {input_data_eval: show_x, input_ref_data_eval: show_ref, label_data_eval: show_y, \
                          p_dropout: 1, is_test: False}
             show_preds = sess.run(test_prediction, feed_dict=show_dict)
 
