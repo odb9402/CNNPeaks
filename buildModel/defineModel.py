@@ -162,16 +162,9 @@ full1_input_size = resulting_width * ( layer_full_width )
 full1_weight = tf.get_variable("Full_W1", shape=[full1_input_size, fully_connected_size1],initializer=tf.contrib.layers.xavier_initializer())
 full1_bias = tf.Variable(tf.truncated_normal([fully_connected_size1], stddev=0.1, dtype=tf.float32))
 
-#full_hidden_weight = tf.get_variable("Full_Hidden", shape=[fully_connected_size1, fully_connected_size2],
-#                                     initializer=tf.contrib.layers.xavier_initializer())
-#full_hidden_bias = tf.Variable(tf.truncated_normal([fully_connected_size2], stddev=0.1, dtype=tf.float32))
-
-
-############################ Output ###############################
 full2_weight = tf.get_variable("Full_W2", shape=[fully_connected_size1, fully_connected_size2], initializer=tf.contrib.layers.xavier_initializer())
 full2_bias = tf.Variable(tf.truncated_normal([fully_connected_size2], stddev=0.1, dtype=tf.float32))
 
-output_weight = tf.get_variable("Full_Output", shape=[fully_connected_size2, threshold_division], initializer=tf.contrib.layers.xavier_initializer())
+############################ Output ###############################
+output_weight = tf.get_variable("Full_Output", shape=[fully_connected_size1, threshold_division], initializer=tf.contrib.layers.xavier_initializer())
 output_bias = tf.Variable(tf.truncated_normal([threshold_division], stddev=0.1, dtype=tf.float32))
-
-

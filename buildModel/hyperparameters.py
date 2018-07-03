@@ -73,4 +73,4 @@ max_pool_size6 = 5
 fully_connected_size1 = 1000
 fully_connected_size2 = 1000
 
-threshold_division = 50
+threshold_division = 100

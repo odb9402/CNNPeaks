@@ -144,7 +144,7 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
         p_n_rate = pnRate(rand_y)
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref,\
-                      p_dropout: 0.7, loss_weight: p_n_rate}
+                      p_dropout: 0.5, loss_weight: p_n_rate}
 
         sess.run(train_step, feed_dict=train_dict)
         temp_train_loss, temp_train_preds = sess.run([loss, prediction],
@@ -289,18 +289,17 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger):
     final_shape = final_conv_shape[1] * final_conv_shape[2]
     flat_output = tf.reshape(concat7, [final_conv_shape[0] , final_shape])
 
-    fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias),alpha=0.0005 ,name="FullyConnected1")
+    fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias),alpha=0.005 ,name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
-    print(fully_connected1.shape)
+    print("Fully connected A :{}".format(fully_connceted1.shape))
 
-    fully_connected2 = tf.nn.leaky_relu(tf.add(tf.matmul(fully_connected1, full2_weight), full2_bias),alpha=0.0005 ,name="FullyConnected2")
+    fully_connected2 = tf.nn.leaky_relu(tf.add(tf.matmul(fully_connected1, full2_weight), full2_bias),alpha=0.005 ,name="FullyConnected2")
     fully_connected2 = tf.nn.dropout(fully_connected2, keep_prob=p_dropout)
-    print(fully_connected2.shape)
+    print("Fully connected B :{}".format(fully_connceted2.shape))
 
     final_threshold_output = tf.nn.relu(tf.add(tf.matmul(fully_connected2, output_weight), output_bias))
 
-    print(final_threshold_output.shape)
-
+    print("Output :{}".format(final_threshold_output.shape))
     return (final_threshold_output)
 
 
