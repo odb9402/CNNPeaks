@@ -11,7 +11,7 @@ CNN-peaks is a **Convolution Neural Network(CNN)** based ChIP-Seq peak calling s
 Install
 -------------
 
-CNN-peaks has no extra Installation. You can use it just by making clone of this repository.
+CNN-peaks has no extra Installation. You can use it just by making clone of this repository. However, if you do not have samtools which is higher than 1.7 version you should install it.
 
 Quick start
 -------------
@@ -23,7 +23,7 @@ An example of CNN-peaks command:
 > python CNNpeaks.py -mode buildModel -i testdir/
 > 
 > **peak calling with trained model**
-> python CNNpeaks.py -mode peakCall -i myOwnChIPSeq.bam -model 3
+> python CNNpeaks.py -mode peakCall -i myOwnChIPSeq.bam -model model/model3
 
 Labeled data
 --------------- 
