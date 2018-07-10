@@ -241,7 +241,8 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger):
     max_pool1_ref = tf.nn.pool(relu1_ref, [max_pool_size_stem], strides=[max_pool_size_stem],
             padding='SAME', pooling_type='MAX')
 
-    input_concat = max_pool1#tf.concat([max_pool1, max_pool1_ref],axis = 2)
+    #input_concat = max_pool1
+    input_concat = tf.concat([max_pool1, max_pool1_ref],axis = 2)
 
     # Inception modules 1 to 6
     concat1 = concatLayer_C(input_concat, conv1a_weight, convMax1_weight, conv1b_weight,
@@ -257,13 +258,13 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger):
 
     concat5 = concatLayer_A(concat4, conv5a_weight, conv5b_weight, conv5a_bias, conv5b_bias, 2)
 
-    concat6 = concatLayer_A(concat5, conv6a_weight, conv6b_weight, conv6a_bias, conv6b_bias, 2)
+    concat6 = concatLayer_A(concat5, conv6a_weight, conv6b_weight, conv6a_bias, conv6b_bias, 5)
 
-    concat7 = concatLayer_A(concat6, conv7a_weight, conv7b_weight, conv7a_bias, conv7b_bias, 5)
+    #concat7 = concatLayer_A(concat6, conv7a_weight, conv7b_weight, conv7a_bias, conv7b_bias, 5)
 
-    final_conv_shape = concat7.get_shape().as_list()
+    final_conv_shape = concat6.get_shape().as_list()
     final_shape = final_conv_shape[1] * final_conv_shape[2]
-    flat_output = tf.reshape(concat7, [final_conv_shape[0] , final_shape])
+    flat_output = tf.reshape(concat6, [final_conv_shape[0] , final_shape])
 
     fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias),alpha=0.0001 ,name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
@@ -456,7 +457,7 @@ def tpTnRate(logits, targets, num_grid=0):
             if logits[0][index] < class_threshold:
                 TN += 1
 
-    if P_num == 0.:
+    if P == 0.:
         return (-1., TN/N)
     else:
         return (TP/P , TN/N)

@@ -162,12 +162,14 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
 def makeRefGeneTags(refGene_df, start, end, stride, num_grid):
     """
 
-    :param refGene_df:
+    :param refGene_df: refGene_df has binary data indicating reference gene
+                       existence in specific region.
     :param start:
     :param end:
     :param stride:
     :param num_grid:
-    :return:
+    :return: pandas dataFrame with a specific region [ start, end ]
+             about 'stride' from 'refGene_df'
     """
 
     refGene_depth_list = []

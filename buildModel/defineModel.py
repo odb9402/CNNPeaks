@@ -29,12 +29,6 @@ input_ref_data_eval = tf.placeholder(tf.float32, shape=(batch_size, target_size,
 conv1_ref_weight = tf.get_variable("Conv_REF_1", shape=[4, 1, conv1_ref_features], initializer=tf.contrib.layers.xavier_initializer())
 conv1_ref_bias = tf.Variable(tf.zeros([conv1_ref_features], dtype=tf.float32))
 
-#conv2_ref_weight = tf.get_variable("Conv_REF_2", shape=[2, conv1_ref_features, conv2_ref_features], initializer=tf.contrib.layers.xavier_initializer())
-#conv2_ref_bias = tf.Variable(tf.zeros([conv2_ref_features], dtype=tf.float32))
-
-#conv3_ref_weight = tf.get_variable("Conv_REF_3", shape=[2, conv2_ref_features, conv3_ref_features], initializer=tf.contrib.layers.xavier_initializer())
-#conv3_ref_bias = tf.Variable(tf.zeros([conv3_ref_features], dtype=tf.float32))
-
 ############################ STEM Layer  ###############################
 conv1_weight = tf.get_variable("Conv_STEM1", shape=[4, 1, conv1_features], initializer=tf.contrib.layers.xavier_initializer())
 conv1_bias = tf.Variable(tf.zeros([conv1_features], dtype=tf.float32))
@@ -43,7 +37,7 @@ conv2_weight = tf.get_variable("Conv_STEM2", shape=[3, conv1_features, conv2_fea
 conv2_bias = tf.Variable(tf.zeros([conv2_features], dtype=tf.float32))
 
 ############################ Inception 1 ###############################
-layer1_width = conv2_features# + conv1_ref_features
+layer1_width = conv2_features + conv1_ref_features
 conv1a_weight = tf.get_variable("Conv_1A", shape=[5, layer1_width, conv1a_features], initializer=tf.contrib.layers.xavier_initializer())
 conv1a_bias = tf.Variable(tf.zeros([conv1a_features], dtype=tf.float32))
 conv1b_weight = tf.get_variable("Conv_1B", shape=[3, layer1_width, conv1b_features], initializer=tf.contrib.layers.xavier_initializer())
@@ -80,10 +74,10 @@ conv3a_weight = tf.get_variable("Conv_3A", shape=[4, layer3_width, conv3a_featur
 conv3a_bias = tf.Variable(tf.zeros([conv3a_features], dtype=tf.float32))
 conv3b_weight = tf.get_variable("Conv_3B", shape=[2, layer3_width, conv3b_features],initializer=tf.contrib.layers.xavier_initializer())
 conv3b_bias = tf.Variable(tf.zeros([conv3b_features], dtype=tf.float32))
-convMax3_weight = tf.get_variable("Conv_max_W3", shape=[1, layer3_width, convMax3_features], initializer=tf.contrib.layers.xavier_initializer())
-convMax3_bias = tf.Variable(tf.zeros([convMax3_features], dtype=tf.float32))
-convAvg3_weight = tf.get_variable("Conv_avg_W3", shape=[1, layer3_width, convAvg3_features], initializer=tf.contrib.layers.xavier_initializer())
-convAvg3_bias = tf.Variable(tf.zeros([convAvg3_features], dtype=tf.float32))
+#convMax3_weight = tf.get_variable("Conv_max_W3", shape=[1, layer3_width, convMax3_features], initializer=tf.contrib.layers.xavier_initializer())
+#convMax3_bias = tf.Variable(tf.zeros([convMax3_features], dtype=tf.float32))
+#convAvg3_weight = tf.get_variable("Conv_avg_W3", shape=[1, layer3_width, convAvg3_features], initializer=tf.contrib.layers.xavier_initializer())
+#convAvg3_bias = tf.Variable(tf.zeros([convAvg3_features], dtype=tf.float32))
 
 
 
@@ -94,10 +88,10 @@ conv4a_weight = tf.get_variable("Conv_4A", shape=[4, layer4_width, conv4a_featur
 conv4a_bias = tf.Variable(tf.zeros([conv4a_features], dtype=tf.float32))
 conv4b_weight = tf.get_variable("Conv_4B", shape=[2, layer4_width, conv4b_features], initializer=tf.contrib.layers.xavier_initializer())
 conv4b_bias = tf.Variable(tf.zeros([conv4b_features], dtype=tf.float32))
-convMax4_weight = tf.get_variable("Conv_max_W4", shape=[1, layer4_width, convMax4_features], initializer=tf.contrib.layers.xavier_initializer())
-convMax4_bias = tf.Variable(tf.zeros([convMax4_features], dtype=tf.float32))
-convAvg4_weight = tf.get_variable("Conv_avg_W4", shape=[1, layer4_width, convAvg4_features], initializer=tf.contrib.layers.xavier_initializer())
-convAvg4_bias = tf.Variable(tf.zeros([convAvg4_features], dtype=tf.float32))
+#convMax4_weight = tf.get_variable("Conv_max_W4", shape=[1, layer4_width, convMax4_features], initializer=tf.contrib.layers.xavier_initializer())
+#convMax4_bias = tf.Variable(tf.zeros([convMax4_features], dtype=tf.float32))
+#convAvg4_weight = tf.get_variable("Conv_avg_W4", shape=[1, layer4_width, convAvg4_features], initializer=tf.contrib.layers.xavier_initializer())
+#convAvg4_bias = tf.Variable(tf.zeros([convAvg4_features], dtype=tf.float32))
 
 
 ############################ Inception 5 ###############################
@@ -107,10 +101,10 @@ conv5a_weight = tf.get_variable("Conv_5A", shape=[6, layer5_width, conv5a_featur
 conv5a_bias = tf.Variable(tf.zeros([conv5a_features], dtype=tf.float32))
 conv5b_weight = tf.get_variable("Conv_5B", shape=[3, layer5_width, conv5b_features],initializer=tf.contrib.layers.xavier_initializer())
 conv5b_bias = tf.Variable(tf.zeros([conv5b_features], dtype=tf.float32))
-convMax5_weight = tf.get_variable("Conv_max_W5", shape=[1, layer5_width, convMax5_features],initializer=tf.contrib.layers.xavier_initializer())
-convMax5_bias = tf.Variable(tf.zeros([convMax5_features], dtype=tf.float32))
-convAvg5_weight = tf.get_variable("Conv_avg_W5", shape=[1, layer5_width, convAvg5_features],initializer=tf.contrib.layers.xavier_initializer())
-convAvg5_bias = tf.Variable(tf.zeros([convAvg5_features], dtype=tf.float32))
+#convMax5_weight = tf.get_variable("Conv_max_W5", shape=[1, layer5_width, convMax5_features],initializer=tf.contrib.layers.xavier_initializer())
+#convMax5_bias = tf.Variable(tf.zeros([convMax5_features], dtype=tf.float32))
+#convAvg5_weight = tf.get_variable("Conv_avg_W5", shape=[1, layer5_width, convAvg5_features],initializer=tf.contrib.layers.xavier_initializer())
+#convAvg5_bias = tf.Variable(tf.zeros([convAvg5_features], dtype=tf.float32))
 
 
 ############################ Inception 6  ###############################
@@ -120,10 +114,10 @@ conv6a_weight = tf.get_variable("Conv_6A", shape=[4, layer6_width, conv6a_featur
 conv6a_bias = tf.Variable(tf.zeros([conv6a_features], dtype=tf.float32))
 conv6b_weight = tf.get_variable("Conv_6B", shape=[2, layer6_width, conv6b_features],initializer=tf.contrib.layers.xavier_initializer())
 conv6b_bias = tf.Variable(tf.zeros([conv6b_features], dtype=tf.float32))
-convMax6_weight = tf.get_variable("Conv_max_W6", shape=[1, layer6_width, convMax6_features],initializer=tf.contrib.layers.xavier_initializer())
-convMax6_bias = tf.Variable(tf.zeros([convMax6_features], dtype=tf.float32))
-convAvg6_weight = tf.get_variable("Conv_avg_W6", shape=[1, layer6_width, convAvg6_features],initializer=tf.contrib.layers.xavier_initializer())
-convAvg6_bias = tf.Variable(tf.zeros([convAvg6_features], dtype=tf.float32))
+#convMax6_weight = tf.get_variable("Conv_max_W6", shape=[1, layer6_width, convMax6_features],initializer=tf.contrib.layers.xavier_initializer())
+#convMax6_bias = tf.Variable(tf.zeros([convMax6_features], dtype=tf.float32))
+#convAvg6_weight = tf.get_variable("Conv_avg_W6", shape=[1, layer6_width, convAvg6_features],initializer=tf.contrib.layers.xavier_initializer())
+#convAvg6_bias = tf.Variable(tf.zeros([convAvg6_features], dtype=tf.float32))
 
 
 ############################ Inception 7 ###############################
@@ -133,10 +127,10 @@ conv7a_weight = tf.get_variable("Conv_7A", shape=[8, layer7_width, conv7a_featur
 conv7a_bias = tf.Variable(tf.zeros([conv7a_features], dtype=tf.float32))
 conv7b_weight = tf.get_variable("Conv_7B", shape=[5, layer7_width, conv7b_features],initializer=tf.contrib.layers.xavier_initializer())
 conv7b_bias = tf.Variable(tf.zeros([conv7b_features], dtype=tf.float32))
-convMax7_weight = tf.get_variable("Conv_max_W7", shape=[1, layer7_width, convMax7_features],initializer=tf.contrib.layers.xavier_initializer())
-convMax7_bias = tf.Variable(tf.zeros([convMax7_features], dtype=tf.float32))
-convAvg7_weight = tf.get_variable("Conv_avg_W7", shape=[1, layer7_width, convAvg7_features],initializer=tf.contrib.layers.xavier_initializer())
-convAvg7_bias = tf.Variable(tf.zeros([convAvg7_features], dtype=tf.float32))
+#convMax7_weight = tf.get_variable("Conv_max_W7", shape=[1, layer7_width, convMax7_features],initializer=tf.contrib.layers.xavier_initializer())
+#convMax7_bias = tf.Variable(tf.zeros([convMax7_features], dtype=tf.float32))
+#convAvg7_weight = tf.get_variable("Conv_avg_W7", shape=[1, layer7_width, convAvg7_features],initializer=tf.contrib.layers.xavier_initializer())
+#convAvg7_bias = tf.Variable(tf.zeros([convAvg7_features], dtype=tf.float32))
 
 
 ############################ Inception 8 ###############################
@@ -146,16 +140,16 @@ conv8a_weight = tf.get_variable("Conv_8A", shape=[4, layer8_width, conv8a_featur
 conv8a_bias = tf.Variable(tf.zeros([conv8a_features], dtype=tf.float32))
 conv8b_weight = tf.get_variable("Conv_8B", shape=[2, layer8_width, conv8b_features],initializer=tf.contrib.layers.xavier_initializer())
 conv8b_bias = tf.Variable(tf.zeros([conv8b_features], dtype=tf.float32))
-convMax8_weight = tf.get_variable("Conv_max_W8", shape=[1, layer8_width, convMax8_features],initializer=tf.contrib.layers.xavier_initializer())
-convMax8_bias = tf.Variable(tf.zeros([convMax8_features], dtype=tf.float32))
-convAvg8_weight = tf.get_variable("Conv_avg_W8", shape=[1, layer8_width, convAvg8_features],initializer=tf.contrib.layers.xavier_initializer())
-convAvg8_bias = tf.Variable(tf.zeros([convAvg8_features], dtype=tf.float32))
+#convMax8_weight = tf.get_variable("Conv_max_W8", shape=[1, layer8_width, convMax8_features],initializer=tf.contrib.layers.xavier_initializer())
+#convMax8_bias = tf.Variable(tf.zeros([convMax8_features], dtype=tf.float32))
+#convAvg8_weight = tf.get_variable("Conv_avg_W8", shape=[1, layer8_width, convAvg8_features],initializer=tf.contrib.layers.xavier_initializer())
+#convAvg8_bias = tf.Variable(tf.zeros([convAvg8_features], dtype=tf.float32))
 
 
 ############################ Fully Connected ###############################
-layer_full_width = conv7a_features + conv7b_features + (layer7_width * 2)
+layer_full_width = conv6a_features + conv6b_features + (layer6_width * 2)
 #layer_full_width = conv7a_features + conv7b_features + convMax7_features + convAvg7_features
-resulting_width = 25#target_size // (max_pool_size_stem * max_pool_size1 * max_pool_size2 * max_pool_size3* max_pool_size4
+resulting_width = 50#target_size // (max_pool_size_stem * max_pool_size1 * max_pool_size2 * max_pool_size3* max_pool_size4
                                  # * max_pool_size5  )#* max_pool_size6 )
 
 full1_input_size = resulting_width * ( layer_full_width )

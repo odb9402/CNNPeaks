@@ -32,7 +32,7 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=1):
     #tf.reset_default_graph()
 
     input_data = tf.placeholder(tf.float32, shape=(batch_size, num_grid, 1), name="testData")
-    input_data_ref = tf.placeholder(tf.float32, shape=(batch_size, num_grid, 1), name="testDataRef")
+    input_data_ref = tf.placeholder(tf.float32, shape=(batch_size, num_grid, 1), name="TestRefData")
 
     sess = tf.Session()
     saver = tf.train.Saver()
@@ -55,24 +55,17 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=1):
 
     input_bam = os.path.abspath(input_bam)
 
-    #processes = []
-
-    MAX_CORE = cpu_count()
-
     bam_alignment = pysam.AlignmentFile(input_bam , 'rb', index_filename=input_bam + '.bai')
+    chr_lengths = bam_alignment.lengths
 
     for chr_no in range(22):
+        ref_data_df = pd.read_table("geneRef/{}.bed".format(chr), names=['chr','start','end'] , header=None, usecols=[0,1,2])
         logger.info("Peak calling in chromosome chr{}:".format(chr_no + 1))
-        call_peak(chr_no, bam_alignment, input_bam, input_data, logger, num_grid, prediction, sess, window_size)
-        #process = Process(target=call_peak,\
-        #                  args=(chr_no, input_bam, input_data, logger, num_grid, prediction, sess, window_size,))
-        #preProcessing.parallel_execution(MAX_CORE-1, process, processes)
-
-    #for proc in processes:
-    #    proc.join()
+        call_peak(chr_no, chr_lengths, input_bam, ref_data_df, input_data, input_data_ref,
+                logger, num_grid, prediction, sess, window_size)
 
 
-def call_peak(chr_no, bam_alignment, file_name, input_data, logger, num_grid, prediction, sess, window_size):
+def call_peak(chr_no, chr_lengths, file_name, ref_data_df, input_data, input_data_ref, logger, num_grid, prediction, sess, window_size):
     """
 
     :param chr_no: Chromosome number of regions
@@ -87,7 +80,6 @@ def call_peak(chr_no, bam_alignment, file_name, input_data, logger, num_grid, pr
     :return:
     """
     window_count = 1
-    bam_length = bam_alignment.lengths
     stride = window_size / num_grid
     eval_counter = 0
     output_file_name = "{}.bed".format(file_name.rsplit('.')[0])
@@ -98,21 +90,20 @@ def call_peak(chr_no, bam_alignment, file_name, input_data, logger, num_grid, pr
             bar = pgb.ProgressBar(max_value=100)
             logger.info("Reading . . . :[chr{}:{}-{}]".format(chr_no+1,window_count,window_count+window_size*100))
 
-        if window_count + window_size > bam_length[chr_no]:
+        if window_count + window_size > chr_lengths[chr_no]:
             logger.info("Reading . . . :[chr{}:{}-{}]".format(chr_no+1,window_count-(window_size*(eval_counter -1)), window_count + window_size))
             writeBed(output_file_name, peaks, logger, printout=True)
             break
 
         read_count_by_grid = generateReadcounts(input_data, window_count, window_count + window_size, chr_no, file_name, num_grid)
+        ref_data_by_grid = generateRefcounts(input_data_ref, window_count, window_count + window_size, chr_no, file_name, num_grid)
 
-        result_dict = {input_data: read_count_by_grid, p_dropout: 1, is_test: True}
+        result_dict = {input_data: read_count_by_grid, input_data_ref: ref_data_by_grid, p_dropout: 1, is_test: True}
         preds = sess.run(prediction, feed_dict=result_dict)
         class_value_prediction = buildModel.classValueFilter(preds)
 
         peaks += predictionToBedString(class_value_prediction, "chr" + str(chr_no + 1), window_count, stride,
                               num_grid, logger, read_count_by_grid.reshape(num_grid).tolist())
-
-        #visualizeEachLayers(input_bam, read_count_by_grid, sess, logger)
 
         bar.update(eval_counter)
         eval_counter += 1
@@ -143,6 +134,16 @@ def generateReadcounts(input_data, region_start, region_end, chr_no, file_name, 
     read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
 
     return read_count_by_grid
+
+
+def generateRefcounts(input_data_ref, region_start, region_end, chr_no, refGene_df, num_grid):
+    stride = (region_end - (region_start + 1)) / num_grid
+
+    sub_refGene_df = preProcessing.makeRefGeneTags(refGene_df[(refGene_df['start'] > region_start)&(refGene_df['end'] < region_end)],
+            region_start, region_end, stride, num_grid)
+
+    print(sub_refGene_df.values)
+    exit()
 
 
 def predictionToBedString(prediction, chromosome, region_start, stride,
