@@ -35,9 +35,8 @@ def run(dir_name, logger, num_grid=0):
     model_output = peakPredictConvModel(input_data_train, input_ref_data_train, logger)
     test_model_output = peakPredictConvModel(input_data_eval, input_ref_data_eval, logger)
 
-    prediction = (generateOutput(model_output, input_data_train, div=threshold_division))#tf.nn.sigmoid(model_output)
-
-    test_prediction = (generateOutput(test_model_output, input_data_eval, div=threshold_division))#tf.nn.sigmoid(test_model_output)
+    prediction = (generateOutput(model_output, input_data_train, div=threshold_division))
+    test_prediction = (generateOutput(test_model_output, input_data_eval, div=threshold_division))
 
     loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train\
             ,logits=prediction, pos_weight=loss_weight))
@@ -62,7 +61,7 @@ def run(dir_name, logger, num_grid=0):
                 train_label_list.append(pd.read_csv(label_file_name))
 
 
-    K_fold = 10
+    K_fold = 5
     test_data_list, test_label_list, test_ref_list = splitTrainingData(train_data_list, train_label_list, train_ref_list, Kfold=K_fold)
 
     if not os.path.isdir(os.getcwd() + "/models"):
@@ -144,7 +143,7 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
         p_n_rate = pnRate(rand_y)
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref,\
-                      p_dropout: 0.5, loss_weight: p_n_rate}
+                      p_dropout: 0.6, loss_weight: p_n_rate}
 
         sess.run(train_step, feed_dict=train_dict)
         temp_train_loss, temp_train_preds = sess.run([loss, prediction],
@@ -242,62 +241,39 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger):
     max_pool1_ref = tf.nn.pool(relu1_ref, [max_pool_size_stem], strides=[max_pool_size_stem],
             padding='SAME', pooling_type='MAX')
 
-    #conv2_ref = tf.nn.conv1d(relu1_ref, conv2_ref_weight, stride=1, padding='SAME')
-    #relu2_ref = tf.nn.relu(tf.nn.bias_add(conv2_ref, conv2_ref_bias))
-
-    #conv3_ref = tf.nn.conv1d(relu2_ref, conv3_ref_weight, stride=1, padding='SAME')
-    #relu3_ref = tf.nn.relu(tf.nn.bias_add(conv3_ref, conv3_ref_bias))
-    #max_pool3_ref = tf.nn.pool(relu3_ref, [max_pool_size_ref2], strides=[max_pool_size_stem],
-    #        padding='SAME', pooling_type='MAX')
-
-    #Concat layer between read depth data and ref gene data.
     input_concat = max_pool1#tf.concat([max_pool1, max_pool1_ref],axis = 2)
 
     # Inception modules 1 to 6
     concat1 = concatLayer_C(input_concat, conv1a_weight, convMax1_weight, conv1b_weight,
             convAvg1_weight, conv1c_weight, conv1a_bias, convMax1_bias, conv1b_bias, convAvg1_bias, conv1c_bias, 3)
-    #concat1 = tf.nn.pool(concat1, [2], strides=[2], padding='SAME', pooling_type='MAX')
 
-    #concat2 = concatLayer_A(concat1, conv2a_weight, conv2b_weight, conv2a_bias, conv2b_bias, 3)
     concat2 = concatLayer_C(concat1, conv2a_weight, convMax2_weight, conv2b_weight,
             convAvg2_weight, conv2c_weight, conv2a_bias, convMax2_bias, conv2b_bias, convAvg2_bias, conv2c_bias, max_pool_size2)
     concat2 = tf.nn.pool(concat2, [3], strides=[3], padding='SAME', pooling_type='AVG')
 
     concat3 = concatLayer_A(concat2, conv3a_weight, conv3b_weight, conv3a_bias, conv3b_bias, 2)
-    #concat3 = concatLayer_B(concat2, conv3a_weight, convMax3_weight, conv3b_weight,
-    #        convAvg3_weight, conv3a_bias, convMax3_bias, conv3b_bias, convAvg3_bias, max_pool_size3)
 
     concat4 = concatLayer_A(concat3, conv4a_weight, conv4b_weight, conv4a_bias, conv4b_bias, 2)
-    #concat4 = concatLayer_B(concat3, conv4a_weight, convMax4_weight, conv4b_weight,
-    #        convAvg4_weight, conv4a_bias, convMax4_bias, conv4b_bias, convAvg4_bias, max_pool_size4)
-    #concat4 = tf.nn.pool(concat4, [2], strides=[2], padding='SAME', pooling_type='MAX')
 
     concat5 = concatLayer_A(concat4, conv5a_weight, conv5b_weight, conv5a_bias, conv5b_bias, 2)
-    #concat5 = concatLayer_B(concat4, conv5a_weight, convMax5_weight, conv5b_weight,
-    #        convAvg5_weight, conv5a_bias, convMax5_bias, conv5b_bias, convAvg5_bias, 2)
 
     concat6 = concatLayer_A(concat5, conv6a_weight, conv6b_weight, conv6a_bias, conv6b_bias, 2)
-    #concat6 = concatLayer_B(concat5, conv6a_weight, convMax6_weight, conv6b_weight,
-    #        convAvg6_weight, conv6a_bias, convMax6_bias, conv6b_bias, convAvg6_bias, 2)
-    #concat6 = tf.nn.pool(concat6, [2], strides=[2], padding='SAME', pooling_type='MAX')
 
     concat7 = concatLayer_A(concat6, conv7a_weight, conv7b_weight, conv7a_bias, conv7b_bias, 5)
-    #concat7 = concatLayer_B(concat6, conv7a_weight, convMax7_weight, conv7b_weight,
-    #        convAvg7_weight, conv7a_bias, convMax7_bias, conv7b_bias, convAvg7_bias, 2)
 
     final_conv_shape = concat7.get_shape().as_list()
     final_shape = final_conv_shape[1] * final_conv_shape[2]
     flat_output = tf.reshape(concat7, [final_conv_shape[0] , final_shape])
 
-    fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias),alpha=0.005 ,name="FullyConnected1")
+    fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias),alpha=0.0001 ,name="FullyConnected1")
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
-    print("Fully connected A :{}".format(fully_connceted1.shape))
+    print("Fully connected A :{}".format(fully_connected1.shape))
 
-    fully_connected2 = tf.nn.leaky_relu(tf.add(tf.matmul(fully_connected1, full2_weight), full2_bias),alpha=0.005 ,name="FullyConnected2")
+    fully_connected2 = tf.nn.leaky_relu(tf.add(tf.matmul(fully_connected1, full2_weight), full2_bias),alpha=0.0001 ,name="FullyConnected2")
     fully_connected2 = tf.nn.dropout(fully_connected2, keep_prob=p_dropout)
-    print("Fully connected B :{}".format(fully_connceted2.shape))
+    print("Fully connected B :{}".format(fully_connected2.shape))
 
-    final_threshold_output = tf.nn.relu(tf.add(tf.matmul(fully_connected2, output_weight), output_bias))
+    final_threshold_output = (tf.add(tf.matmul(fully_connected2, output_weight), output_bias))
 
     print("Output :{}".format(final_threshold_output.shape))
     return (final_threshold_output)
@@ -464,26 +440,26 @@ def tpTnRate(logits, targets, num_grid=0):
     logits = logits.reshape(1,num_grid)
     targets = targets.reshape(1,num_grid)
 
-    P_num = 0.
-    TP_num = 0.
+    P = 0.
+    TP = 0.
 
-    N_num = 0.
-    TN_num = 0.
+    N = 0.
+    TN = 0.
 
     for index in range(len(logits[0])):
         if targets[0][index] > 0:
-            P_num += 1
+            P += 1
             if logits[0][index] >= class_threshold:
-                TP_num += 1
+                TP += 1
         else:
-            N_num += 1
+            N += 1
             if logits[0][index] < class_threshold:
-                TN_num += 1
+                TN += 1
 
     if P_num == 0.:
-        return (-1., TN_num/N_num)
+        return (-1., TN/N)
     else:
-        return (TP_num/ P_num , TN_num/ N_num)
+        return (TP/P , TN/N)
 
 
 def pnRate(targets, num_grid=0):
@@ -591,7 +567,7 @@ def splitTrainingData(data_list, label_list, ref_list, Kfold=4):
     return test_data, test_label, test_ref
 
 
-def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss, K_fold =""):
+def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss,K_fold =""):
     """
 
     :param eval_every:
@@ -604,8 +580,8 @@ def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train
     eval_indices = range(0, generations, eval_every)
 
     plt.plot(eval_indices, train_loss, 'k-')
-    plt.axis([0,generations,0,10])
-    plt.title('L1 Loss per generation')
+    plt.axis([0,generations,0,100])
+    plt.title('Cross entropy Loss per generation')
     plt.xlabel('Generation')
     plt.ylabel('Loss')
     plt.show()
@@ -682,13 +658,14 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             show_ref = show_ref.reshape(input_data_eval.shape)
 
             show_y = test_label_list[show_index[0]][['peak']].as_matrix().transpose()
-            show_y = show_y.reshape(label_data_eval.shape)
+            show_y = np.repeat(show_y, 5)
+            show_y = show_y.reshape(label_data_train.shape)
             show_dict = {input_data_eval: show_x, input_ref_data_eval: show_ref, label_data_eval: show_y, \
                          p_dropout: 1, is_test: False}
             show_preds = sess.run(test_prediction, feed_dict=show_dict)
 
-            show_preds = expandingPrediction(classValueFilter(show_preds, num_grid))
-            show_y = expandingPrediction(classValueFilter(show_y, num_grid))
+            show_preds = (classValueFilter(show_preds, num_grid))
+            show_y = (classValueFilter(show_y, num_grid))
 
             for index in range(len(show_preds)):
                 if show_preds[index] > 0:
