@@ -59,7 +59,7 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=1):
     chr_lengths = bam_alignment.lengths
 
     for chr_no in range(22):
-        ref_data_df = pd.read_table("geneRef/{}.bed".format(chr), names=['chr','start','end'] , header=None, usecols=[0,1,2])
+        ref_data_df = pd.read_table("geneRef/chr{}.bed".format(chr_no + 1), names=['chr','start','end'] , header=None, usecols=[0,1,2])
         logger.info("Peak calling in chromosome chr{}:".format(chr_no + 1))
         call_peak(chr_no, chr_lengths, input_bam, ref_data_df, input_data, input_data_ref,
                 logger, num_grid, prediction, sess, window_size)
@@ -96,7 +96,7 @@ def call_peak(chr_no, chr_lengths, file_name, ref_data_df, input_data, input_dat
             break
 
         read_count_by_grid = generateReadcounts(input_data, window_count, window_count + window_size, chr_no, file_name, num_grid)
-        ref_data_by_grid = generateRefcounts(input_data_ref, window_count, window_count + window_size, chr_no, file_name, num_grid)
+        ref_data_by_grid = generateRefcounts(input_data_ref, window_count, window_count + window_size, chr_no, ref_data_df, num_grid)
 
         result_dict = {input_data: read_count_by_grid, input_data_ref: ref_data_by_grid, p_dropout: 1, is_test: True}
         preds = sess.run(prediction, feed_dict=result_dict)
@@ -139,11 +139,13 @@ def generateReadcounts(input_data, region_start, region_end, chr_no, file_name, 
 def generateRefcounts(input_data_ref, region_start, region_end, chr_no, refGene_df, num_grid):
     stride = (region_end - (region_start + 1)) / num_grid
 
-    sub_refGene_df = preProcessing.makeRefGeneTags(refGene_df[(refGene_df['start'] > region_start)&(refGene_df['end'] < region_end)],
+    sub_refGene = preProcessing.makeRefGeneTags(refGene_df[(refGene_df['start'] > region_start)&(refGene_df['end'] < region_end)],
             region_start, region_end, stride, num_grid)
 
-    print(sub_refGene_df.values)
-    exit()
+    sub_refGene = np.array(sub_refGene, dtype=float)
+    sub_refGene = sub_refGene.reshape(input_data_ref.shape)
+
+    return sub_refGene
 
 
 def predictionToBedString(prediction, chromosome, region_start, stride,
