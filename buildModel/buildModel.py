@@ -61,7 +61,7 @@ def run(dir_name, logger, num_grid=0):
                 train_label_list.append(pd.read_csv(label_file_name))
 
 
-    K_fold = 5
+    K_fold = 10
     test_data_list, test_label_list, test_ref_list = splitTrainingData(train_data_list, train_label_list, train_ref_list, Kfold=K_fold)
 
     if not os.path.isdir(os.getcwd() + "/models"):

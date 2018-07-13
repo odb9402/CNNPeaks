@@ -33,7 +33,7 @@ conv1_ref_bias = tf.Variable(tf.zeros([conv1_ref_features], dtype=tf.float32))
 conv1_weight = tf.get_variable("Conv_STEM1", shape=[4, 1, conv1_features], initializer=tf.contrib.layers.xavier_initializer())
 conv1_bias = tf.Variable(tf.zeros([conv1_features], dtype=tf.float32))
 
-conv2_weight = tf.get_variable("Conv_STEM2", shape=[3, conv1_features, conv2_features], initializer=tf.contrib.layers.xavier_initializer())
+conv2_weight = tf.get_variable("Conv_STEM2", shape=[2, conv1_features, conv2_features], initializer=tf.contrib.layers.xavier_initializer())
 conv2_bias = tf.Variable(tf.zeros([conv2_features], dtype=tf.float32))
 
 ############################ Inception 1 ###############################
