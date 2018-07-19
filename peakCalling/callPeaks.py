@@ -37,6 +37,7 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=1):
     sess = tf.Session()
     saver = tf.train.Saver()
     saver.restore(sess, os.getcwd() + "/models/model{}.ckpt".format(model_num))
+    logger.info("{}` th model will be used during peak calling. . . ".format(model_num))
 
     model_output = buildModel.peakPredictConvModel(input_data, input_data_ref, logger)
     prediction = buildModel.generateOutput(model_output, input_data, div=threshold_division)

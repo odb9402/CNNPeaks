@@ -12,8 +12,6 @@ is_test = tf.placeholder(tf.bool)
 p_dropout = tf.placeholder(tf.float32)
 loss_weight = tf.placeholder(tf.float32)
 
-
-
 ############################### INPUT ##################################
 input_data_train = tf.placeholder(tf.float32, shape=(batch_size, target_size, 1), name="trainingData")
 input_data_eval = tf.placeholder(tf.float32, shape=(batch_size, target_size, 1), name="testData")
