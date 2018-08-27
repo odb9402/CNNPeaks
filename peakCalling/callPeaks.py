@@ -150,7 +150,7 @@ def generateRefcounts(input_data_ref, region_start, region_end, chr_no, refGene_
 
 
 def predictionToBedString(prediction, chromosome, region_start, stride,
-        num_grid,logger, reads, min_peak_size=10, max_peak_num=20):
+        num_grid,logger, reads, min_peak_size=10, max_peak_num=100):
     """
     Python list "prediction" which has binary values will will be changed
     as bed-file string. There are two conditions to accept as peak for each
@@ -175,28 +175,26 @@ def predictionToBedString(prediction, chromosome, region_start, stride,
             peak_size += 1
         else:
             if peak_size is not 0:
-                # Condition 2: peak size should be higher than min_peak_size
+                # Condition 1: peak size should be higher than min_peak_size.
                 if peak_size > min_peak_size:
                     end_point = region_start + ( stride * step )
                     start_point = end_point - ( peak_size * stride )
 
+                    min_depth = np.amin(reads[step - peak_size : step])
                     avg_depth = np.mean(reads[step - peak_size : step])
+                    max_depth = np.amax(reads[step - peak_size : step])
 
-                    peaks.append("{}\t{}\t{}\t{}\t{}\t{}\n".format(chromosome, int(start_point), int(end_point),
-                        "{}_{:5}".format(chromosome,random.randint(0,100000)), avg_depth, '.'))
+                    peaks.append("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(chromosome, int(start_point), int(end_point), "{}_{:5}".format(chromosome,random.randint(0,100000)), min_depth, avg_depth, max_depth))
                     num_peaks_in_window += 1
 
                 peak_size = 0
 
+    # Condition 2 : The number of peaks must be lower than max_peak_num.
     if len(peaks) > max_peak_num:
         return []
     else:
         num_peaks += num_peaks_in_window
         return peaks
-    #if peak_switch is True:
-    #    plt.plot(prediction, 'r.')
-    #    plt.plot(reads)
-    #    plt.show()
 
 
 def writeBed(output_file, peaks, logger, printout=False):
@@ -214,10 +212,6 @@ def writeBed(output_file, peaks, logger, printout=False):
         bed_file.write(peak)
         if printout == True:
             logger.info("{}".format(peak[:-1]))
-
-
-def removeCentromere():
-    pass
 
 
 def savePatternFig(dir_name, layer_0, feature, wide, name):

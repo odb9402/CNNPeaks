@@ -2,9 +2,9 @@ class_threshold = 0.5
 
 batch_size = 1
 evaluation_size = 1
-generations = 20000
-eval_every = 20
-learning_rate = 0.005
+generations = 15000
+eval_every = 50
+learning_rate = 0.002
 target_size = 12000
 
 conv1_ref_features = 4
@@ -70,4 +70,4 @@ max_pool_size6 = 5
 fully_connected_size1 = 1000
 fully_connected_size2 = 1000
 
-threshold_division = 80
+threshold_division = 500

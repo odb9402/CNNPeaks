@@ -9,7 +9,7 @@ import random
 from .defineModel import *
 from .hyperparameters import *
 
-def run(dir_name, logger, num_grid=0):
+def run(dir_name, logger, num_grid=0, K_fold_in=10):
     """
     This is the main function to build convolution neural network model
     for peak prediction.
@@ -45,7 +45,7 @@ def run(dir_name, logger, num_grid=0):
     train_step = optimizer.minimize(loss)
 
 
-    ###################### Training start with cross validation ##########################################
+    #################### Training start with cross validation ##################################
     train_data_list = []
     train_ref_list = []
     train_label_list = []
@@ -61,7 +61,7 @@ def run(dir_name, logger, num_grid=0):
                 train_label_list.append(pd.read_csv(label_file_name))
 
 
-    K_fold = 10
+    K_fold = K_fold_in
     test_data_list, test_label_list, test_ref_list = splitTrainingData(train_data_list, train_label_list, train_ref_list, Kfold=K_fold)
 
     if not os.path.isdir(os.getcwd() + "/models"):
@@ -92,8 +92,7 @@ def run(dir_name, logger, num_grid=0):
                 test_prediction, logger, num_grid, i)
 
 
-def training(train_data_list, train_label_list, train_ref_list, test_data_list, test_label_list, test_ref_list, \
-             train_step, loss, prediction, test_prediction, logger, num_grid, step_num):
+def training(train_data_list, train_label_list, train_ref_list, test_data_list, test_label_list, test_ref_list, train_step, loss, prediction, test_prediction, logger, num_grid, step_num):
     """
 
     :param train_data_list:
@@ -131,19 +130,18 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
     for i in range(generations):
         rand_index = np.random.choice(len(train_data_list), size=batch_size)
 
-        rand_x = train_data_list[rand_index[0]]['readCount'].as_matrix()
+        rand_x = train_data_list[rand_index[0]]['readCount'].values
         rand_x = rand_x.reshape(input_data_train.shape)
-        rand_ref = train_ref_list[rand_index[0]]['refGeneCount'].as_matrix()
+        rand_ref = train_ref_list[rand_index[0]]['refGeneCount'].values
         rand_ref = rand_ref.reshape(input_ref_data_train.shape)
 
-        rand_y = train_label_list[rand_index[0]][['peak']].as_matrix().transpose()
+        rand_y = train_label_list[rand_index[0]][['peak']].values.transpose()
         rand_y = np.repeat(rand_y, 5)
         rand_y = rand_y.reshape(label_data_train.shape)
 
         p_n_rate = pnRate(rand_y)
 
-        train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref,\
-                      p_dropout: 0.6, loss_weight: p_n_rate}
+        train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref, p_dropout: 0.6, loss_weight: p_n_rate, is_training:True}
 
         sess.run(train_step, feed_dict=train_dict)
         temp_train_loss, temp_train_preds = sess.run([loss, prediction],
@@ -160,19 +158,18 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
         if (i + 1) % eval_every == 0:
             eval_index = np.random.choice(len(test_data_list), size=batch_size)
 
-            eval_x = test_data_list[eval_index[0]]['readCount'].as_matrix()
+            eval_x = test_data_list[eval_index[0]]['readCount'].values
             eval_x = eval_x.reshape(input_data_eval.shape)
-            eval_ref = test_ref_list[eval_index[0]]['refGeneCount'].as_matrix()
+            eval_ref = test_ref_list[eval_index[0]]['refGeneCount'].values
             eval_ref = eval_ref.reshape(input_ref_data_eval.shape)
 
-            eval_y = test_label_list[eval_index[0]][['peak']].as_matrix().transpose()
+            eval_y = test_label_list[eval_index[0]][['peak']].values.transpose()
             eval_y = np.repeat(eval_y, 5)
             eval_y = (eval_y.reshape(label_data_eval.shape))
 
             p_n_rate_eval = pnRate(eval_y)
 
-            test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref, \
-                         p_dropout: 1, loss_weight: p_n_rate_eval}
+            test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref, p_dropout: 1, loss_weight: p_n_rate_eval, is_training:False}
 
             test_preds = sess.run(test_prediction, feed_dict=test_dict)
             temp_test_stat = getStat(test_preds, eval_y, num_grid=num_grid)
@@ -226,12 +223,17 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger):
     :return: Tensor of the output layer
     """
 
+    #Batch normalization for input data
+    input_data_depth = tf.nn.batch_normalization(input_data_depth, 0, 1, 0, None, 0.0001)
+
     #Stem of read depth data
     conv1 = tf.nn.conv1d(input_data_depth, conv1_weight, stride=1, padding='SAME')
-    relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_bias))
+    conv1_bn = tf.contrib.layers.batch_norm(conv1, is_training=is_training, data_format='NHWC')
+    relu1 = tf.nn.relu(conv1_bn)#tf.nn.bias_add(conv1, conv1_bias))
 
     conv2 = tf.nn.conv1d(relu1, conv2_weight, stride=1, padding='SAME')
-    relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_bias))
+    conv2_bn = tf.contrib.layers.batch_norm(conv2, is_training=is_training, data_format='NHWC')
+    relu2 = tf.nn.relu(conv2_bn)#tf.nn.bias_add(conv2, conv2_bias))
     max_pool1 = tf.nn.pool(relu2, [max_pool_size_stem], strides=[max_pool_size_stem],
             padding='SAME', pooling_type='MAX')
 
@@ -266,17 +268,21 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger):
     final_shape = final_conv_shape[1] * final_conv_shape[2]
     flat_output = tf.reshape(concat6, [final_conv_shape[0] , final_shape])
 
-    fully_connected1 = tf.nn.leaky_relu(tf.add(tf.matmul(flat_output, full1_weight), full1_bias),alpha=0.0001 ,name="FullyConnected1")
+    fully_connected1 = tf.add(tf.matmul(flat_output, full1_weight), full1_bias)
+    fully_connected1 = tf.nn.leaky_relu(fully_connected1, alpha=0.0001, name="FullyConnected1")
+    fully_connected1 = tf.contrib.layers.batch_norm(fully_connected1, is_training=is_training)
     fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
     print("Fully connected A :{}".format(fully_connected1.shape))
 
-    fully_connected2 = tf.nn.leaky_relu(tf.add(tf.matmul(fully_connected1, full2_weight), full2_bias),alpha=0.0001 ,name="FullyConnected2")
+    fully_connected2 = tf.add(tf.matmul(fully_connected1, full2_weight), full2_bias)
+    fully_connected2 = tf.contrib.layers.batch_norm(fully_connected2, is_training=is_training)
+    fully_connected2 = tf.nn.leaky_relu(fully_connected2, alpha=0.0001, name="FullyConnected2")
     fully_connected2 = tf.nn.dropout(fully_connected2, keep_prob=p_dropout)
     print("Fully connected B :{}".format(fully_connected2.shape))
 
     final_threshold_output = (tf.add(tf.matmul(fully_connected2, output_weight), output_bias))
-
     print("Output :{}".format(final_threshold_output.shape))
+
     return (final_threshold_output)
 
 
@@ -293,10 +299,12 @@ def concatLayer_A(source_layer, conv1_w, conv2_w, conv1_b, conv2_b, pooling_size
     :return:
     """
     conv1 = tf.nn.conv1d(source_layer, conv1_w, stride=pooling_size, padding='SAME')
-    relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_b))
+    conv1 = tf.contrib.layers.batch_norm(conv1, is_training=is_training, data_format='NHWC')
+    relu1 = tf.nn.relu(conv1)#tf.nn.bias_add(conv1, conv1_b))
 
     conv2 = tf.nn.conv1d(source_layer, conv2_w, stride=pooling_size, padding='SAME')
-    relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_b))
+    conv2 = tf.contrib.layers.batch_norm(conv2, is_training=is_training, data_format='NHWC')
+    relu2 = tf.nn.relu(conv2)#tf.nn.bias_add(conv2, conv2_b))
 
     max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size],
             padding='SAME', pooling_type='MAX')
@@ -365,23 +373,28 @@ def concatLayer_C(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_
     :return:
     """
     conv1 = tf.nn.conv1d(source_layer, conv1_w, stride=1, padding='SAME')
-    relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_b))
+    conv1 = tf.contrib.layers.batch_norm(conv1, is_training=is_training, data_format='NHWC')
+    relu1 = tf.nn.relu(conv1)#tf.nn.bias_add(conv1, conv1_b))
 
     conv2 = tf.nn.conv1d(source_layer, conv2_w, stride=1, padding='SAME')
-    relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_b))
+    conv2 = tf.contrib.layers.batch_norm(conv2, is_training=is_training, data_format='NHWC')
+    relu2 = tf.nn.relu(conv2)#tf.nn.bias_add(conv2, conv2_b))
 
     conv3 = tf.nn.conv1d(source_layer, conv3_w, stride=1, padding='SAME')
-    relu3 = tf.nn.relu(tf.nn.bias_add(conv3, conv3_b))
+    conv3 = tf.contrib.layers.batch_norm(conv3, is_training=is_training, data_format='NHWC')
+    relu3 = tf.nn.relu(conv3)#tf.nn.bias_add(conv3, conv3_b))
 
     max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[1],
             padding='SAME', pooling_type='MAX')
     conv_max = tf.nn.conv1d(max_pool, conv_max_w, stride=1, padding='SAME')
-    relu_max = tf.nn.leaky_relu(tf.nn.bias_add(conv_max, conv_max_b))
+    conv_max = tf.contrib.layers.batch_norm(conv_max, is_training=is_training, data_format='NHWC')
+    relu_max = tf.nn.relu(conv_max)#tf.nn.bias_add(conv_max, conv_max_b))
 
     avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[1],
             padding='SAME', pooling_type='AVG')
     conv_avg = tf.nn.conv1d(avg_pool, conv_avg_w, stride=1, padding='SAME')
-    relu_avg = tf.nn.leaky_relu(tf.nn.bias_add(conv_avg, conv_avg_b))
+    conv_avg = tf.contrib.layers.batch_norm(conv_avg, is_training=is_training, data_format='NHWC')
+    relu_avg = tf.nn.relu(conv_avg)#tf.nn.bias_add(conv_avg, conv_avg_b))
 
     concat = tf.concat([relu1, avg_pool, relu2, max_pool, relu3], axis=2)
     print("Concat Type C :{}".format(concat.shape))
@@ -534,7 +547,7 @@ def splitTrainingData(data_list, label_list, ref_list, Kfold=4):
     :param Kfold:
     :return:
     """
-    print("##################NUMBER OF LABEL DATA : {}".format(len(data_list)))
+    print("################## THE NUMBER OF LABEL DATA : {}".format(len(data_list)))
 
     size = len(data_list)
     counter = size / Kfold
@@ -568,7 +581,7 @@ def splitTrainingData(data_list, label_list, ref_list, Kfold=4):
     return test_data, test_label, test_ref
 
 
-def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss,K_fold =""):
+def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss, K_fold =""):
     """
 
     :param eval_every:
@@ -653,16 +666,15 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
     if k > 0:
         for i in range(k):
             show_index = np.random.choice(len(test_data_list), size=batch_size)
-            show_x = test_data_list[show_index[0]]['readCount'].as_matrix()
+            show_x = test_data_list[show_index[0]]['readCount'].values
             show_x = show_x.reshape(input_data_eval.shape)
-            show_ref = test_ref_list[show_index[0]]['refGeneCount'].as_matrix()
+            show_ref = test_ref_list[show_index[0]]['refGeneCount'].values
             show_ref = show_ref.reshape(input_data_eval.shape)
 
-            show_y = test_label_list[show_index[0]][['peak']].as_matrix().transpose()
+            show_y = test_label_list[show_index[0]][['peak']].values.transpose()
             show_y = np.repeat(show_y, 5)
             show_y = show_y.reshape(label_data_train.shape)
-            show_dict = {input_data_eval: show_x, input_ref_data_eval: show_ref, label_data_eval: show_y, \
-                         p_dropout: 1, is_test: False}
+            show_dict = {input_data_eval: show_x, input_ref_data_eval: show_ref, label_data_eval: show_y, p_dropout: 1, is_training: False}
             show_preds = sess.run(test_prediction, feed_dict=show_dict)
 
             show_preds = (classValueFilter(show_preds, num_grid))
@@ -685,13 +697,14 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
                     pred_index.append(index)
                     pred.append(show_preds[index])
 
+
             plt.plot(show_x.reshape(num_grid).tolist(),'k')
             plt.plot(y_index,y, 'b.', label='Real prediction')
             plt.plot(pred_index,pred, 'r.', label='Model prediction')
             plt.title('Peak prediction result by regions')
             plt.xlabel('Regions')
             plt.ylabel('Read Count')
-            plt.legend(loc='lower right')
+            plt.legend(loc='upper right')
             plt.show()
             plt.savefig('models/model_{}/peak{}.png'.format(K_fold,i))
             plt.clf()

@@ -16,8 +16,8 @@ def calculate_error(peak_data, labeled_data):
     scores = 0.0
 
     # number of Error label about each error type.
-    FP_error = 0.0
-    FN_error = 0.0
+    FP = 0.0
+    FN = 0.0
     TP = 0.0
     TN = 0.0
 
@@ -31,7 +31,7 @@ def calculate_error(peak_data, labeled_data):
             state = is_peak(peak_data, label['regions'], weak_predict=True)
 
             if state == "False Negative":
-                FN_error += 1
+                FN += 1
             else:
                 scores += state
                 TP += 1
@@ -42,9 +42,9 @@ def calculate_error(peak_data, labeled_data):
             state = is_peak(peak_data, label['regions'])
 
             if state == "False Positive":
-                FP_error += 1
+                FP += 1
             elif state == "False Negative":
-                FN_error += 1
+                FN += 1
             else:
                 scores += state
 
@@ -54,7 +54,7 @@ def calculate_error(peak_data, labeled_data):
             state = is_noPeak(peak_data, label['regions'])
             # print state
             if not (state == True):
-                FP_error += 1
+                FP += 1
                 scores += state
             else:
                 scores += 1
@@ -64,10 +64,10 @@ def calculate_error(peak_data, labeled_data):
             print("label type error")
             exit()
 
-    print("possible FN {} possible FP {}".format(possible_FN,possible_FP))
-    print("FN_Error: {} FP_Error: {}\n".format(FN_error,FP_error))
+    #print("possible FN {} possible FP {}".format(possible_FN,possible_FP))
+    #print("FN_Error: {} FP_Error: {}\n".format(FN,FP))
 
-    FNFP_dict = {"negativeNum": possible_FN , "positiveNum" : possible_FP, "FN" : FN_error, "FP" : FP_error, "TN" : TN , "TP" : TP}
+    FNFP_dict = {"negativeNum": possible_FN , "positiveNum" : possible_FP, "FN" : FN, "FP" : FP, "TN" : TN , "TP" : TP}
 
     return len(labeled_data) - scores, len(labeled_data) , FNFP_dict
 
