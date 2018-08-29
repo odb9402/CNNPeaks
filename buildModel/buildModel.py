@@ -67,6 +67,7 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10):
     if not os.path.isdir(os.getcwd() + "/models"):
         os.mkdir(os.getcwd() + "/models")
 
+
     #K_fold Cross Validation
     for i in range(K_fold):
         training_data = []
@@ -140,9 +141,9 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
         rand_y = np.repeat(rand_y, 5)
         rand_y = rand_y.reshape(label_data_train.shape)
 
-        p_n_rate = pnRate(rand_y)
+        p_n_rate = pnRate(rand_y)*2
 
-        train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref, p_dropout: 0.6,
+        train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref, p_dropout: 0.5,
                       loss_weight: p_n_rate, is_training:True}
 
         sess.run(train_step, feed_dict=train_dict)
@@ -168,14 +169,13 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
             eval_y = np.repeat(eval_y, 5)
             eval_y = (eval_y.reshape(label_data_eval.shape))
 
-            p_n_rate_eval = pnRate(eval_y)
+            pnRate_eval = pnRate(eval_y)*2
 
             test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref, p_dropout: 1,
-                         loss_weight: p_n_rate_eval, is_training:False}
+                         loss_weight: pnRate_eval, is_training:False}
 
             test_preds = sess.run(test_prediction, feed_dict=test_dict)
-            temp_test_stat = getStat(test_preds, eval_y, num_grid=num_grid)
-            TP_rate, TN_rate = tpTnRate(test_preds, eval_y, num_grid=num_grid)
+            test_stat = getStat(test_preds, eval_y, num_grid=num_grid)
 
             loss_mean = sum(loss_containor_for_mean)/float(len(loss_containor_for_mean))
             if len(sens_containor_for_mean) == 0:
@@ -189,9 +189,9 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
             train_acc.append(acc_mean)
             train_spec.append(spec_mean)
             train_sens.append(sens_mean)
-            test_acc.append(temp_test_stat['acc'])
-            test_spec.append(temp_test_stat['spec'])
-            test_sens.append(temp_test_stat['sens'])
+            test_acc.append(test_stat['acc'])
+            test_spec.append(test_stat['spec'])
+            test_sens.append(test_stat['sens'])
 
             loss_containor_for_mean.clear()
             acc_containor_for_mean.clear()
@@ -199,12 +199,14 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
             sens_containor_for_mean.clear()
 
 
-            if TP_rate == -1.0:
-                logger.info('Generation # {}. TrainLoss: {:.2f}. TrainACC (TestACC): {:.2f}. ({:.2f}.) TPR:-.-- TNR:{:.2f} PN_rate:-.-- SENS:{:.2f}, SPEC:{:.2f}'.
-                        format(i+1, loss_mean, acc_mean, temp_test_stat['acc'],  TN_rate, sens_mean, spec_mean))
+            if test_stat['sens'] == -1.0:
+                logger.info('Generation # {}. TrainLoss: {:.2f}. TrainACC (TestACC): {:.2f}. ({:.2f}.) PNRate:--.--\n \
+                        SENS_test:-.-- SPEC_test:{:.2f} SENS_train:{:.2f}, SPEC_train:{:.2f}'.
+                        format(i+1, loss_mean, acc_mean, test_stat['acc'], test_stat['spec'], sens_mean, spec_mean))
             else:
-                logger.info('Generation # {}. TrainLoss: {:.2f}. TrainACC (TestACC): {:.2f}. ({:.2f}.) TPR:{:.2f} TNR:{:.2f} PN_rate:{:.2f} SENS:{:.2f}, SPEC:{:.2f}'.
-                        format(i+1, loss_mean, acc_mean, temp_test_stat['acc'], TP_rate,TN_rate, p_n_rate_eval, sens_mean, spec_mean))
+                logger.info('Generation # {}. TrainLoss: {:.2f}. TrainACC (TestACC): {:.2f}. ({:.2f}.) PNRate:{:.2f}\n \
+                        SENS_test:{:.2f} SPEC_test:{:.2f} SENS_train:{:.2f}, SPEC_train:{:.2f}'.
+                        format(i+1, loss_mean, acc_mean, test_stat['acc'], pnRate_eval, test_stat['sens'], test_stat['spec'], sens_mean, spec_mean))
 
     visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss, K_fold=str(step_num))
     visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
@@ -283,7 +285,7 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger=None):
     final_threshold_output = (tf.add(tf.matmul(fully_connected2, output_weight), output_bias))
     print("Output :{}".format(final_threshold_output.shape))
 
-    return (final_threshold_output)
+    return final_threshold_output
 
 
 def concatLayer_A(source_layer, conv1_w, conv2_w, conv1_b, conv2_b, pooling_size):
@@ -432,48 +434,9 @@ def getStat(logits, targets, num_grid=0):
             pass
 
     if TP+FN == 0:
-        return {'sens': -1, 'spec': TN/(TN+FP),
-                'acc':(TP+TN)/(TP+TN+FN+FP)}
+        return {'sens': -1, 'spec': TN/(TN+FP), 'acc':(TP+TN)/(TP+TN+FN+FP)}
     else:
-        return {'sens': TP/(TP+FN), 'spec': TN/(TN+FP),
-                'acc':(TP+TN)/(TP+TN+FN+FP)}
-
-
-def tpTnRate(logits, targets, num_grid=0):
-    """
-    Return true positive rate and true negative rate.
-    By adjusting value from tpTnRate function, the loss function can get
-    equilibrium between sensitivity and specificity derived from
-    unbalanced ratio from regions which are peak and not peak.
-
-    :param logits:
-    :param targets:
-    :param num_grid:
-    :return:
-    """
-    logits = logits.reshape(1,num_grid)
-    targets = targets.reshape(1,num_grid)
-
-    P = 0.
-    TP = 0.
-
-    N = 0.
-    TN = 0.
-
-    for index in range(len(logits[0])):
-        if targets[0][index] > 0:
-            P += 1
-            if logits[0][index] >= class_threshold:
-                TP += 1
-        else:
-            N += 1
-            if logits[0][index] < class_threshold:
-                TN += 1
-
-    if P == 0.:
-        return (-1., TN/N)
-    else:
-        return (TP/P , TN/N)
+        return {'sens': TP/(TP+FN), 'spec': TN/(TN+FP), 'acc':(TP+TN)/(TP+TN+FN+FP)}
 
 
 def pnRate(targets):
@@ -544,6 +507,8 @@ def extractChrClass(dir):
 def splitTrainingData(data_list, label_list, ref_list, Kfold=10):
     """
 
+    If Kfold is zero, it just split two parts
+
     :param list_data:
     :param Kfold:
     :return:
@@ -569,7 +534,7 @@ def splitTrainingData(data_list, label_list, ref_list, Kfold=10):
                 counter = size // Kfold
                 break
 
-            pop_index = random.randint(0,len(data_list))
+            pop_index = random.randint(0, len(data_list)-1)
             test_ref_temp.append(ref_list.pop(pop_index))
             test_data_temp.append(data_list.pop(pop_index))
             test_label_temp.append(label_list.pop(pop_index))
@@ -584,6 +549,7 @@ def splitTrainingData(data_list, label_list, ref_list, Kfold=10):
 
 def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss, K_fold =""):
     """
+    Create matplotlib figures about a plot of loss function values and accuracy values.
 
     :param eval_every:
     :param generations:
