@@ -11,12 +11,13 @@ from .hyperparameters import *
 
 def run(dir_name, logger, num_grid=0, K_fold_in=10):
     """
-    This is the main function to build convolution neural network model
+    This is a main function to build convolution neural network model
     for peak prediction.
 
     :param dir_name:
     :param logger:
     :param num_grid:
+    :param K_fold_in:
     :return:
     """
     PATH = os.path.abspath(dir_name)
@@ -38,17 +39,16 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10):
     prediction = (generateOutput(model_output, input_data_train, div=threshold_division))
     test_prediction = (generateOutput(test_model_output, input_data_eval, div=threshold_division))
 
-    loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train\
-            ,logits=prediction, pos_weight=loss_weight))
+    loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction,
+                                                                   pos_weight=loss_weight))
 
     optimizer = tf.train.AdamOptimizer(learning_rate)
     train_step = optimizer.minimize(loss)
 
-
     #################### Training start with cross validation ##################################
-    train_data_list = []
-    train_ref_list = []
-    train_label_list = []
+    input_data_names = []
+    ref_data_names = []
+    label_data_names = []
 
     for dir in input_list:
         for chr in input_list[dir]:
@@ -56,17 +56,16 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10):
                 input_file_name = "{}/{}_{}_grid{}.ct".format(dir, chr, cls, num_grid)
                 ref_file_name = "{}/ref_{}_{}_grid{}.ref".format(dir, chr, cls, num_grid)
                 label_file_name = "{}/label_{}_{}_grid{}.lb".format(dir, chr, cls, num_grid)
-                train_data_list.append(pd.read_csv(input_file_name))
-                train_ref_list.append(pd.read_csv(ref_file_name))
-                train_label_list.append(pd.read_csv(label_file_name))
-
+                input_data_names.append(pd.read_csv(input_file_name))
+                ref_data_names.append(pd.read_csv(ref_file_name))
+                label_data_names.append(pd.read_csv(label_file_name))
 
     K_fold = K_fold_in
-    test_data_list, test_label_list, test_ref_list = splitTrainingData(train_data_list, train_label_list, train_ref_list, Kfold=K_fold)
+    input_data_list, label_data_list, ref_data_list = splitTrainingData(input_data_names, label_data_names, ref_data_names
+                                                                       , Kfold=K_fold)
 
     if not os.path.isdir(os.getcwd() + "/models"):
         os.mkdir(os.getcwd() + "/models")
-
 
     #K_fold Cross Validation
     for i in range(K_fold):
@@ -78,13 +77,14 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10):
         test_label = []
         for j in range(K_fold):
             if i == j:
-                test_data += test_data_list[j]
-                test_ref += test_ref_list[j]
-                test_label += test_label_list[j]
+                test_data += input_data_list[j]
+                test_ref += ref_data_list[j]
+                test_label += label_data_list[j]
             else:
-                training_data += test_data_list[j]
-                training_ref += test_ref_list[j]
-                training_label += test_label_list[j]
+                training_data += input_data_list[j]
+                training_ref += ref_data_list[j]
+                training_label += label_data_list[j]
+
         if not os.path.isdir(os.getcwd() + "/models/model_{}".format(i)):
             os.mkdir(os.getcwd() + "/models/model_{}".format(i))
 
@@ -92,7 +92,8 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10):
                 test_prediction, logger, num_grid, i)
 
 
-def training(train_data_list, train_label_list, train_ref_list, test_data_list, test_label_list, test_ref_list, train_step, loss, prediction, test_prediction, logger, num_grid, step_num):
+def training(train_data_list, train_label_list, train_ref_list, test_data_list, test_label_list, test_ref_list, train_step,
+             loss, prediction, test_prediction, logger, num_grid, step_num):
     """
 
     :param train_data_list:
@@ -141,11 +142,11 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
 
         p_n_rate = pnRate(rand_y)
 
-        train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref, p_dropout: 0.6, loss_weight: p_n_rate, is_training:True}
+        train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref, p_dropout: 0.6,
+                      loss_weight: p_n_rate, is_training:True}
 
         sess.run(train_step, feed_dict=train_dict)
-        temp_train_loss, temp_train_preds = sess.run([loss, prediction],
-                feed_dict=train_dict)
+        temp_train_loss, temp_train_preds = sess.run([loss, prediction], feed_dict=train_dict)
         temp_train_stat = getStat(temp_train_preds, rand_y, num_grid=num_grid)
 
         loss_containor_for_mean.append(temp_train_loss)
@@ -169,7 +170,8 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
 
             p_n_rate_eval = pnRate(eval_y)
 
-            test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref, p_dropout: 1, loss_weight: p_n_rate_eval, is_training:False}
+            test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref, p_dropout: 1,
+                         loss_weight: p_n_rate_eval, is_training:False}
 
             test_preds = sess.run(test_prediction, feed_dict=test_dict)
             temp_test_stat = getStat(test_preds, eval_y, num_grid=num_grid)
@@ -204,17 +206,16 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
                 logger.info('Generation # {}. TrainLoss: {:.2f}. TrainACC (TestACC): {:.2f}. ({:.2f}.) TPR:{:.2f} TNR:{:.2f} PN_rate:{:.2f} SENS:{:.2f}, SPEC:{:.2f}'.
                         format(i+1, loss_mean, acc_mean, temp_test_stat['acc'], TP_rate,TN_rate, p_n_rate_eval, sens_mean, spec_mean))
 
-    visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss,
-            K_fold=str(step_num))
-    visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess,
-            test_data_list, test_label_list, test_ref_list, test_prediction, k=len(test_data_list), K_fold=str(step_num))
+    visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss, K_fold=str(step_num))
+    visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
+                        test_ref_list, test_prediction, k=len(test_data_list), K_fold=str(step_num))
 
     saver = tf.train.Saver()
     save_path = saver.save(sess, os.getcwd() + "/models/model{}.ckpt".format(step_num,step_num))
     logger.info("Model saved in path : %s" % save_path)
 
 
-def peakPredictConvModel(input_data_depth, input_data_ref, logger):
+def peakPredictConvModel(input_data_depth, input_data_ref, logger=None):
     """
     Define structure of convolution model.
 
@@ -243,15 +244,14 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger):
     max_pool1_ref = tf.nn.pool(relu1_ref, [max_pool_size_stem], strides=[max_pool_size_stem],
             padding='SAME', pooling_type='MAX')
 
-    #input_concat = max_pool1
     input_concat = tf.concat([max_pool1, max_pool1_ref],axis = 2)
 
     # Inception modules 1 to 6
-    concat1 = concatLayer_C(input_concat, conv1a_weight, convMax1_weight, conv1b_weight,
-            convAvg1_weight, conv1c_weight, conv1a_bias, convMax1_bias, conv1b_bias, convAvg1_bias, conv1c_bias, 3)
+    concat1 = concatLayer_C(input_concat, conv1a_weight, convMax1_weight, conv1b_weight, convAvg1_weight, conv1c_weight,
+                            conv1a_bias, convMax1_bias, conv1b_bias, convAvg1_bias, conv1c_bias, 3)
 
-    concat2 = concatLayer_C(concat1, conv2a_weight, convMax2_weight, conv2b_weight,
-            convAvg2_weight, conv2c_weight, conv2a_bias, convMax2_bias, conv2b_bias, convAvg2_bias, conv2c_bias, max_pool_size2)
+    concat2 = concatLayer_C(concat1, conv2a_weight, convMax2_weight, conv2b_weight, convAvg2_weight, conv2c_weight,
+                            conv2a_bias, convMax2_bias, conv2b_bias, convAvg2_bias, conv2c_bias, max_pool_size2)
     concat2 = tf.nn.pool(concat2, [3], strides=[3], padding='SAME', pooling_type='AVG')
 
     concat3 = concatLayer_A(concat2, conv3a_weight, conv3b_weight, conv3a_bias, conv3b_bias, 2)
@@ -317,8 +317,8 @@ def concatLayer_A(source_layer, conv1_w, conv2_w, conv1_b, conv2_b, pooling_size
     return concat
 
 
-def concatLayer_B(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w,\
-                  conv1_b, conv_max_b, conv2_b, conv_avg_b, pooling_size):
+def concatLayer_B(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv1_b, conv_max_b, conv2_b, conv_avg_b,
+                  pooling_size):
     """
     Define concat layer which like Inception module.
 
@@ -355,8 +355,8 @@ def concatLayer_B(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w,\
     return concat
 
 
-def concatLayer_C(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_w,\
-                  conv1_b, conv_max_b, conv2_b, conv_avg_b, conv3_b, pooling_size):
+def concatLayer_C(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_w, conv1_b, conv_max_b, conv2_b,
+                  conv_avg_b, conv3_b, pooling_size):
     """
     Define concat layer which like Inception module.
 
@@ -476,7 +476,7 @@ def tpTnRate(logits, targets, num_grid=0):
         return (TP/P , TN/N)
 
 
-def pnRate(targets, num_grid=0):
+def pnRate(targets):
     """
     Return the The ratio of Negative#/ Positive#.
     It will be used for weights of loss function to adjust
@@ -498,13 +498,14 @@ def pnRate(targets, num_grid=0):
     return (len(targets[0][0]) - count) / count
 
 
-def classValueFilter(output_value, num_grid=0):
+def classValueFilter(output_value):
     """
-    For output of final softmax layer,
+    For output of model, probabilities of a final vector will be changed
+    as binary values by checking whether elements of vector are higher or lower than
+    class_threshold that defined in hyperparameters.py.
 
     :param output_value:
-    :param num_grid:
-    :return:
+    :return: a binary vector that indicates having peak or not.
     """
 
     class_value_list = []
@@ -540,7 +541,7 @@ def extractChrClass(dir):
     return data_direction
 
 
-def splitTrainingData(data_list, label_list, ref_list, Kfold=4):
+def splitTrainingData(data_list, label_list, ref_list, Kfold=10):
     """
 
     :param list_data:
@@ -568,7 +569,7 @@ def splitTrainingData(data_list, label_list, ref_list, Kfold=4):
                 counter = size // Kfold
                 break
 
-            pop_index = random.randint(0,len(test_data))
+            pop_index = random.randint(0,len(data_list))
             test_ref_temp.append(ref_list.pop(pop_index))
             test_data_temp.append(data_list.pop(pop_index))
             test_label_temp.append(label_list.pop(pop_index))
@@ -647,8 +648,8 @@ def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000):
     return result_tensor
 
 
-def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess,
-        test_data_list, test_label_list, test_ref_list, test_prediction, k = 1, K_fold=""):
+def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
+                        test_ref_list, test_prediction, k = 1, K_fold=""):
     """
 
     :param batch_size:
@@ -674,7 +675,8 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             show_y = test_label_list[show_index[0]][['peak']].values.transpose()
             show_y = np.repeat(show_y, 5)
             show_y = show_y.reshape(label_data_train.shape)
-            show_dict = {input_data_eval: show_x, input_ref_data_eval: show_ref, label_data_eval: show_y, p_dropout: 1, is_training: False}
+            show_dict = {input_data_eval: show_x, input_ref_data_eval: show_ref, label_data_eval: show_y, p_dropout: 1,
+                         is_training: False}
             show_preds = sess.run(test_prediction, feed_dict=show_dict)
 
             show_preds = (classValueFilter(show_preds, num_grid))
