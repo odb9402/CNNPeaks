@@ -141,9 +141,9 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
         rand_y = np.repeat(rand_y, 5)
         rand_y = rand_y.reshape(label_data_train.shape)
 
-        p_n_rate = pnRate(rand_y)*2
+        p_n_rate = pnRate(rand_y)*pnRate_weight
 
-        train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref, p_dropout: 0.5,
+        train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref, p_dropout: 0.6,
                       loss_weight: p_n_rate, is_training:True}
 
         sess.run(train_step, feed_dict=train_dict)
@@ -169,7 +169,7 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
             eval_y = np.repeat(eval_y, 5)
             eval_y = (eval_y.reshape(label_data_eval.shape))
 
-            pnRate_eval = pnRate(eval_y)*2
+            pnRate_eval = pnRate(eval_y)*pnRate_weight
 
             test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref, p_dropout: 1,
                          loss_weight: pnRate_eval, is_training:False}
@@ -249,37 +249,33 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger=None):
     input_concat = tf.concat([max_pool1, max_pool1_ref],axis = 2)
 
     # Inception modules 1 to 6
-    concat1 = concatLayer_C(input_concat, conv1a_weight, convMax1_weight, conv1b_weight, convAvg1_weight, conv1c_weight,
-                            conv1a_bias, convMax1_bias, conv1b_bias, convAvg1_bias, conv1c_bias, 3)
+    concat1 = concatLayer_C(input_concat, conv1a_weight, convMax1_weight, conv1b_weight, convAvg1_weight, conv1c_weight, 3)
 
-    concat2 = concatLayer_C(concat1, conv2a_weight, convMax2_weight, conv2b_weight, convAvg2_weight, conv2c_weight,
-                            conv2a_bias, convMax2_bias, conv2b_bias, convAvg2_bias, conv2c_bias, max_pool_size2)
+    concat2 = concatLayer_C(concat1, conv2a_weight, convMax2_weight, conv2b_weight, convAvg2_weight, conv2c_weight, max_pool_size2)
     concat2 = tf.nn.pool(concat2, [3], strides=[3], padding='SAME', pooling_type='AVG')
 
-    concat3 = concatLayer_A(concat2, conv3a_weight, conv3b_weight, conv3a_bias, conv3b_bias, 2)
+    concat3 = concatLayer_A(concat2, conv3a_weight, conv3b_weight, 2)
 
-    concat4 = concatLayer_A(concat3, conv4a_weight, conv4b_weight, conv4a_bias, conv4b_bias, 2)
+    concat4 = concatLayer_A(concat3, conv4a_weight, conv4b_weight, 2)
 
-    concat5 = concatLayer_A(concat4, conv5a_weight, conv5b_weight, conv5a_bias, conv5b_bias, 2)
+    concat5 = concatLayer_A(concat4, conv5a_weight, conv5b_weight, 2)
 
-    concat6 = concatLayer_A(concat5, conv6a_weight, conv6b_weight, conv6a_bias, conv6b_bias, 5)
-
-    #concat7 = concatLayer_A(concat6, conv7a_weight, conv7b_weight, conv7a_bias, conv7b_bias, 5)
+    concat6 = concatLayer_A(concat5, conv6a_weight, conv6b_weight, 5)
 
     final_conv_shape = concat6.get_shape().as_list()
     final_shape = final_conv_shape[1] * final_conv_shape[2]
     flat_output = tf.reshape(concat6, [final_conv_shape[0] , final_shape])
 
-    fully_connected1 = tf.add(tf.matmul(flat_output, full1_weight), full1_bias)
+    fully_connected1 = tf.matmul(flat_output, full1_weight)
     fully_connected1 = tf.nn.leaky_relu(fully_connected1, alpha=0.0001, name="FullyConnected1")
     fully_connected1 = tf.contrib.layers.batch_norm(fully_connected1, is_training=is_training)
-    fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
+#    fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
     print("Fully connected A :{}".format(fully_connected1.shape))
 
-    fully_connected2 = tf.add(tf.matmul(fully_connected1, full2_weight), full2_bias)
+    fully_connected2 = tf.matmul(fully_connected1, full2_weight)
     fully_connected2 = tf.contrib.layers.batch_norm(fully_connected2, is_training=is_training)
     fully_connected2 = tf.nn.leaky_relu(fully_connected2, alpha=0.0001, name="FullyConnected2")
-    fully_connected2 = tf.nn.dropout(fully_connected2, keep_prob=p_dropout)
+#    fully_connected2 = tf.nn.dropout(fully_connected2, keep_prob=p_dropout)
     print("Fully connected B :{}".format(fully_connected2.shape))
 
     final_threshold_output = (tf.add(tf.matmul(fully_connected2, output_weight), output_bias))
@@ -288,7 +284,7 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger=None):
     return final_threshold_output
 
 
-def concatLayer_A(source_layer, conv1_w, conv2_w, conv1_b, conv2_b, pooling_size):
+def concatLayer_A(source_layer, conv1_w, conv2_w, pooling_size):
     """
     Define concat layer which like Inception module.
 
@@ -357,8 +353,7 @@ def concatLayer_B(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv1_
     return concat
 
 
-def concatLayer_C(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_w, conv1_b, conv_max_b, conv2_b,
-                  conv_avg_b, conv3_b, pooling_size):
+def concatLayer_C(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_w, pooling_size):
     """
     Define concat layer which like Inception module.
 
@@ -645,8 +640,8 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
                          is_training: False}
             show_preds = sess.run(test_prediction, feed_dict=show_dict)
 
-            show_preds = (classValueFilter(show_preds, num_grid))
-            show_y = (classValueFilter(show_y, num_grid))
+            show_preds = classValueFilter(show_preds)
+            show_y = classValueFilter(show_y)
 
             for index in range(len(show_preds)):
                 if show_preds[index] > 0:
