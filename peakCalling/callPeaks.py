@@ -35,12 +35,13 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=1):
     input_data_ref = tf.placeholder(tf.float32, shape=(batch_size, num_grid, 1), name="TestRefData")
 
     sess = tf.Session()
-    saver = tf.train.Saver()
-    saver.restore(sess, os.getcwd() + "/models/model{}.ckpt".format(model_num))
-    logger.info("{}` th model will be used during peak calling. . . ".format(model_num))
 
     model_output = buildModel.peakPredictConvModel(input_data, input_data_ref, logger)
     prediction = buildModel.generateOutput(model_output, input_data, div=threshold_division)
+
+    saver = tf.train.Saver()
+    saver.restore(sess, os.getcwd() + "/models/model{}.ckpt".format(model_num))
+    logger.info("{}` th model will be used during peak calling. . . ".format(model_num))
 
     ###################################################################################
 
@@ -99,7 +100,7 @@ def call_peak(chr_no, chr_lengths, file_name, ref_data_df, input_data, input_dat
         read_count_by_grid = generateReadcounts(input_data, window_count, window_count + window_size, chr_no, file_name, num_grid)
         ref_data_by_grid = generateRefcounts(input_data_ref, window_count, window_count + window_size, chr_no, ref_data_df, num_grid)
 
-        result_dict = {input_data: read_count_by_grid, input_data_ref: ref_data_by_grid, p_dropout: 1, is_test: True}
+        result_dict = {input_data: read_count_by_grid, input_data_ref: ref_data_by_grid, p_dropout: 1, is_training: False}
         preds = sess.run(prediction, feed_dict=result_dict)
         class_value_prediction = buildModel.classValueFilter(preds)
 

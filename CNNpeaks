@@ -47,7 +47,7 @@ def main():
     if args.runMode == 'preprocess':
         preProcessing(args.inputDir, logger, num_grid=num_grid)
     elif args.runMode =='buildModel':
-        buildModel(args.inputDir, logger, num_grid=num_grid, K_fold_in=args.KFold)
+        buildModel(args.inputDir, logger, num_grid=num_grid, K_fold_in=int(args.KFold))
     elif args.runMode == 'peakCall':
         callPeaks(args.inputDir, logger, window_size=windowSize, num_grid=num_grid, model_num=args.modelNum)
     elif args.runMode == 'checkData':
@@ -76,5 +76,5 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        sys.stderr.write("i hope you complete. \n")
+        sys.stderr.write("USER INTERRUPT. \n")
         sys.exit()

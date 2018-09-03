@@ -8,7 +8,7 @@ saving or training tensors.
 
 
 ############# Loss & Dropout probability  ##############################
-is_training = tf.placeholder(tf.bool)
+is_train_step = tf.placeholder(tf.bool)
 p_dropout = tf.placeholder(tf.float32)
 loss_weight = tf.placeholder(tf.float32)
 class_threshold = tf.placeholder(tf.float32)

@@ -1,11 +1,12 @@
+#Model hyperparameters
 class_threshold = 0.5
 
-pnRate_weight = 1.5
+pnRate_weight = 1.8
 batch_size = 1
 evaluation_size = 1
-generations = 20000
-eval_every = 50
-learning_rate = 0.001
+generations = 10000
+eval_every = 10
+learning_rate = 0.0003
 target_size = 12000
 
 conv1_ref_features = 4

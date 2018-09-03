@@ -11,7 +11,7 @@ import time
 from multiprocessing import cpu_count, Process, Manager
 from sklearn.cluster import DBSCAN
 
-def run(dir_name, logger, bp_eps=30000, searching_dist=80000, num_grid=2000):
+def run(dir_name, logger, bp_eps=30000, searching_dist=60000, num_grid=2000):
     """
     This preprocessing step will create alignment read count data from
     input directory dir_name was specified by a user. The results will
@@ -98,9 +98,9 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
             region_end = int(label_data_by_class.tail(1)['end'])
             region_size = region_end - region_start
 
-            if region_size / 5 > searching_dist:
-                left_dist = random.randint(0, int(region_size/5))
-                right_dist = int(region_size/5) - left_dist
+            if region_size > searching_dist * 0.8:
+                left_dist = int(region_size/10)
+                right_dist = int(region_size/10)
             else:
                 left_dist = random.randint(0, searching_dist)  # Additional window is non-deterministic.
                 right_dist = searching_dist - left_dist

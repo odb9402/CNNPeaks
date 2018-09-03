@@ -116,15 +116,12 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
     sess.run(init)
 
     train_loss = []
-    train_acc = []
     train_spec = []
     train_sens = []
-    test_acc = []
     test_spec = []
     test_sens = []
 
     loss_containor_for_mean = []
-    acc_containor_for_mean = []
     spec_containor_for_mean = []
     sens_containor_for_mean = []
 
@@ -132,26 +129,33 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
     for i in range(generations):
         rand_index = np.random.choice(len(train_data_list), size=batch_size)
 
-        rand_x = train_data_list[rand_index[0]]['readCount'].values
-        rand_x = rand_x.reshape(input_data_train.shape)
-        rand_ref = train_ref_list[rand_index[0]]['refGeneCount'].values
-        rand_ref = rand_ref.reshape(input_ref_data_train.shape)
+        rand_x = []
+        rand_ref = []
+        rand_y = []
+        for j in range(batch_size):
+            rand_x.append(train_data_list[rand_index[j]]['readCount'].values)
+            rand_ref.append(train_ref_list[rand_index[j]]['refGeneCount'].values)
+            rand_y.append(np.repeat(train_label_list[rand_index[j]][['peak']].values.transpose(),5))
 
-        rand_y = train_label_list[rand_index[0]][['peak']].values.transpose()
-        rand_y = np.repeat(rand_y, 5)
-        rand_y = rand_y.reshape(label_data_train.shape)
+        #rand_x = train_data_list[rand_index[0]]['readCount'].values
+        rand_x = np.array(rand_x).reshape(input_data_train.shape)
+        #rand_ref = train_ref_list[rand_index[0]]['refGeneCount'].values
+        rand_ref = np.array(rand_ref).reshape(input_ref_data_train.shape)
 
-        p_n_rate = pnRate(rand_y)*pnRate_weight
+        #rand_y = train_label_list[rand_index[0]][['peak']].values.transpose()
+        #rand_y = np.repeat(rand_y, 5)
+        rand_y = np.array(rand_y).reshape(label_data_train.shape)
 
-        train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref, p_dropout: 0.6,
-                      loss_weight: p_n_rate, is_training:True}
+        p_n_rate = 100#pnRate(rand_y)*pnRate_weight
+
+        train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref, p_dropout: 0.5,
+                      loss_weight: p_n_rate, is_train_step:True}
 
         sess.run(train_step, feed_dict=train_dict)
         temp_train_loss, temp_train_preds = sess.run([loss, prediction], feed_dict=train_dict)
         temp_train_stat = getStat(temp_train_preds, rand_y, num_grid=num_grid)
 
         loss_containor_for_mean.append(temp_train_loss)
-        acc_containor_for_mean.append(temp_train_stat['acc'])
         spec_containor_for_mean.append(temp_train_stat['spec'])
         if temp_train_stat['sens'] != -1:
             sens_containor_for_mean.append(temp_train_stat['sens'])
@@ -167,12 +171,12 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
 
             eval_y = test_label_list[eval_index[0]][['peak']].values.transpose()
             eval_y = np.repeat(eval_y, 5)
-            eval_y = (eval_y.reshape(label_data_eval.shape))
+            eval_y = eval_y.reshape(label_data_eval.shape)
 
-            pnRate_eval = pnRate(eval_y)*pnRate_weight
+            pnRate_eval = 100#pnRate(eval_y)*pnRate_weight
 
             test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref, p_dropout: 1,
-                         loss_weight: pnRate_eval, is_training:False}
+                         loss_weight: pnRate_eval, is_train_step:False}
 
             test_preds = sess.run(test_prediction, feed_dict=test_dict)
             test_stat = getStat(test_preds, eval_y, num_grid=num_grid)
@@ -183,32 +187,28 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
             else:
                 sens_mean = sum(sens_containor_for_mean)/float(len(sens_containor_for_mean))
             spec_mean = sum(spec_containor_for_mean)/float(len(spec_containor_for_mean))
-            acc_mean = sum(acc_containor_for_mean)/float(len(acc_containor_for_mean))
 
             train_loss.append(loss_mean)
-            train_acc.append(acc_mean)
             train_spec.append(spec_mean)
             train_sens.append(sens_mean)
-            test_acc.append(test_stat['acc'])
             test_spec.append(test_stat['spec'])
             test_sens.append(test_stat['sens'])
 
             loss_containor_for_mean.clear()
-            acc_containor_for_mean.clear()
             spec_containor_for_mean.clear()
             sens_containor_for_mean.clear()
 
 
             if test_stat['sens'] == -1.0:
-                logger.info('Generation # {}. TrainLoss: {:.2f}. TrainACC (TestACC): {:.2f}. ({:.2f}.) PNRate:--.--\n \
-                        SENS_test:-.-- SPEC_test:{:.2f} SENS_train:{:.2f}, SPEC_train:{:.2f}'.
-                        format(i+1, loss_mean, acc_mean, test_stat['acc'], test_stat['spec'], sens_mean, spec_mean))
+                logger.info('Generation # {}. TrainLoss: {:.2f}.  PNRate:--.--\n \
+                        SENS_test:-.-- SPEC_test:{:.2f} SENS_train:{:.2f}, SPEC_train:{:.2f}\n'.
+                        format(i+1, loss_mean, test_stat['spec'], sens_mean, spec_mean))
             else:
-                logger.info('Generation # {}. TrainLoss: {:.2f}. TrainACC (TestACC): {:.2f}. ({:.2f}.) PNRate:{:.2f}\n \
-                        SENS_test:{:.2f} SPEC_test:{:.2f} SENS_train:{:.2f}, SPEC_train:{:.2f}'.
-                        format(i+1, loss_mean, acc_mean, test_stat['acc'], pnRate_eval, test_stat['sens'], test_stat['spec'], sens_mean, spec_mean))
+                logger.info('Generation # {}. TrainLoss: {:.2f}.  PNRate:{:.2f}\n \
+                        SENS_test:{:.2f} SPEC_test:{:.2f} SENS_train:{:.2f}, SPEC_train:{:.2f}\n'.
+                        format(i+1, loss_mean, pnRate_eval, test_stat['sens'], test_stat['spec'], sens_mean, spec_mean))
 
-    visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss, K_fold=str(step_num))
+    visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, train_sens, train_spec, train_loss, K_fold=str(step_num))
     visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
                         test_ref_list, test_prediction, k=len(test_data_list), K_fold=str(step_num))
 
@@ -226,16 +226,13 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger=None):
     :return: Tensor of the output layer
     """
 
-    #Batch normalization for input data
-    input_data_depth = tf.nn.batch_normalization(input_data_depth, 0, 1, 0, None, 0.0001)
-
     #Stem of read depth data
     conv1 = tf.nn.conv1d(input_data_depth, conv1_weight, stride=1, padding='SAME')
-    conv1_bn = tf.contrib.layers.batch_norm(conv1, is_training=is_training, data_format='NHWC')
+    conv1_bn = tf.contrib.layers.batch_norm(conv1, is_training=is_train_step, data_format='NHWC')
     relu1 = tf.nn.relu(conv1_bn)#tf.nn.bias_add(conv1, conv1_bias))
 
     conv2 = tf.nn.conv1d(relu1, conv2_weight, stride=1, padding='SAME')
-    conv2_bn = tf.contrib.layers.batch_norm(conv2, is_training=is_training, data_format='NHWC')
+    conv2_bn = tf.contrib.layers.batch_norm(conv2, is_training=is_train_step, data_format='NHWC')
     relu2 = tf.nn.relu(conv2_bn)#tf.nn.bias_add(conv2, conv2_bias))
     max_pool1 = tf.nn.pool(relu2, [max_pool_size_stem], strides=[max_pool_size_stem],
             padding='SAME', pooling_type='MAX')
@@ -267,15 +264,15 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger=None):
     flat_output = tf.reshape(concat6, [final_conv_shape[0] , final_shape])
 
     fully_connected1 = tf.matmul(flat_output, full1_weight)
-    fully_connected1 = tf.nn.leaky_relu(fully_connected1, alpha=0.0001, name="FullyConnected1")
-    fully_connected1 = tf.contrib.layers.batch_norm(fully_connected1, is_training=is_training)
-#    fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
+    fully_connected1 = tf.contrib.layers.batch_norm(fully_connected1, is_training=is_train_step)
+    fully_connected1 = tf.nn.leaky_relu(fully_connected1, alpha=0.0005, name="FullyConnected1")
+    #fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
     print("Fully connected A :{}".format(fully_connected1.shape))
 
     fully_connected2 = tf.matmul(fully_connected1, full2_weight)
-    fully_connected2 = tf.contrib.layers.batch_norm(fully_connected2, is_training=is_training)
-    fully_connected2 = tf.nn.leaky_relu(fully_connected2, alpha=0.0001, name="FullyConnected2")
-#    fully_connected2 = tf.nn.dropout(fully_connected2, keep_prob=p_dropout)
+    fully_connected2 = tf.contrib.layers.batch_norm(fully_connected2, is_training=is_train_step)
+    fully_connected2 = tf.nn.leaky_relu(fully_connected2, alpha=0.0005, name="FullyConnected2")
+    #fully_connected2 = tf.nn.dropout(fully_connected2, keep_prob=p_dropout)
     print("Fully connected B :{}".format(fully_connected2.shape))
 
     final_threshold_output = (tf.add(tf.matmul(fully_connected2, output_weight), output_bias))
@@ -297,11 +294,11 @@ def concatLayer_A(source_layer, conv1_w, conv2_w, pooling_size):
     :return:
     """
     conv1 = tf.nn.conv1d(source_layer, conv1_w, stride=pooling_size, padding='SAME')
-    conv1 = tf.contrib.layers.batch_norm(conv1, is_training=is_training, data_format='NHWC')
+    conv1 = tf.contrib.layers.batch_norm(conv1, is_training=is_train_step, data_format='NHWC')
     relu1 = tf.nn.relu(conv1)#tf.nn.bias_add(conv1, conv1_b))
 
     conv2 = tf.nn.conv1d(source_layer, conv2_w, stride=pooling_size, padding='SAME')
-    conv2 = tf.contrib.layers.batch_norm(conv2, is_training=is_training, data_format='NHWC')
+    conv2 = tf.contrib.layers.batch_norm(conv2, is_training=is_train_step, data_format='NHWC')
     relu2 = tf.nn.relu(conv2)#tf.nn.bias_add(conv2, conv2_b))
 
     max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size],
@@ -370,27 +367,27 @@ def concatLayer_C(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_
     :return:
     """
     conv1 = tf.nn.conv1d(source_layer, conv1_w, stride=1, padding='SAME')
-    conv1 = tf.contrib.layers.batch_norm(conv1, is_training=is_training, data_format='NHWC')
+    conv1 = tf.contrib.layers.batch_norm(conv1, is_training=is_train_step, data_format='NHWC')
     relu1 = tf.nn.relu(conv1)#tf.nn.bias_add(conv1, conv1_b))
 
     conv2 = tf.nn.conv1d(source_layer, conv2_w, stride=1, padding='SAME')
-    conv2 = tf.contrib.layers.batch_norm(conv2, is_training=is_training, data_format='NHWC')
+    conv2 = tf.contrib.layers.batch_norm(conv2, is_training=is_train_step, data_format='NHWC')
     relu2 = tf.nn.relu(conv2)#tf.nn.bias_add(conv2, conv2_b))
 
     conv3 = tf.nn.conv1d(source_layer, conv3_w, stride=1, padding='SAME')
-    conv3 = tf.contrib.layers.batch_norm(conv3, is_training=is_training, data_format='NHWC')
+    conv3 = tf.contrib.layers.batch_norm(conv3, is_training=is_train_step, data_format='NHWC')
     relu3 = tf.nn.relu(conv3)#tf.nn.bias_add(conv3, conv3_b))
 
     max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[1],
             padding='SAME', pooling_type='MAX')
     conv_max = tf.nn.conv1d(max_pool, conv_max_w, stride=1, padding='SAME')
-    conv_max = tf.contrib.layers.batch_norm(conv_max, is_training=is_training, data_format='NHWC')
+    conv_max = tf.contrib.layers.batch_norm(conv_max, is_training=is_train_step, data_format='NHWC')
     relu_max = tf.nn.relu(conv_max)#tf.nn.bias_add(conv_max, conv_max_b))
 
     avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[1],
             padding='SAME', pooling_type='AVG')
     conv_avg = tf.nn.conv1d(avg_pool, conv_avg_w, stride=1, padding='SAME')
-    conv_avg = tf.contrib.layers.batch_norm(conv_avg, is_training=is_training, data_format='NHWC')
+    conv_avg = tf.contrib.layers.batch_norm(conv_avg, is_training=is_train_step, data_format='NHWC')
     relu_avg = tf.nn.relu(conv_avg)#tf.nn.bias_add(conv_avg, conv_avg_b))
 
     concat = tf.concat([relu1, avg_pool, relu2, max_pool, relu3], axis=2)
@@ -398,7 +395,7 @@ def concatLayer_C(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_
     return concat
 
 
-def getStat(logits, targets, num_grid=0):
+def getStat(logits, targets, batch_size_in=batch_size, num_grid=0):
     """
     Return accuracy of the result.
     Acc = ( TP + TN ) / ( TP + TN + FN + FP )
@@ -408,25 +405,26 @@ def getStat(logits, targets, num_grid=0):
     :param targets:
     :return:
     """
-    logits = logits.reshape(1,num_grid)
-    targets = targets.reshape(1,num_grid)
+    logits = logits.reshape(batch_size_in, num_grid)
+    targets = targets.reshape(batch_size_in, num_grid)
 
     TP = 0.
     TN = 0.
     FN = 0.
     FP = 0.
 
-    for index in range(len(logits[0])):
-        if (logits[0][index]) >= class_threshold and targets[0][index] >= class_threshold:
-            TP += 1
-        elif (logits[0][index]) >= class_threshold and targets[0][index] < class_threshold:
-            FP += 1
-        elif (logits[0][index]) < class_threshold and targets[0][index] >= class_threshold:
-            FN += 1
-        elif (logits[0][index]) < class_threshold and targets[0][index] < class_threshold:
-            TN += 1
-        else:
-            pass
+    for i in range(batch_size_in):
+        for index in range(len(logits[0])):
+            if (logits[i][index]) >= class_threshold and targets[i][index] >= class_threshold:
+                TP += 1
+            elif (logits[i][index]) >= class_threshold and targets[i][index] < class_threshold:
+                FP += 1
+            elif (logits[i][index]) < class_threshold and targets[i][index] >= class_threshold:
+                FN += 1
+            elif (logits[i][index]) < class_threshold and targets[i][index] < class_threshold:
+                TN += 1
+            else:
+                pass
 
     if TP+FN == 0:
         return {'sens': -1, 'spec': TN/(TN+FP), 'acc':(TP+TN)/(TP+TN+FN+FP)}
@@ -434,7 +432,7 @@ def getStat(logits, targets, num_grid=0):
         return {'sens': TP/(TP+FN), 'spec': TN/(TN+FP), 'acc':(TP+TN)/(TP+TN+FN+FP)}
 
 
-def pnRate(targets):
+def pnRate(targets, batch_size_in=batch_size):
     """
     Return the The ratio of Negative#/ Positive#.
     It will be used for weights of loss function to adjust
@@ -444,16 +442,20 @@ def pnRate(targets):
     :param num_grid:
     :return:
     """
-    count = 0.
-    for index in range(len(targets[0][0])):
-        if targets[0][0][index] > 0:
-            count += 1
+    positive_count = 0.
+
+    for i in range(batch_size_in):
+        for index in range(len(targets[i][0])):
+            if targets[i][0][index] > 0:
+                positive_count += 1
 
     # For the label only has negative samples.
-    if count == 0.:
+    if positive_count == 0.:
         return 1
 
-    return (len(targets[0][0]) - count) / count
+    negative_count = len(targets[0][0])*batch_size_in - positive_count
+
+    return negative_count  / positive_count
 
 
 def classValueFilter(output_value):
@@ -542,7 +544,7 @@ def splitTrainingData(data_list, label_list, ref_list, Kfold=10):
     return test_data, test_label, test_ref
 
 
-def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train_loss, K_fold =""):
+def visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, train_sens, train_spec, train_loss, K_fold =""):
     """
     Create matplotlib figures about a plot of loss function values and accuracy values.
 
@@ -555,8 +557,13 @@ def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train
     """
     eval_indices = range(0, generations, eval_every)
 
+    for i in range(len(train_sens) - 1):
+        if train_sens[i+1] == -1:
+            train_sens[i+1] = train_sens[i]
+        if test_sens[i+1] == -1:
+            test_sens[i+1] = test_sens[i]
+
     plt.plot(eval_indices, train_loss, 'k-')
-    plt.axis([0,generations,0,100])
     plt.title('Cross entropy Loss per generation')
     plt.xlabel('Generation')
     plt.ylabel('Loss')
@@ -564,14 +571,34 @@ def visualizeTrainingProcess(eval_every, generations, test_acc, train_acc, train
     plt.savefig('models/model_{}/LossPerGen.png'.format(K_fold))
     plt.clf()
 
-    plt.plot(eval_indices, train_acc, 'k-', label='Train Set Accuracy')
-    plt.plot(eval_indices, test_acc, 'r-', label='Test Set Accuracy')
-    plt.title('Train and Test Accuracy')
+    plt.plot(eval_indices, test_sens, label='Test Set sensitivity')
+    plt.plot(eval_indices, train_sens, label='Train Set sensitivity')
+    plt.title('Train and Test Sensitivity')
     plt.xlabel('Generation')
-    plt.ylabel('Accuracy')
+    plt.ylabel('Sensitivity')
     plt.legend(loc='lower right')
     plt.show()
-    plt.savefig('models/model_{}/AccPerGen.png'.format(K_fold))
+    plt.savefig('models/model_{}/SensPerGen.png'.format(K_fold))
+    plt.clf()
+
+    plt.plot(eval_indices, test_spec, label='Test Set specificity')
+    plt.plot(eval_indices, train_spec, label='Train Set specificity')
+    plt.title('Train and Test specificity')
+    plt.xlabel('Generation')
+    plt.ylabel('Specificity')
+    plt.legend(loc='lower right')
+    plt.show()
+    plt.savefig('models/model_{}/SpecPerGen.png'.format(K_fold))
+    plt.clf()
+
+    plt.plot(eval_indices, [test_sens[i] + test_spec[i] - 1 for i in range(len(test_sens))], label='Test Set Yosen`s Index')
+    plt.plot(eval_indices, [train_sens[i] + train_spec[i] - 1 for i in range(len(train_sens))], label='Train Set Yosen`s Index')
+    plt.title('Yosen`s Index')
+    plt.xlabel('Generation')
+    plt.ylabel('Yosen`s Index`')
+    plt.legend(loc='lower right')
+    plt.show()
+    plt.savefig('models/model_{}/YosensPerGen.png'.format(K_fold))
     plt.clf()
 
 
@@ -590,7 +617,7 @@ def expandingPrediction(input_list, multiple=5):
     return expanded_list
 
 
-def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000):
+def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, batch_size_in=batch_size):
     """
     It generate
 
@@ -600,11 +627,11 @@ def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000):
     :return:
     """
 
-    depth_tensor = tf.reshape(depth_tensor,[1 ,div, input_size//div])
-    threshold_tensor = tf.reshape(threshold_tensor,[1,div,1])
+    depth_tensor = tf.reshape(depth_tensor,[batch_size_in ,div, input_size//div])
+    threshold_tensor = tf.reshape(threshold_tensor,[batch_size_in,div,1])
 
     result_tensor = tf.subtract(depth_tensor, threshold_tensor, name="results")
-    result_tensor = tf.reshape(result_tensor,[1,1,input_size])
+    result_tensor = tf.reshape(result_tensor,[batch_size_in, 1, input_size])
 
     return result_tensor
 
@@ -627,17 +654,16 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
 
     if k > 0:
         for i in range(k):
-            show_index = np.random.choice(len(test_data_list), size=batch_size)
-            show_x = test_data_list[show_index[0]]['readCount'].values
+            show_x = test_data_list[i]['readCount'].values
             show_x = show_x.reshape(input_data_eval.shape)
-            show_ref = test_ref_list[show_index[0]]['refGeneCount'].values
+            show_ref = test_ref_list[i]['refGeneCount'].values
             show_ref = show_ref.reshape(input_data_eval.shape)
 
-            show_y = test_label_list[show_index[0]][['peak']].values.transpose()
+            show_y = test_label_list[i][['peak']].values.transpose()
             show_y = np.repeat(show_y, 5)
             show_y = show_y.reshape(label_data_train.shape)
             show_dict = {input_data_eval: show_x, input_ref_data_eval: show_ref, label_data_eval: show_y, p_dropout: 1,
-                         is_training: False}
+                         is_train_step: False}
             show_preds = sess.run(test_prediction, feed_dict=show_dict)
 
             show_preds = classValueFilter(show_preds)
