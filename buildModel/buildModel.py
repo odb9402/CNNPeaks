@@ -146,7 +146,7 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
         #rand_y = np.repeat(rand_y, 5)
         rand_y = np.array(rand_y).reshape(label_data_train.shape)
 
-        p_n_rate = 100#pnRate(rand_y)*pnRate_weight
+        p_n_rate = max(100,pnRate(rand_y))
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref, p_dropout: 0.5,
                       loss_weight: p_n_rate, is_train_step:True}
@@ -173,7 +173,7 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
             eval_y = np.repeat(eval_y, 5)
             eval_y = eval_y.reshape(label_data_eval.shape)
 
-            pnRate_eval = 100#pnRate(eval_y)*pnRate_weight
+            pnRate_eval = max(100,pnRate(eval_y))
 
             test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref, p_dropout: 1,
                          loss_weight: pnRate_eval, is_train_step:False}
@@ -200,12 +200,10 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
 
 
             if test_stat['sens'] == -1.0:
-                logger.info('Generation # {}. TrainLoss: {:.2f}.  PNRate:--.--\n \
-                        SENS_test:-.-- SPEC_test:{:.2f} SENS_train:{:.2f}, SPEC_train:{:.2f}\n'.
+                logger.info('Generation # {}. TrainLoss: {:.2f}.  PNRate:--.--| Test: SENS:-.-- SPEC:{:.2f}| Train: SENS:{:.2f}, SPEC:{:.2f}\n'.
                         format(i+1, loss_mean, test_stat['spec'], sens_mean, spec_mean))
             else:
-                logger.info('Generation # {}. TrainLoss: {:.2f}.  PNRate:{:.2f}\n \
-                        SENS_test:{:.2f} SPEC_test:{:.2f} SENS_train:{:.2f}, SPEC_train:{:.2f}\n'.
+                logger.info('Generation # {}. TrainLoss: {:.2f}.  PNRate:{:.2f}| Test: SENS:{:.2f} SPEC:{:.2f}| Train: SENS:{:.2f}, SPEC:{:.2f}\n'.
                         format(i+1, loss_mean, pnRate_eval, test_stat['sens'], test_stat['spec'], sens_mean, spec_mean))
 
     visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, train_sens, train_spec, train_loss, K_fold=str(step_num))
@@ -225,6 +223,7 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger=None):
     :param input_data:
     :return: Tensor of the output layer
     """
+    input_data_depth = tf.nn.batch_normalization(input_data_depth, 0, 1, 0, 1, 0.9)
 
     #Stem of read depth data
     conv1 = tf.nn.conv1d(input_data_depth, conv1_weight, stride=1, padding='SAME')

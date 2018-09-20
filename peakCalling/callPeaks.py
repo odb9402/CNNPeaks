@@ -60,7 +60,8 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=1):
     bam_alignment = pysam.AlignmentFile(input_bam , 'rb', index_filename=input_bam + '.bai')
     chr_lengths = bam_alignment.lengths
 
-    for chr_no in range(22):
+    for chr_no in range(22 -11):
+        chr_no += 11
         ref_data_df = pd.read_table("geneRef/chr{}.bed".format(chr_no + 1), names=['chr','start','end'] , header=None, usecols=[0,1,2])
         logger.info("Peak calling in chromosome chr{}:".format(chr_no + 1))
         call_peak(chr_no, chr_lengths, input_bam, ref_data_df, input_data, input_data_ref,
@@ -100,7 +101,7 @@ def call_peak(chr_no, chr_lengths, file_name, ref_data_df, input_data, input_dat
         read_count_by_grid = generateReadcounts(input_data, window_count, window_count + window_size, chr_no, file_name, num_grid)
         ref_data_by_grid = generateRefcounts(input_data_ref, window_count, window_count + window_size, chr_no, ref_data_df, num_grid)
 
-        result_dict = {input_data: read_count_by_grid, input_data_ref: ref_data_by_grid, p_dropout: 1, is_training: False}
+        result_dict = {input_data: read_count_by_grid, input_data_ref: ref_data_by_grid, p_dropout: 1, is_train_step: False}
         preds = sess.run(prediction, feed_dict=result_dict)
         class_value_prediction = buildModel.classValueFilter(preds)
 

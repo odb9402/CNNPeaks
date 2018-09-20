@@ -115,8 +115,7 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
             logger.debug("STRIDE :" + str(stride) + "           REGION SIZE :" + str(region_size))
 
             samtools_call = ['samtools depth -aa -r {} {} > tmp_depth'.format(
-                createRegionStr("{}".format(chr), int(region_start), int(region_end)),
-                bam_file)]
+                createRegionStr("{}".format(chr), int(region_start), int(region_end)),bam_file)]
             sp.call(samtools_call, shell=True)
             depth_data = pd.read_table('tmp_depth', header=None, usecols=[2], names=['readCount'])
 

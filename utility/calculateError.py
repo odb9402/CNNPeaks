@@ -1,6 +1,6 @@
 import os
 
-def calculate_error(peak_data, labeled_data):
+def calculate_error(peak_data, labeled_data, strong_call = False):
     """
     calculate actual error by numbering to wrong label
     :param peak_data:
@@ -37,9 +37,10 @@ def calculate_error(peak_data, labeled_data):
                 TP += 1
 
         elif (label['peakStat'] == 'peakStart') or (label['peakStat'] == 'peakEnd'):
-            possible_FP += 1
+            if strong_call is False:
+                possible_FP += 1
             possible_FN += 1
-            state = is_peak(peak_data, label['regions'])
+            state = is_peak(peak_data, label['regions'], weak_predict= not strong_call)
 
             if state == "False Positive":
                 FP += 1
@@ -52,7 +53,6 @@ def calculate_error(peak_data, labeled_data):
             possible_FP += 1
 
             state = is_noPeak(peak_data, label['regions'])
-            # print state
             if not (state == True):
                 FP += 1
                 scores += state
