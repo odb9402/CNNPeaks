@@ -38,8 +38,6 @@ DEALINGS IN THE SOFTWARE.  */
 #include <limits.h>
 #include <unistd.h>
 #include "htslib/sam.h"
-#include "samtools.h"
-#include "sam_opts.h"
 
 static PyObject *
 
@@ -91,12 +89,6 @@ bamRead_main(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args,  "ssi" , &reg, &file_list, &depth_len))
         return NULL;
 
-    sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
-    static const struct option lopts[] = {
-        SAM_OPT_GLOBAL_OPTIONS('-', 0, '-', '-', 0, '-'),
-        { NULL, 0, NULL, 0 }
-    };
-
     // initialize the auxiliary data structures
     if (file_list)
     {
@@ -113,7 +105,7 @@ bamRead_main(PyObject *self, PyObject *args)
     data = calloc(1, sizeof(aux_t));
     data->fp = sam_open_format(argv[optind+i], "r", &ga.in); // open BAM
     if (data[i]->fp == NULL) {
-        print_error_errno("depth", "Could not open \"%s\"", argv[optind+i]);
+        printf("Fail to open file\n");
         goto depth_end;
     }
     rf = SAM_FLAG | SAM_RNAME | SAM_POS | SAM_MAPQ | SAM_CIGAR | SAM_SEQ;
@@ -138,13 +130,13 @@ bamRead_main(PyObject *self, PyObject *args)
     if (reg) { // if a region is specified
         hts_idx_t *idx = sam_index_load(data->fp, argv[optind+i]);  // load the index
         if (idx == NULL) {
-            print_error("depth", "can't load index for \"%s\"", argv[optind+i]);
+            printf("Fail to load index file\n");
             goto depth_end;
         }
         data->iter = sam_itr_querys(idx, data->hdr, reg); // set the iterator
         hts_idx_destroy(idx); // the index is not needed any more; free the memory
         if (data->iter == NULL) {
-            print_error("depth", "can't parse region \"%s\"", reg);
+            printf("Fail to parse region\n");
             goto depth_end;
         }
     }
