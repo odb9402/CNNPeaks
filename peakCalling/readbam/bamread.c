@@ -30,16 +30,16 @@ DEALINGS IN THE SOFTWARE.  */
  *   gcc -g -O2 -Wall -o bam2depth -D_MAIN_BAM2DEPTH bam2depth.c -lhts -lz
  */
 
-#include <python.h>
-#include <config.h>
+#include <Python.h>
+//#include <config.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <limits.h>
 #include <unistd.h>
-#include "htslib/sam.h"
-
-static PyObject *
+#include "sam.h"
+#include "samtools.h"
+#include "sam_opts.h"
 
 typedef struct {     // auxiliary data structure
     samFile *fp;     // the file handle
@@ -65,9 +65,10 @@ static int read_bam(void *data, bam1_t *b) // read level filters better go here 
     return ret;
 }
 
-int read_file_list(const char *file_list,int *n,char **argv[]);
+//int read_file_list(const char *file_list,int *n,char **argv[]);
 
-bamRead_main(PyObject *self, PyObject *args)
+
+static PyObject* bamRead_main(PyObject *self, PyObject *args)
 {
     int i, n, tid, reg_tid, beg, end, pos, *n_plp, baseQ = 0, mapQ = 0, min_len = 0;
     int all = 1,  nfiles, max_depth = -1;
@@ -79,12 +80,18 @@ bamRead_main(PyObject *self, PyObject *args)
     bam_mplp_t mplp;
     int last_pos = -1, last_tid = -1, ret;
     
-    PyObject *py_depth;
-    int depth_len*;
-    int depth_result*;
-    int depth_index = 0;
+    sam_global_args ga = SAM_GLOBAL_ARGS_INIT;
+    static const struct option lopts[] = {
+        SAM_OPT_GLOBAL_OPTIONS('-', 0, '-', '-', 0, '-'),
+        { NULL, 0, NULL, 0 }
+    };
 
-    depth_result = (int)malloc((*depth_len) * sizeof(int))
+    PyObject *py_depth;
+    int *depth_len;
+    int *depth_result;
+    int *depth_index = 0;
+
+    depth_result = (int)malloc((*depth_len) * sizeof(int));
 
     if(!PyArg_ParseTuple(args,  "ssi" , &reg, &file_list, &depth_len))
         return NULL;
@@ -92,19 +99,18 @@ bamRead_main(PyObject *self, PyObject *args)
     // initialize the auxiliary data structures
     if (file_list)
     {
-        if ( read_file_list(file_list,&nfiles,&fn) ) return 1;
+        //if ( read_file_list(file_list,&nfiles,&fn) ) return 1;
         n = nfiles;
-        argv = fn;
         optind = 0;
     }
     else
-        n = argc - optind; // the number of BAMs on the command line
+        n = 1; // the number of BAMs on the command line
     
     reg_tid = 0; beg = 0; end = INT_MAX;  // set the default region
     int rf;
     data = calloc(1, sizeof(aux_t));
-    data->fp = sam_open_format(argv[optind+i], "r", &ga.in); // open BAM
-    if (data[i]->fp == NULL) {
+    data->fp = sam_open_format(file_list, "r", &ga.in); // open BAM
+    if (data->fp == NULL) {
         printf("Fail to open file\n");
         goto depth_end;
     }
@@ -124,11 +130,11 @@ bamRead_main(PyObject *self, PyObject *args)
     data->hdr = sam_hdr_read(data->fp);    // read the BAM header
     if (data->hdr == NULL) {
         fprintf(stderr, "Couldn't read header for \"%s\"\n",
-                argv[optind+i]);
+               file_list);
         goto depth_end;
     }
     if (reg) { // if a region is specified
-        hts_idx_t *idx = sam_index_load(data->fp, argv[optind+i]);  // load the index
+        hts_idx_t *idx = sam_index_load(data->fp, file_list);  // load the index
         if (idx == NULL) {
             printf("Fail to load index file\n");
             goto depth_end;
@@ -164,12 +170,12 @@ bamRead_main(PyObject *self, PyObject *args)
                     while (++last_pos < h->target_len[last_tid]) {
                         fputs(h->target_name[last_tid], stdout);
                         printf("\t%d", last_pos+1);
-                        depth_result[depth_index] = last_pos + 1;
-                        depth_index++;
+                        depth_result[*depth_index] = last_pos + 1;
+                        *depth_index++;
                         for (i = 0; i < n; i++)
                             putchar('\t'), putchar('0');
-                            depth_result[depth_index] = 0;
-                            depth_index++;
+                            depth_result[*depth_index] = 0;
+                            *depth_index++;
                         putchar('\n');
                     }
                 }
@@ -183,11 +189,11 @@ bamRead_main(PyObject *self, PyObject *args)
             while (++last_pos < pos) {
                 if (last_pos < beg) continue; // out of range; skip
                 fputs(h->target_name[tid], stdout); printf("\t%d", last_pos+1);
-                depth_result[depth_index] = last_pos + 1;
-                depth_index++;
+                depth_result[*depth_index] = last_pos + 1;
+                *depth_index++;
                 for (i = 0; i < n; i++){
-                    depth_result[depth_index] = 0;
-                    depth_index++;
+                    depth_result[*depth_index] = 0;
+                    *depth_index++;
                     putchar('\t');
                     putchar('0');
                 }
@@ -198,8 +204,8 @@ bamRead_main(PyObject *self, PyObject *args)
             last_pos = pos;
         }
         fputs(h->target_name[tid], stdout); printf("\t%d", pos+1); // a customized printf() would be faster
-        depth_result[depth_index] = last_pos + 1;
-        depth_index++;
+        depth_result[*depth_index] = last_pos + 1;
+        *depth_index++;
         for (i = 0; i < n; ++i) { // base level filters have to go here
             int j, m = 0;
             for (j = 0; j < n_plp[i]; ++j) {
@@ -208,8 +214,8 @@ bamRead_main(PyObject *self, PyObject *args)
                 else if (bam_get_qual(p->b)[p->qpos] < baseQ) ++m; // low base quality
             }
             printf("\t%d", n_plp[i] - m); // this the depth to output
-            depth_result[depth_index] = n_pip[i] - m;
-            depth_index++;
+            depth_result[*depth_index] = n_plp[i] - m;
+            *depth_index++;
         }
         putchar('\n');
     }
@@ -226,11 +232,11 @@ bamRead_main(PyObject *self, PyObject *args)
             while (++last_pos < h->target_len[last_tid]) {
                 if (last_pos >= end) break;
                 fputs(h->target_name[last_tid], stdout); printf("\t%d", last_pos+1);
-                depth_result[depth_index] = last_pos + 1;
-                depth_index++;
+                depth_result[*depth_index] = last_pos + 1;
+                *depth_index++;
                 for (i = 0; i < n; i++)
-                    depth_result[depth_index] = 0;
-                    depth_index++;
+                    depth_result[*depth_index] = 0;
+                    *depth_index++;
                     putchar('\t'), putchar('0');
                 putchar('\n');
             }
@@ -259,17 +265,10 @@ depth_end:
 }
 
 static PyMethodDef bamDepthCount[] = {
-    {"bamDepth", bamRead_main, METH_VARARGS, "main function of bam count extracted from samtools1.8."},
+    {"bamDepth", (PyCFunction)bamRead_main, METH_VARARGS, "main function of bam count extracted from samtools1.8."},
     {NULL, NULL, 0, NULL}
-}
+};
 
-PyMODINIT_FUNC
-initbamdepth(void){
-    (void) Py_InitModule("bamDepth", bamDepthCount);
-}
-
-int main(int argc, char *argv[]){
-    Py_SetProgramName(argv[0]);
-    Py_Initalize();
-    
+PyMODINIT_FUNC PyInit_bamdepth(void){
+    (void) Py_InitModule3(bamRead_main, bamDepthCount, "Extension");
 }
