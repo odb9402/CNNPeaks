@@ -12,6 +12,7 @@ Install
 CNN-peaks has no extra Installation. You can use it just by making clone of this repository. However, if you do not have samtools which is higher than 1.7 version you should install it.
 
 > **Install samtools 1.8 :**
+>
 > cd dependencies
 > chmod 775 install_samtools.sh
 > ./install_samtools.sh
@@ -26,14 +27,19 @@ You can build Docker image if you want to run CNN-peaks on your Docker container
 Quick start
 -------------
 Examples of CNN-peaks command:
+
+
 > **preprocessing:**
+>
 > python CNNpeaks -m preprocess -i testdir/
 >
 > **CNN model building:**
+>
 > python CNNpeaks -m buildModel -i testdir/ -k 4
 > 
-> **peak calling with trained model**
-> python CNNpeaks -m peakCall -i myOwnChIPSeq.bam -n 0
+> **peak calling with trained model:**
+>
+>python CNNpeaks -m peakCall -i myOwnChIPSeq.bam -n 0
 
 And CNN-peaks also gives some additional processes for cleaning labeled data, calculating performance ( sensitivity , specificity ) between labeled data and actual peak calling results.
 
@@ -61,7 +67,8 @@ Usage of CNN-peaks
 Before you try to call peaks with your ChIP-Seq Data, CNN-peaks model should be trained by internal module in CNN-peaks. CNN-peaks gives **preprocessing** module for generating actual training data samples with labeled data and bam alignment files of them. You can use our labeled data sample or use your own labeled data to generate training data. When you use its preprocessing module, the input of the module is a single directory which includes labeled data and bam files. For example, a directory which has name "./TestPreProcess" includes these files:
 
 > **preprocessing:**
-> python CNNpeaks -m preprocess -i TestPreProcess
+>
+>python CNNpeaks -m preprocess -i TestPreProcess
 
 > **./TestPreProcess:**
 
@@ -86,6 +93,7 @@ As a result, directories that include labeled data , reference gene data and rea
 After you created your own training data with our **preprocess** module, you can build CNN-peaks model by using our **buildModel** module. The module run as 10-cross validation so it will throw 10 models. But you can adjust this by using -k parameter so that you can build your model with k-fold cross validation. Results of running the module include visualization of peak predictions about test data, train and test sensitivity and specificity during training process and trained models. You can check those visualization results and saved tensorflow variables at a "models" directory in a path of CNNpeaks.
 
 > **CNN model building:**
+>
 > python CNNpeaks -m buildModel -i testdir/ -kf 4
 
 **3. Peak calling with a trained model**
@@ -93,6 +101,7 @@ After you created your own training data with our **preprocess** module, you can
 If you finish build your CNNpeaks model, **buildModel** module generated 'k' numbers of saved tensorflow variables. All you have to do is just pick your saved model number and bam alignment file as an input of peak calling.
 
 > **peak calling with trained model**
+>
 > python CNNpeaks -m peakCall -i myOwnChIPSeq.bam -n 0
 
 ------
