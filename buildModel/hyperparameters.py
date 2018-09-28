@@ -2,11 +2,12 @@
 class_threshold = 0.5
 
 pnRate_weight = 1.8
+pnRate_threshold = 50
 batch_size = 1
 evaluation_size = 1
 generations = 10000
-eval_every = 10
-learning_rate = 0.0003
+eval_every = 25
+learning_rate = 0.0005
 target_size = 12000
 
 conv1_ref_features = 4

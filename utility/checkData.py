@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 
 def run(dir_name, logger, num_grid=8000):
     PATH = os.path.abspath(dir_name)
-    bam_files = glob.glob(PATH + '/*.bam')
-    label_files = glob.glob(PATH + '/*.txt')
+    #bam_files = glob.glob(PATH + '/*.bam')
+    #label_files = glob.glob(PATH + '/*.txt')
 
     dir_list = os.listdir(PATH)
 

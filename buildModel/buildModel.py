@@ -36,10 +36,11 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10):
     model_output = peakPredictConvModel(input_data_train, input_ref_data_train, logger)
     test_model_output = peakPredictConvModel(input_data_eval, input_ref_data_eval, logger)
 
-    prediction = (generateOutput(model_output, input_data_train, div=threshold_division))
-    test_prediction = (generateOutput(test_model_output, input_data_eval, div=threshold_division))
+    prediction_before_sigmoid = (generateOutput(model_output, input_data_train, div=threshold_division))
+    prediction = tf.nn.sigmoid(prediction_before_sigmoid)
+    test_prediction = tf.nn.sigmoid((generateOutput(test_model_output, input_data_eval, div=threshold_division)))
 
-    loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction,
+    loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction_before_sigmoid,
                                                                    pos_weight=loss_weight))
 
     optimizer = tf.train.AdamOptimizer(learning_rate)
@@ -146,7 +147,7 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
         #rand_y = np.repeat(rand_y, 5)
         rand_y = np.array(rand_y).reshape(label_data_train.shape)
 
-        p_n_rate = max(100,pnRate(rand_y))
+        p_n_rate = max(pnRate_threshold, pnRate(rand_y))
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref, p_dropout: 0.5,
                       loss_weight: p_n_rate, is_train_step:True}
@@ -173,7 +174,7 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
             eval_y = np.repeat(eval_y, 5)
             eval_y = eval_y.reshape(label_data_eval.shape)
 
-            pnRate_eval = max(100,pnRate(eval_y))
+            pnRate_eval = max(pnRate_threshold, pnRate(eval_y))
 
             test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref, p_dropout: 1,
                          loss_weight: pnRate_eval, is_train_step:False}
@@ -264,13 +265,13 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger=None):
 
     fully_connected1 = tf.matmul(flat_output, full1_weight)
     fully_connected1 = tf.contrib.layers.batch_norm(fully_connected1, is_training=is_train_step)
-    fully_connected1 = tf.nn.leaky_relu(fully_connected1, alpha=0.0005, name="FullyConnected1")
+    fully_connected1 = tf.nn.leaky_relu(fully_connected1, alpha=0.0001, name="FullyConnected1")
     #fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
     print("Fully connected A :{}".format(fully_connected1.shape))
 
     fully_connected2 = tf.matmul(fully_connected1, full2_weight)
     fully_connected2 = tf.contrib.layers.batch_norm(fully_connected2, is_training=is_train_step)
-    fully_connected2 = tf.nn.leaky_relu(fully_connected2, alpha=0.0005, name="FullyConnected2")
+    fully_connected2 = tf.nn.leaky_relu(fully_connected2, alpha=0.0001, name="FullyConnected2")
     #fully_connected2 = tf.nn.dropout(fully_connected2, keep_prob=p_dropout)
     print("Fully connected B :{}".format(fully_connected2.shape))
 
@@ -390,6 +391,7 @@ def concatLayer_C(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_
     relu_avg = tf.nn.relu(conv_avg)#tf.nn.bias_add(conv_avg, conv_avg_b))
 
     concat = tf.concat([relu1, avg_pool, relu2, max_pool, relu3], axis=2)
+    #concat = tf.concat([relu1, relu_avg, relu2, relu_max, relu3], axis=2)
     print("Concat Type C :{}".format(concat.shape))
     return concat
 

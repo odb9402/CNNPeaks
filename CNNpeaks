@@ -14,7 +14,6 @@ from utility.checkData import run as checkData
 from utility.errorCall import run as errorCall
 
 
-
 num_grid = 12000
 windowSize = 100000
 
@@ -28,8 +27,8 @@ def main():
                                                     "\nIn case of callPeak mode, it will be input bam file to call peaks.")
     arg_parser.add_argument("-l","--labelData", help="Label data for error calling.")
     arg_parser.add_argument("-g","--gridSize",default=12000, help="Define numbers of grid for each training data")
-    arg_parser.add_argument("-s","--searchingDist", help="")
-    arg_parser.add_argument("-eps","--basePointEPS",help="")
+    arg_parser.add_argument("-s","--searchingDist", help="DBSCAN clustering parameter during preprocessing steps")
+    arg_parser.add_argument("-eps","--basePointEPS",help="DBSCAN clustering parameter during preprocessing steps")
     arg_parser.add_argument("-w","--windowSize",default=100000,help="Window size for peak calling.")
     arg_parser.add_argument("-n","--modelNum",default=0, help="Define which model to call peak.")
     arg_parser.add_argument("-kf","--KFold",default=10, help="K fold cross validation during training models.")
