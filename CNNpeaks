@@ -10,6 +10,7 @@ import logging
 from buildModel.buildModel import run as buildModel
 from preProcessing.preProcessing import run as preProcessing
 from peakCalling.callPeaks import run as callPeaks
+from utility.labelManager import labelManager
 from utility.checkData import run as checkData
 from utility.errorCall import run as errorCall
 
@@ -50,7 +51,7 @@ def main():
     elif args.runMode == 'peakCall':
         callPeaks(args.inputDir, logger, window_size=windowSize, num_grid=num_grid, model_num=args.modelNum)
     elif args.runMode == 'checkData':
-        checkData(args.inputDir,logger, num_grid=num_grid)
+        labelManager(args.inputDir)
     elif args.runMode == 'errorCall':
         errorCall(args.inputDir, args.labelData, logger)
 
