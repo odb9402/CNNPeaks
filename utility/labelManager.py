@@ -10,7 +10,7 @@ from matplotlib.figure import Figure
 import matplotlib
 
 class labelManager():
-
+    
     def __init__(self, directory):
         self.startLoc = 0
         self.endLoc = 0
@@ -86,7 +86,7 @@ class labelManager():
 
 
     def nextData(self):
-        if(len(self.data_list[0]) < self.fileIndex + 1):
+        if(len(self.data_list[0]) - 1 < self.fileIndex + 1):
             print("next_index")
         else:
             self.fileIndex += 1
@@ -115,16 +115,24 @@ class labelManager():
             i += 1
         self.drawPlot()
 
-        noPeakColumn = []
+        compressed_label = []
+
         for i in range(length):
-            if self.data_list[1][self.fileIndex][i] == 1:
+            if i % 5 == 0:
+                compressed_label.append(self.data_list[1][self.fileIndex][i])
+
+        noPeakColumn = []
+        for i in range(length//5):
+            if compressed_label[i] == 1:
                 noPeakColumn.append(0)
             else:
                 noPeakColumn.append(1)
 
-        new_label_df = pd.DataFrame({'peak': self.data_list[1][self.fileIndex],
-            'noPeak' : noPeakColumn } , dtype=int, index=range(length))
+        new_label_df = pd.DataFrame({'peak': compressed_label,
+            'noPeak' : noPeakColumn } , dtype=int, index=range(length//5))
+        print(new_label_df)
 
+        os.remove(filename)
         new_label_df.to_csv(filename)
         print("{} saved.".format(filename))
 
