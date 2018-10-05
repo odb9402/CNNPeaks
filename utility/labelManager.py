@@ -1,4 +1,5 @@
 from tkinter import *
+import tkinter.messagebox as messagebox
 import os
 import glob
 import buildModel.buildModel as buildModel
@@ -30,7 +31,7 @@ class labelManager():
         self.subplt.plot(self.data_list[0][self.fileIndex],'k')
         self.subplt.plot(self.data_list[1][self.fileIndex],'r.')
     
-        self.drop_button = Button(self.root, text="Drop", command=None)#, height=3, width=16)
+        self.drop_button = Button(self.root, text="Drop", command=self.dropLabels)#, height=3, width=16)
         self.drop_button.grid(row=0, column = 1, columnspan=2, sticky=W+E+N+S)
         #self.drop_button.place(x=530, y=40)
         self.prev_button = Button(self.root, text="Prev", command=self.prevData)#, height=3, width=6)
@@ -82,12 +83,28 @@ class labelManager():
 
 
     def dropLabels(self):
-        pass
+        os.remove(self.file_list[2][self.fileIndex])
+        os.remove(self.file_list[1][self.fileIndex])
+        os.remove(self.file_list[0][self.fileIndex])
+
+        print("<{}> is removed ".format(self.file_list[1][self.fileIndex]))
+
+        self.file_list[0].pop(self.fileIndex)
+        self.file_list[1].pop(self.fileIndex)
+        self.file_list[2].pop(self.fileIndex)
+
+        self.data_list[0].pop(self.fileIndex)
+        self.data_list[1].pop(self.fileIndex)
+
+        if self.fileIndex > len(self.data_list[0]):
+            self.fileIndex -= 1
+        self.drawPlot()
 
 
     def nextData(self):
         if(len(self.data_list[0]) - 1 < self.fileIndex + 1):
             print("next_index")
+            messagebox.showinfo("Announce", "It is end of the label. [{}/{}]".format(len(self.data_list[0]),len(self.data_list[0])))
         else:
             self.fileIndex += 1
             self.drawPlot()
@@ -96,6 +113,7 @@ class labelManager():
     def prevData(self):
         if(0 > self.fileIndex - 1):
             print("prev_index")
+            messagebox.showinfo("Announce", "It is start of the label. [1/{}]".format(len(self.data_list[0])))
         else:
             self.fileIndex -= 1
             self.drawPlot()

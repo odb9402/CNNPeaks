@@ -60,8 +60,8 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=1):
     bam_alignment = pysam.AlignmentFile(input_bam , 'rb', index_filename=input_bam + '.bai')
     chr_lengths = bam_alignment.lengths
 
-    for chr_no in range(22 -11):
-        chr_no += 11
+    for chr_no in range(22-6):
+        chr_no+=6
         ref_data_df = pd.read_table("geneRef/chr{}.bed".format(chr_no + 1), names=['chr','start','end'] , header=None, usecols=[0,1,2])
         logger.info("Peak calling in chromosome chr{}:".format(chr_no + 1))
         call_peak(chr_no, chr_lengths, input_bam, ref_data_df, input_data, input_data_ref,

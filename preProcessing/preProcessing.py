@@ -28,6 +28,7 @@ def run(dir_name, logger, bp_eps=30000, searching_dist=60000, num_grid=2000):
     PATH = os.path.abspath(dir_name)
     bam_files = glob.glob(PATH + '/*.bam')
     label_files = glob.glob(PATH + '/*.txt')
+    print(bam_files, label_files)
 
     MAX_CORE = cpu_count()
     processes = []
