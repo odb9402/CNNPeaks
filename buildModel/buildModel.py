@@ -1,6 +1,8 @@
 import glob
 import os
+import shutil
 
+from scipy import stats
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -9,7 +11,7 @@ import random
 from .defineModel import *
 from .hyperparameters import *
 
-def run(dir_name, logger, num_grid=0, K_fold_in=10):
+def run(dir_name, logger, num_grid=0, K_fold_in=10, cross_valid = True):
     """
     This is a main function to build convolution neural network model
     for peak prediction.
@@ -26,25 +28,39 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10):
 
     for dir in dir_list:
         dir = PATH + '/' + dir
-        logger.info("DIRECTORY (TARGET) : <" + dir +">")
 
     input_list = {}
     for dir in dir_list:
         dir = PATH + '/' + dir
         input_list[dir] = extractChrClass(dir)
 
-    model_output = peakPredictConvModel(input_data_train, input_ref_data_train, logger)
-    test_model_output = peakPredictConvModel(input_data_eval, input_ref_data_eval, logger)
+
+    model_output  = peakPredictConvModel(input_data_train, input_ref_data_train, logger)[0]
+    test_model_output = peakPredictConvModel(input_data_eval, input_ref_data_eval, logger)[0]
 
     prediction_before_sigmoid = (generateOutput(model_output, input_data_train, div=threshold_division))
     prediction = tf.nn.sigmoid(prediction_before_sigmoid)
+
     test_prediction = tf.nn.sigmoid((generateOutput(test_model_output, input_data_eval, div=threshold_division)))
 
-    loss = tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction_before_sigmoid,
-                                                                   pos_weight=loss_weight))
+    loss = aggregatedLoss(label_data_train, prediction_before_sigmoid)
+    tf.summary.scalar("Loss",loss)
+
+    sens, spec = getTensorStat(label_data_train, prediction)
+    tf.summary.scalar("Train sens", sens)
+    tf.summary.scalar("Train spec", spec)
+
+    #test_sens, test_spec = getTensorStat(label_data_eval, test_prediction)
+    #tf.summary.scalar("Test sens", test_sens)
+    #tf.summary.scalar("Test spec", test_spec)
+
 
     optimizer = tf.train.AdamOptimizer(learning_rate)
     train_step = optimizer.minimize(loss)
+
+    init = tf.global_variables_initializer()
+    sess = tf.Session()
+    sess.run(init)
 
     #################### Training start with cross validation ##################################
     input_data_names = []
@@ -52,14 +68,17 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10):
     label_data_names = []
 
     for dir in input_list:
+        label_num = 0
         for chr in input_list[dir]:
             for cls in input_list[dir][chr]:
+                label_num += 1
                 input_file_name = "{}/{}_{}_grid{}.ct".format(dir, chr, cls, num_grid)
                 ref_file_name = "{}/ref_{}_{}_grid{}.ref".format(dir, chr, cls, num_grid)
                 label_file_name = "{}/label_{}_{}_grid{}.lb".format(dir, chr, cls, num_grid)
                 input_data_names.append(pd.read_csv(input_file_name))
                 ref_data_names.append(pd.read_csv(ref_file_name))
                 label_data_names.append(pd.read_csv(label_file_name))
+        logger.info("DIRECTORY (TARGET) [{}]# of labels : <{}>".format(label_num,dir))
 
     K_fold = K_fold_in
     input_data_list, label_data_list, ref_data_list = splitTrainingData(input_data_names, label_data_names, ref_data_names
@@ -67,7 +86,6 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10):
 
     if not os.path.isdir(os.getcwd() + "/models"):
         os.mkdir(os.getcwd() + "/models")
-
 
     #K_fold Cross Validation
     for i in range(K_fold):
@@ -90,12 +108,14 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10):
         if not os.path.isdir(os.getcwd() + "/models/model_{}".format(i)):
             os.mkdir(os.getcwd() + "/models/model_{}".format(i))
 
-        training(training_data, training_label , training_ref, test_data, test_label, test_ref, train_step, loss, prediction,
-                test_prediction, logger, num_grid, i)
+        training(sess, loss, prediction, test_prediction, train_step, training_data, training_label , training_ref, test_data, test_label, test_ref, logger, num_grid, i)
 
+        if cross_valid == False:
+            break
 
-def training(train_data_list, train_label_list, train_ref_list, test_data_list, test_label_list, test_ref_list, train_step,
-             loss, prediction, test_prediction, logger, num_grid, step_num):
+def training(sess, loss, prediction, test_prediction, train_step,
+        train_data_list, train_label_list, train_ref_list, test_data_list, test_label_list, test_ref_list,
+            logger, num_grid, step_num):
     """
 
     :param train_data_list:
@@ -112,9 +132,18 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
     :return:
     """
 
-    init = tf.global_variables_initializer()
-    sess = tf.Session()
-    sess.run(init)
+    #wrapTensorToTensorboard()
+
+    LOG_DIR = os.path.join(os.path.dirname(__file__),'tensorLog')
+
+    if os.path.exists(LOG_DIR) is False:
+        os.mkdir(LOG_DIR)
+    else:
+        shutil.rmtree(LOG_DIR)
+        os.mkdir(LOG_DIR)
+
+    merged = tf.summary.merge_all()
+    writer = tf.summary.FileWriter(LOG_DIR, graph=sess.graph)
 
     train_loss = []
     train_spec = []
@@ -138,21 +167,19 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
             rand_ref.append(train_ref_list[rand_index[j]]['refGeneCount'].values)
             rand_y.append(np.repeat(train_label_list[rand_index[j]][['peak']].values.transpose(),5))
 
-        #rand_x = train_data_list[rand_index[0]]['readCount'].values
         rand_x = np.array(rand_x).reshape(input_data_train.shape)
-        #rand_ref = train_ref_list[rand_index[0]]['refGeneCount'].values
+        rand_x = (rand_x - rand_x.mean())/rand_x.std()
+        rand_x[np.isnan(rand_x)] = 0
+
         rand_ref = np.array(rand_ref).reshape(input_ref_data_train.shape)
 
-        #rand_y = train_label_list[rand_index[0]][['peak']].values.transpose()
-        #rand_y = np.repeat(rand_y, 5)
         rand_y = np.array(rand_y).reshape(label_data_train.shape)
 
-        p_n_rate = max(pnRate_threshold, pnRate(rand_y))
+        train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref,
+                loss_weight:pnRate(rand_y), is_train_step:True}
 
-        train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref, p_dropout: 0.5,
-                      loss_weight: p_n_rate, is_train_step:True}
+        summary, _ =  sess.run([merged, train_step], feed_dict=train_dict)
 
-        sess.run(train_step, feed_dict=train_dict)
         temp_train_loss, temp_train_preds = sess.run([loss, prediction], feed_dict=train_dict)
         temp_train_stat = getStat(temp_train_preds, rand_y, num_grid=num_grid)
 
@@ -161,12 +188,17 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
         if temp_train_stat['sens'] != -1:
             sens_containor_for_mean.append(temp_train_stat['sens'])
 
+        writer.add_summary(summary, i)
+
+
         # Recording results of test data
         if (i + 1) % eval_every == 0:
             eval_index = np.random.choice(len(test_data_list), size=batch_size)
 
             eval_x = test_data_list[eval_index[0]]['readCount'].values
             eval_x = eval_x.reshape(input_data_eval.shape)
+            eval_x = (eval_x - eval_x.mean())/eval_x.std()
+            eval_x[np.isnan(eval_x)] = 0
             eval_ref = test_ref_list[eval_index[0]]['refGeneCount'].values
             eval_ref = eval_ref.reshape(input_ref_data_eval.shape)
 
@@ -174,10 +206,9 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
             eval_y = np.repeat(eval_y, 5)
             eval_y = eval_y.reshape(label_data_eval.shape)
 
-            pnRate_eval = max(pnRate_threshold, pnRate(eval_y))
+            pnRate_eval = pnRate(eval_y)
 
-            test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref, p_dropout: 1,
-                         loss_weight: pnRate_eval, is_train_step:False}
+            test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref, is_train_step:False}
 
             test_preds = sess.run(test_prediction, feed_dict=test_dict)
             test_stat = getStat(test_preds, eval_y, num_grid=num_grid)
@@ -199,13 +230,15 @@ def training(train_data_list, train_label_list, train_ref_list, test_data_list, 
             spec_containor_for_mean.clear()
             sens_containor_for_mean.clear()
 
-
             if test_stat['sens'] == -1.0:
                 logger.info('Generation # {}. TrainLoss: {:.2f}.  PNRate:--.--| Test: SENS:-.-- SPEC:{:.2f}| Train: SENS:{:.2f}, SPEC:{:.2f}\n'.
                         format(i+1, loss_mean, test_stat['spec'], sens_mean, spec_mean))
             else:
                 logger.info('Generation # {}. TrainLoss: {:.2f}.  PNRate:{:.2f}| Test: SENS:{:.2f} SPEC:{:.2f}| Train: SENS:{:.2f}, SPEC:{:.2f}\n'.
                         format(i+1, loss_mean, pnRate_eval, test_stat['sens'], test_stat['spec'], sens_mean, spec_mean))
+
+            #summary = sess.run
+            #writer.add_summary(summary, i)
 
     visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, train_sens, train_spec, train_loss, K_fold=str(step_num))
     visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
@@ -220,44 +253,67 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger=None):
     """
     Define structure of convolution model.
 
+    It will return two final output tensor.
+     1. Sub output tensor for training steps
+     2. Final output tensor for training and test steps
+
     :param logger:
     :param input_data:
     :return: Tensor of the output layer
     """
-    input_data_depth = tf.nn.batch_normalization(input_data_depth, 0, 1, 0, 1, 0.9)
+    #input_data_depth = tf.nn.batch_normalization(input_data_depth, 0, 1, 0, 1, 0.9)
 
     #Stem of read depth data
     conv1 = tf.nn.conv1d(input_data_depth, conv1_weight, stride=1, padding='SAME')
     conv1_bn = tf.contrib.layers.batch_norm(conv1, is_training=is_train_step, data_format='NHWC')
     relu1 = tf.nn.relu(conv1_bn)#tf.nn.bias_add(conv1, conv1_bias))
+    print("Stem 1 : {}".format(relu1.shape))
 
     conv2 = tf.nn.conv1d(relu1, conv2_weight, stride=1, padding='SAME')
     conv2_bn = tf.contrib.layers.batch_norm(conv2, is_training=is_train_step, data_format='NHWC')
     relu2 = tf.nn.relu(conv2_bn)#tf.nn.bias_add(conv2, conv2_bias))
     max_pool1 = tf.nn.pool(relu2, [max_pool_size_stem], strides=[max_pool_size_stem],
             padding='SAME', pooling_type='MAX')
+    print("Stem 2 : {}".format(max_pool1.shape))
 
     #Stem of ref gene data
     conv1_ref = tf.nn.conv1d(input_data_ref, conv1_ref_weight, stride=1, padding='SAME')
-    relu1_ref = tf.nn.relu(tf.nn.bias_add(conv1_ref, conv1_ref_bias))
+    conv1_bn = tf.contrib.layers.batch_norm(conv1_ref, is_training=is_train_step, data_format="NHWC")
+    relu1_ref = tf.nn.relu(conv1_ref)
     max_pool1_ref = tf.nn.pool(relu1_ref, [max_pool_size_stem], strides=[max_pool_size_stem],
             padding='SAME', pooling_type='MAX')
+    print("Stem_Ref 1 : {}".format(max_pool1_ref.shape))
 
     input_concat = tf.concat([max_pool1, max_pool1_ref],axis = 2)
 
+    """
+    sub_final_conv_shape = input_concat.get_shape().as_list()
+    sub_final_shape = sub_final_conv_shape[1]*sub_final_conv_shape[2]
+    sub_flat_output = tf.reshape(input_concat, [sub_final_conv_shape[0], sub_final_shape])
+
+    fully_connected_sub = tf.matmul(sub_flat_output, full_sub_weight)
+    fully_connected_sub = tf.contrib.layers.batch_norm(fully_connected_sub, is_training=is_train_step)
+    fully_connected_sub = tf.nn.leaky_relu(fully_connected_sub, alpha=0.000, name="FullyConnectedSub")
+    print("Fully connected SUB :{}".format(fully_connected_sub.shape))
+
+    sub_final_threshold_output = (tf.add(tf.matmul(fully_connected_sub, output_sub_weight), output_sub_bias))
+    print("Sub Output :{}".format(sub_final_threshold_output.shape))
+    """
+
     # Inception modules 1 to 6
     concat1 = concatLayer_C(input_concat, conv1a_weight, convMax1_weight, conv1b_weight, convAvg1_weight, conv1c_weight, 3)
+    #concat1 = tf.nn.pool()
 
-    concat2 = concatLayer_C(concat1, conv2a_weight, convMax2_weight, conv2b_weight, convAvg2_weight, conv2c_weight, max_pool_size2)
-    concat2 = tf.nn.pool(concat2, [3], strides=[3], padding='SAME', pooling_type='AVG')
+    concat2 = concatLayer_C(concat1, conv2a_weight, convMax2_weight, conv2b_weight, convAvg2_weight, conv2c_weight, 3)
+    #concat2 = tf.nn.pool(concat2, [3], strides=[3], padding='SAME', pooling_type='MAX')
 
-    concat3 = concatLayer_A(concat2, conv3a_weight, conv3b_weight, 2)
+    concat3 = concatLayer_A(concat2, conv3a_weight, conv3b_weight, conv3c_weight, 2)
 
-    concat4 = concatLayer_A(concat3, conv4a_weight, conv4b_weight, 2)
+    concat4 = concatLayer_A(concat3, conv4a_weight, conv4b_weight, conv4c_weight,2)
 
-    concat5 = concatLayer_A(concat4, conv5a_weight, conv5b_weight, 2)
+    concat5 = concatLayer_A(concat4, conv5a_weight, conv5b_weight, conv5c_weight, 5)
 
-    concat6 = concatLayer_A(concat5, conv6a_weight, conv6b_weight, 5)
+    concat6 = concatLayer_B(concat5, conv6a_weight, conv6b_weight, conv6c_weight, conv6d_weight, 3)
 
     final_conv_shape = concat6.get_shape().as_list()
     final_shape = final_conv_shape[1] * final_conv_shape[2]
@@ -265,23 +321,21 @@ def peakPredictConvModel(input_data_depth, input_data_ref, logger=None):
 
     fully_connected1 = tf.matmul(flat_output, full1_weight)
     fully_connected1 = tf.contrib.layers.batch_norm(fully_connected1, is_training=is_train_step)
-    fully_connected1 = tf.nn.leaky_relu(fully_connected1, alpha=0.0001, name="FullyConnected1")
-    #fully_connected1 = tf.nn.dropout(fully_connected1, keep_prob=p_dropout)
+    fully_connected1 = tf.nn.leaky_relu(fully_connected1, alpha=0.000, name="FullyConnected1")
     print("Fully connected A :{}".format(fully_connected1.shape))
 
     fully_connected2 = tf.matmul(fully_connected1, full2_weight)
     fully_connected2 = tf.contrib.layers.batch_norm(fully_connected2, is_training=is_train_step)
-    fully_connected2 = tf.nn.leaky_relu(fully_connected2, alpha=0.0001, name="FullyConnected2")
-    #fully_connected2 = tf.nn.dropout(fully_connected2, keep_prob=p_dropout)
+    fully_connected2 = tf.nn.leaky_relu(fully_connected2, alpha=0.000, name="FullyConnected2")
     print("Fully connected B :{}".format(fully_connected2.shape))
 
     final_threshold_output = (tf.add(tf.matmul(fully_connected2, output_weight), output_bias))
     print("Output :{}".format(final_threshold_output.shape))
 
-    return final_threshold_output
+    return final_threshold_output #, sub_final_threshold_output
 
 
-def concatLayer_A(source_layer, conv1_w, conv2_w, pooling_size):
+def concatLayer_A(source_layer, conv1_w, conv2_w, conv3_w, pooling_size):
     """
     Define concat layer which like Inception module.
 
@@ -301,19 +355,19 @@ def concatLayer_A(source_layer, conv1_w, conv2_w, pooling_size):
     conv2 = tf.contrib.layers.batch_norm(conv2, is_training=is_train_step, data_format='NHWC')
     relu2 = tf.nn.relu(conv2)#tf.nn.bias_add(conv2, conv2_b))
 
+    conv3 = tf.nn.conv1d(source_layer, conv3_w, stride=pooling_size, padding='SAME')
+    conv3 = tf.contrib.layers.batch_norm(conv3, is_training=is_train_step, data_format='NHWC')
+    relu3 = tf.nn.relu(conv3)#tf.nn.bias_add(conv2, conv2_b))
+
     max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size],
             padding='SAME', pooling_type='MAX')
 
-    avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size],
-            padding='SAME', pooling_type='AVG')
-
-    concat = tf.concat([relu1, avg_pool, relu2, max_pool], axis=2)
+    concat = tf.concat([relu1, relu2, relu3,max_pool], axis=2)
     print("Concat Type A :{}".format(concat.shape))
     return concat
 
 
-def concatLayer_B(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv1_b, conv_max_b, conv2_b, conv_avg_b,
-                  pooling_size):
+def concatLayer_B(source_layer, conv1_w, conv2_w, conv3_w, conv4_w, pooling_size):
     """
     Define concat layer which like Inception module.
 
@@ -329,23 +383,23 @@ def concatLayer_B(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv1_
     :param pooling_size:
     :return:
     """
-    conv1 = tf.nn.conv1d(source_layer, conv1_w, stride=1, padding='SAME')
-    relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_b))
+    conv1 = tf.nn.conv1d(source_layer, conv1_w, stride=pooling_size, padding='SAME')
+    conv1 = tf.contrib.layers.batch_norm(conv1, is_training=is_train_step, data_format='NHWC')
+    relu1 = tf.nn.relu(conv1)
 
-    conv2 = tf.nn.conv1d(source_layer, conv2_w, stride=1, padding='SAME')
-    relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_b))
+    conv2 = tf.nn.conv1d(source_layer, conv2_w, stride=pooling_size, padding='SAME')
+    conv2 = tf.contrib.layers.batch_norm(conv2, is_training=is_train_step, data_format='NHWC')
+    relu2 = tf.nn.relu(conv2)
 
-    max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[1],
-            padding='SAME', pooling_type='MAX')
-    conv_max = tf.nn.conv1d(max_pool, conv_max_w, stride=1, padding='SAME')
-    relu_max = tf.nn.leaky_relu(tf.nn.bias_add(conv_max, conv_max_b))
+    conv3 = tf.nn.conv1d(source_layer, conv3_w, stride=pooling_size, padding='SAME')
+    conv3 = tf.contrib.layers.batch_norm(conv3, is_training=is_train_step, data_format='NHWC')
+    relu3 = tf.nn.relu(conv3)
 
-    avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[1],
-            padding='SAME', pooling_type='AVG')
-    conv_avg = tf.nn.conv1d(avg_pool, conv_avg_w, stride=1, padding='SAME')
-    relu_avg = tf.nn.leaky_relu(tf.nn.bias_add(conv_avg, conv_avg_b))
+    conv4 = tf.nn.conv1d(source_layer, conv4_w, stride=pooling_size, padding='SAME')
+    conv4 = tf.contrib.layers.batch_norm(conv4, is_training=is_train_step, data_format='NHWC')
+    relu4 = tf.nn.relu(conv4)
 
-    concat = tf.concat([relu1, relu_max, relu2, relu_avg], axis=2)
+    concat = tf.concat([relu1, relu2, relu3, relu4], axis=2)
     print("Concat Type B :{}".format(concat.shape))
     return concat
 
@@ -355,45 +409,128 @@ def concatLayer_C(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_
     Define concat layer which like Inception module.
 
     :param source_layer:
-    :param conv1_w:
-    :param conv_max_w:
-    :param conv2_w:
-    :param conv_avg_w:
-    :param conv1_b:
-    :param conv_max_b:
-    :param conv2_b:
-    :param conv_avg_b:
     :param pooling_size:
     :return:
     """
-    conv1 = tf.nn.conv1d(source_layer, conv1_w, stride=1, padding='SAME')
+    conv1 = tf.nn.conv1d(source_layer, conv1_w, stride=2, padding='SAME')
     conv1 = tf.contrib.layers.batch_norm(conv1, is_training=is_train_step, data_format='NHWC')
-    relu1 = tf.nn.relu(conv1)#tf.nn.bias_add(conv1, conv1_b))
+    relu1 = tf.nn.relu(conv1)
 
-    conv2 = tf.nn.conv1d(source_layer, conv2_w, stride=1, padding='SAME')
+    conv2 = tf.nn.conv1d(source_layer, conv2_w, stride=2, padding='SAME')
     conv2 = tf.contrib.layers.batch_norm(conv2, is_training=is_train_step, data_format='NHWC')
-    relu2 = tf.nn.relu(conv2)#tf.nn.bias_add(conv2, conv2_b))
+    relu2 = tf.nn.relu(conv2)
 
-    conv3 = tf.nn.conv1d(source_layer, conv3_w, stride=1, padding='SAME')
+    conv3 = tf.nn.conv1d(source_layer, conv3_w, stride=2, padding='SAME')
     conv3 = tf.contrib.layers.batch_norm(conv3, is_training=is_train_step, data_format='NHWC')
-    relu3 = tf.nn.relu(conv3)#tf.nn.bias_add(conv3, conv3_b))
+    relu3 = tf.nn.relu(conv3)
 
-    max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[1],
+    max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[2],
             padding='SAME', pooling_type='MAX')
     conv_max = tf.nn.conv1d(max_pool, conv_max_w, stride=1, padding='SAME')
     conv_max = tf.contrib.layers.batch_norm(conv_max, is_training=is_train_step, data_format='NHWC')
-    relu_max = tf.nn.relu(conv_max)#tf.nn.bias_add(conv_max, conv_max_b))
+    relu_max = tf.nn.relu(conv_max)
 
-    avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[1],
+    avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[2],
             padding='SAME', pooling_type='AVG')
     conv_avg = tf.nn.conv1d(avg_pool, conv_avg_w, stride=1, padding='SAME')
     conv_avg = tf.contrib.layers.batch_norm(conv_avg, is_training=is_train_step, data_format='NHWC')
-    relu_avg = tf.nn.relu(conv_avg)#tf.nn.bias_add(conv_avg, conv_avg_b))
+    relu_avg = tf.nn.relu(conv_avg)
 
     concat = tf.concat([relu1, avg_pool, relu2, max_pool, relu3], axis=2)
     #concat = tf.concat([relu1, relu_avg, relu2, relu_max, relu3], axis=2)
     print("Concat Type C :{}".format(concat.shape))
     return concat
+
+
+def expandingPrediction(input_list, multiple=5):
+    """
+
+    :param input_list:
+    :param multiple:
+    :return:
+    """
+    expanded_list = []
+    for prediction in input_list:
+        for i in range(multiple):
+            expanded_list.append(prediction)
+
+    return expanded_list
+
+
+def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, batch_size_in=batch_size):
+    """
+    It generate
+
+    :param threshold_tensor: This tensor represents read-depth thresholds which have size of 'div'
+    :param depth_tensor: This tensor represents
+    :param div:
+    :return:
+    """
+
+    depth_tensor = tf.reshape(depth_tensor,[batch_size_in ,div, input_size//div])
+    threshold_tensor = tf.reshape(threshold_tensor,[batch_size_in,div,1])
+
+    result_tensor = tf.subtract(depth_tensor, threshold_tensor, name="results")
+    result_tensor = tf.reshape(result_tensor,[batch_size_in, 1, input_size])
+
+    return result_tensor
+
+
+def aggregatedLoss(label_data_train, prediction_before_sigmoid):
+    """
+
+    """
+    loss_a = tf.reduce_mean(tf.nn.top_k(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction_before_sigmoid,
+        pos_weight=loss_weight/4), k = topK_set_a).values)
+    tf.summary.scalar("Top {} Loss".format(topK_set_a),loss_a)
+
+    loss_b = tf.reduce_mean(tf.nn.top_k(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction_before_sigmoid,
+        pos_weight=loss_weight/4), k = topK_set_b).values)
+    tf.summary.scalar("Top {} Loss".format(topK_set_b),loss_b)
+
+    loss_c = tf.reduce_mean(tf.nn.top_k(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction_before_sigmoid,
+        pos_weight=loss_weight/4), k = topK_set_c).values)
+    tf.summary.scalar("Top {} Loss".format(topK_set_c),loss_c)
+
+    loss_d = tf.reduce_mean(tf.nn.top_k(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction_before_sigmoid,
+        pos_weight=loss_weight/4), k = topK_set_d).values)
+    tf.summary.scalar("Top {} Loss".format(topK_set_d),loss_d)
+
+    return loss_a + loss_b + loss_c + loss_d
+
+
+def getTensorStat(logits, targets, batch_size_in=batch_size, num_grid=0):
+    """
+    Return accuracy of the result.
+    Acc = ( TP + TN ) / ( TP + TN + FN + FP )
+    ( TP + TN + FN + FP ) = num_grid
+
+    :param logits:
+    :param targets:
+    :return:
+    """
+
+    print(targets[0][0].shape)
+
+    threshold_tensor = tf.constant(class_threshold)
+
+    sensDummy = tf.constant(-1.)
+
+    for i in range(batch_size_in):
+        TP = tf.reduce_sum(tf.cast(tf.logical_and(tf.less_equal(threshold_tensor, logits[i][0]),
+                tf.less_equal(threshold_tensor, targets[i][0])), dtype=tf.float32))
+
+        TN = tf.reduce_sum(tf.cast(tf.logical_and(tf.less_equal(logits[i][0],threshold_tensor),
+                tf.less_equal(targets[i][0], threshold_tensor)), dtype=tf.float32))
+        FN = tf.reduce_sum(tf.cast(tf.logical_and(tf.less(logits[i][0], threshold_tensor),
+                tf.less(threshold_tensor, targets[i][0])), dtype=tf.float32))
+        FP = tf.reduce_sum(tf.cast(tf.logical_and(tf.less(threshold_tensor, logits[i][0]),
+                tf.less(targets[i][0], threshold_tensor)), dtype=tf.float32))
+
+    sens = tf.cond( tf.equal(tf.add(TP,FN),0) , true_fn=lambda:sensDummy, false_fn=lambda:tf.divide(TP,tf.add(TP,FN)))
+    spec = tf.divide(TN,tf.add(TN,FP))
+
+    return sens, spec
 
 
 def getStat(logits, targets, batch_size_in=batch_size, num_grid=0):
@@ -456,7 +593,8 @@ def pnRate(targets, batch_size_in=batch_size):
 
     negative_count = len(targets[0][0])*batch_size_in - positive_count
 
-    return negative_count  / positive_count
+    ### TODO :: adjust these SHITTY EQUATION.
+    return negative_count / positive_count
 
 
 def classValueFilter(output_value):
@@ -545,6 +683,95 @@ def splitTrainingData(data_list, label_list, ref_list, Kfold=10):
     return test_data, test_label, test_ref
 
 
+def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
+                        test_ref_list, test_prediction, k = 1, K_fold="", min_peak_size=10, max_peak_num=50):
+    """
+
+    :param batch_size:
+    :param input_data_eval:
+    :param num_grid:
+    :param label_data_eval:
+    :param sess:
+    :param test_data_list:
+    :param test_label_list:
+    :param test_prediction:
+    :param k:
+    :return:
+    """
+
+    if k > 0:
+        for i in range(k):
+            show_x = test_data_list[i]['readCount'].values
+            show_x = show_x.reshape(input_data_eval.shape)
+            show_x = (show_x-show_x.mean())/show_x.std()
+            show_x[np.isnan(show_x)] = 0
+            show_ref = test_ref_list[i]['refGeneCount'].values
+            show_ref = show_ref.reshape(input_data_eval.shape)
+
+            show_y = test_label_list[i][['peak']].values.transpose()
+            show_y = np.repeat(show_y, 5)
+            show_y = show_y.reshape(label_data_train.shape)
+            show_dict = {input_data_eval: show_x, input_ref_data_eval: show_ref, label_data_eval: show_y,
+                         is_train_step: False}
+            show_preds = sess.run(test_prediction, feed_dict=show_dict)
+
+            show_preds = classValueFilter(show_preds)
+            show_y = classValueFilter(show_y)
+
+            for index in range(len(show_preds)):
+                if show_preds[index] > 0:
+                    show_preds[index] += 1
+
+            ############# Peak post processing ##########
+            peak_num = 0
+
+            if show_preds[0] > 0:
+                peak_size = 1
+                peak_num += 1
+            else:
+                peak_size = 0
+
+            for pred_index in range(len(show_preds)-1):
+                if show_preds[pred_index+1] > 0:
+                    peak_size += 1
+                else:
+                    if peak_size < min_peak_size:
+                        for j in range(peak_size):
+                            show_preds[pred_index-j] = 0
+                        peak_size=0
+                    else:
+                        peak_num += 1
+
+            if peak_num < max_peak_num:
+                for k in range(len(show_preds)):
+                    show_preds[k] = 0
+            #############################################
+
+            y_index = []
+            y = []
+            pred_index = []
+            pred = []
+
+            for index in range(len(show_preds)):
+                if show_y[index] > 0:
+                    y_index.append(index)
+                    y.append(show_y[index])
+                if show_preds[index] > 0:
+                    pred_index.append(index)
+                    pred.append(show_preds[index])
+
+            plt.plot(show_x.reshape(num_grid).tolist(),'k')
+            plt.plot(y_index,y, 'b.', label='Real prediction')
+            plt.plot(pred_index,pred, 'r.', label='Model prediction')
+            plt.title('Peak prediction result by regions')
+            plt.xlabel('Regions')
+            plt.ylabel('Read Count')
+            plt.legend(loc='upper right')
+            plt.show()
+            plt.savefig('models/model_{}/peak{}.png'.format(K_fold,i))
+            plt.clf()
+
+
 def visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, train_sens, train_spec, train_loss, K_fold =""):
     """
     Create matplotlib figures about a plot of loss function values and accuracy values.
@@ -578,6 +805,7 @@ def visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, trai
     plt.xlabel('Generation')
     plt.ylabel('Sensitivity')
     plt.legend(loc='lower right')
+    plt.ylim([0,1])
     plt.show()
     plt.savefig('models/model_{}/SensPerGen.png'.format(K_fold))
     plt.clf()
@@ -588,6 +816,7 @@ def visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, trai
     plt.xlabel('Generation')
     plt.ylabel('Specificity')
     plt.legend(loc='lower right')
+    plt.ylim([0,1])
     plt.show()
     plt.savefig('models/model_{}/SpecPerGen.png'.format(K_fold))
     plt.clf()
@@ -598,103 +827,7 @@ def visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, trai
     plt.xlabel('Generation')
     plt.ylabel('Yosen`s Index`')
     plt.legend(loc='lower right')
+    plt.ylim([0,1])
     plt.show()
     plt.savefig('models/model_{}/YosensPerGen.png'.format(K_fold))
     plt.clf()
-
-
-def expandingPrediction(input_list, multiple=5):
-    """
-
-    :param input_list:
-    :param multiple:
-    :return:
-    """
-    expanded_list = []
-    for prediction in input_list:
-        for i in range(multiple):
-            expanded_list.append(prediction)
-
-    return expanded_list
-
-
-def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, batch_size_in=batch_size):
-    """
-    It generate
-
-    :param threshold_tensor: This tensor represents read-depth thresholds which have size of 'div'
-    :param depth_tensor: This tensor represents
-    :param div:
-    :return:
-    """
-
-    depth_tensor = tf.reshape(depth_tensor,[batch_size_in ,div, input_size//div])
-    threshold_tensor = tf.reshape(threshold_tensor,[batch_size_in,div,1])
-
-    result_tensor = tf.subtract(depth_tensor, threshold_tensor, name="results")
-    result_tensor = tf.reshape(result_tensor,[batch_size_in, 1, input_size])
-
-    return result_tensor
-
-
-def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
-                        test_ref_list, test_prediction, k = 1, K_fold=""):
-    """
-
-    :param batch_size:
-    :param input_data_eval:
-    :param num_grid:
-    :param label_data_eval:
-    :param sess:
-    :param test_data_list:
-    :param test_label_list:
-    :param test_prediction:
-    :param k:
-    :return:
-    """
-
-    if k > 0:
-        for i in range(k):
-            show_x = test_data_list[i]['readCount'].values
-            show_x = show_x.reshape(input_data_eval.shape)
-            show_ref = test_ref_list[i]['refGeneCount'].values
-            show_ref = show_ref.reshape(input_data_eval.shape)
-
-            show_y = test_label_list[i][['peak']].values.transpose()
-            show_y = np.repeat(show_y, 5)
-            show_y = show_y.reshape(label_data_train.shape)
-            show_dict = {input_data_eval: show_x, input_ref_data_eval: show_ref, label_data_eval: show_y, p_dropout: 1,
-                         is_train_step: False}
-            show_preds = sess.run(test_prediction, feed_dict=show_dict)
-
-            show_preds = classValueFilter(show_preds)
-            show_y = classValueFilter(show_y)
-
-            for index in range(len(show_preds)):
-                if show_preds[index] > 0:
-                    show_preds[index] += 1
-
-            y_index = []
-            y = []
-            pred_index = []
-            pred = []
-
-            for index in range(len(show_preds)):
-                if show_y[index] > 0:
-                    y_index.append(index)
-                    y.append(show_y[index])
-                if show_preds[index] > 0:
-                    pred_index.append(index)
-                    pred.append(show_preds[index])
-
-
-            plt.plot(show_x.reshape(num_grid).tolist(),'k')
-            plt.plot(y_index,y, 'b.', label='Real prediction')
-            plt.plot(pred_index,pred, 'r.', label='Model prediction')
-            plt.title('Peak prediction result by regions')
-            plt.xlabel('Regions')
-            plt.ylabel('Read Count')
-            plt.legend(loc='upper right')
-            plt.show()
-            plt.savefig('models/model_{}/peak{}.png'.format(K_fold,i))
-            plt.clf()

@@ -36,8 +36,8 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=1):
 
     sess = tf.Session()
 
-    model_output = buildModel.peakPredictConvModel(input_data, input_data_ref, logger)
-    prediction = buildModel.generateOutput(model_output, input_data, div=threshold_division)
+    model_output = buildModel.peakPredictConvModel(input_data, input_data_ref, logger)[0]
+    prediction = tf.nn.sigmoid(buildModel.generateOutput(model_output, input_data, div=threshold_division))
 
     saver = tf.train.Saver()
     saver.restore(sess, os.getcwd() + "/models/model{}.ckpt".format(model_num))
@@ -60,8 +60,8 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=1):
     bam_alignment = pysam.AlignmentFile(input_bam , 'rb', index_filename=input_bam + '.bai')
     chr_lengths = bam_alignment.lengths
 
-    for chr_no in range(22-6):
-        chr_no+=6
+    for chr_no in range(22):
+        #chr_no+=6
         ref_data_df = pd.read_table("geneRef/chr{}.bed".format(chr_no + 1), names=['chr','start','end'] , header=None, usecols=[0,1,2])
         logger.info("Peak calling in chromosome chr{}:".format(chr_no + 1))
         call_peak(chr_no, chr_lengths, input_bam, ref_data_df, input_data, input_data_ref,

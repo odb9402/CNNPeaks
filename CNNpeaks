@@ -32,7 +32,8 @@ def main():
     arg_parser.add_argument("-eps","--basePointEPS",help="DBSCAN clustering parameter during preprocessing steps")
     arg_parser.add_argument("-w","--windowSize",default=100000,help="Window size for peak calling.")
     arg_parser.add_argument("-n","--modelNum",default=0, help="Define which model to call peak.")
-    arg_parser.add_argument("-kf","--KFold",default=10, help="K fold cross validation during training models.")
+    arg_parser.add_argument("-kf","--KFold",default=0, help="K fold cross validation during training models.")
+    arg_parser.add_argument("-ncv","--notCrossValid", action='store_true')
 
     args = arg_parser.parse_args()
 
@@ -47,7 +48,7 @@ def main():
     if args.runMode == 'preprocess':
         preProcessing(args.inputDir, logger, num_grid=num_grid)
     elif args.runMode =='buildModel':
-        buildModel(args.inputDir, logger, num_grid=num_grid, K_fold_in=int(args.KFold))
+        buildModel(args.inputDir, logger, num_grid=num_grid, K_fold_in=int(args.KFold), cross_valid=not (args.notCrossValid))
     elif args.runMode == 'peakCall':
         callPeaks(args.inputDir, logger, window_size=windowSize, num_grid=num_grid, model_num=args.modelNum)
     elif args.runMode == 'checkData':
