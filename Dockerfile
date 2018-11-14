@@ -136,7 +136,6 @@ RUN ln -s /usr/include/python3.5 python3
 RUN ln -s /usr/include/python3.5 python
 
 WORKDIR /home
-RUN git clone "https://github.com/odb9402/ConvPeaks"
 
 RUN alias python=python3
 

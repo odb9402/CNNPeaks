@@ -2,9 +2,9 @@ import pysam
 import random
 import os
 
-def run(fileName):
+def run(fileName, labelNumForChr = 30):
     """
-    Generate random label point from 
+    Generate random label point from
     """
     bam_alignment = pysam.AlignmentFile(fileName, 'rb', index_filename=fileName+'.bai')
     chr_length = bam_alignment.lengths
@@ -15,7 +15,7 @@ def run(fileName):
 
     output = open(fileName.rsplit('.')[0] + '.txt' , "w")
     for i in range(22):
-        label_count = 30
+        label_count = labelNumForChr
         while label_count != 0 :
             start = random.randint(chr_interval[i]['start'], chr_interval[i]['end'])
             output.write("chr{}:{:,}-{:,} \t peaks\n".format(i+1, start, start + random.randint(80000,120000)))

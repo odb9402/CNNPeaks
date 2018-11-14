@@ -1,13 +1,13 @@
 #Model hyperparameters
 class_threshold = 0.5
 
-threshold_division = 200
+threshold_division = 10
 pnRate_threshold = 50
 batch_size = 1
 evaluation_size = 1
-generations = 10000
+generations = 8000
 eval_every = 20
-learning_rate = 0.0001
+learning_rate = 0.0005
 target_size = 12000
 topK_set_a = 6000
 topK_set_b = 3000
@@ -35,9 +35,9 @@ conv2c_features = 32
 convMax2_features = 32
 convAvg2_features = 32
 
-conv3a_features = 64
-conv3b_features = 64
-conv3c_features = 64
+conv3a_features = 48
+conv3b_features = 48
+conv3c_features = 48
 convMax3_features = 64
 convAvg3_features = 64
 
@@ -47,9 +47,9 @@ conv4c_features = 128
 convMax4_features = 32
 convAvg4_features = 32
 
-conv5a_features = 256
-conv5b_features = 256
-conv5c_features = 256
+conv5a_features = 192
+conv5b_features = 192
+conv5c_features = 192
 convMax5_features = 128
 convAvg5_features = 128
 
@@ -57,8 +57,11 @@ conv6a_features = 512
 conv6b_features = 512
 conv6c_features = 512
 conv6d_features = 512
-convMax6_features = 128
-convAvg6_features = 128
+
+conv7a_features = 720
+conv7b_features = 720
+conv7c_features = 720
+conv7d_features = 720
 
 max_pool_size_stem = 2
 max_pool_size1 = 2

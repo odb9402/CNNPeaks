@@ -7,14 +7,6 @@ import argparse
 import sys
 import logging
 
-from buildModel.buildModel import run as buildModel
-from preProcessing.preProcessing import run as preProcessing
-from peakCalling.callPeaks import run as callPeaks
-from utility.labelManager import labelManager
-from utility.checkData import run as checkData
-from utility.errorCall import run as errorCall
-
-
 num_grid = 12000
 windowSize = 100000
 
@@ -22,7 +14,7 @@ def main():
     global num_grid, windowSize
     #################### Setting arguments ########################
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("-m","--runMode", choices=['preprocess','buildModel','peakCall','checkData','errorCall'] ,
+    arg_parser.add_argument("-m","--runMode", choices=['preprocess','buildModel','peakCall','checkData','errorCall','randomLabel'] ,
                             help="Select a mode.")
     arg_parser.add_argument("-i","--inputDir", help="Input directory including labeled data and bam alignment files."
                                                     "\nIn case of callPeak mode, it will be input bam file to call peaks.")
@@ -34,6 +26,7 @@ def main():
     arg_parser.add_argument("-n","--modelNum",default=0, help="Define which model to call peak.")
     arg_parser.add_argument("-kf","--KFold",default=0, help="K fold cross validation during training models.")
     arg_parser.add_argument("-ncv","--notCrossValid", action='store_true')
+    arg_parser.add_argument("-ln","--labelNum", default=30, help="The number of label for -randomLabel")
 
     args = arg_parser.parse_args()
 
@@ -46,16 +39,23 @@ def main():
     windowSize = int(args.windowSize)
 
     if args.runMode == 'preprocess':
+        from preProcessing.preProcessing import run as preProcessing
         preProcessing(args.inputDir, logger, num_grid=num_grid)
     elif args.runMode =='buildModel':
+        from buildModel.buildModel import run as buildModel
         buildModel(args.inputDir, logger, num_grid=num_grid, K_fold_in=int(args.KFold), cross_valid=not (args.notCrossValid))
     elif args.runMode == 'peakCall':
+        from peakCalling.callPeaks import run as callPeaks
         callPeaks(args.inputDir, logger, window_size=windowSize, num_grid=num_grid, model_num=args.modelNum)
     elif args.runMode == 'checkData':
+        from utility.labelManager import labelManager
         labelManager(args.inputDir)
     elif args.runMode == 'errorCall':
+        from utility.errorCall import run as errorCall
         errorCall(args.inputDir, args.labelData, logger)
-
+    elif args.runMode == 'randomLabel':
+        from utility.randomLabel import run as randomLabel
+        randomLabel(args.inputDir)
     else:
         logger.info("-m ( --runMode ) must be one of : { preprocess, buildModel, peakCall , checkData, errorCall }.")
 
