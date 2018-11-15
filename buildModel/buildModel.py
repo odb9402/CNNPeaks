@@ -159,16 +159,14 @@ def training(sess, loss, prediction, test_prediction, train_step,
         rand_x = []
         rand_ref = []
         rand_y = []
+
         for j in range(batch_size):
             rand_x.append(train_data_list[rand_index[j]]['readCount'].values)
             rand_ref.append(train_ref_list[rand_index[j]]['refGeneCount'].values)
             rand_y.append(np.repeat(train_label_list[rand_index[j]][['peak']].values.transpose(),5))
 
         rand_x = np.array(rand_x).reshape(input_data_train.shape)
-        #rand_x = (rand_x - rand_x.mean())/np.sqrt(rand_x.var() + 1)
-
         rand_ref = np.array(rand_ref).reshape(input_ref_data_train.shape)
-
         rand_y = np.array(rand_y).reshape(label_data_train.shape)
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref,
@@ -193,7 +191,6 @@ def training(sess, loss, prediction, test_prediction, train_step,
 
             eval_x = test_data_list[eval_index[0]]['readCount'].values
             eval_x = eval_x.reshape(input_data_eval.shape)
-            #eval_x = (eval_x - eval_x.mean())/np.sqrt(eval_x.var() + 1)
             eval_ref = test_ref_list[eval_index[0]]['refGeneCount'].values
             eval_ref = eval_ref.reshape(input_ref_data_eval.shape)
 
@@ -459,7 +456,6 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
         for i in range(k):
             show_x = test_data_list[i]['readCount'].values
             show_x = show_x.reshape(input_data_eval.shape)
-            #show_x = (show_x-show_x.mean())/np.sqrt(show_x.var() + 1)
 
             show_ref = test_ref_list[i]['refGeneCount'].values
             show_ref = show_ref.reshape(input_data_eval.shape)

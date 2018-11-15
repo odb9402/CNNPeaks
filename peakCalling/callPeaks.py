@@ -36,8 +36,11 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=1):
 
     sess = tf.Session()
 
-    model_output = peakPredictConvModel(input_data, input_data_ref, logger)[0]
-    prediction = tf.nn.sigmoid(generateOutput(model_output, input_data, div=threshold_division))
+    #model_output = peakPredictConvModel(input_data, input_data_ref, logger)[0]
+    #prediction = tf.nn.sigmoid(generateOutput(model_output, input_data, div=threshold_division))
+
+    model_output = test_model_output
+    prediction = test_prediction
 
     saver = tf.train.Saver()
     saver.restore(sess, os.getcwd() + "/models/model{}.ckpt".format(model_num))
@@ -68,7 +71,7 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=1):
                 logger, num_grid, prediction, sess, window_size)
 
 
-def call_peak(chr_no, chr_lengths, file_name, ref_data_df, input_data, input_data_ref, logger, num_grid, prediction, sess, window_size):
+def call_peak(chr_no, chr_lengths, file_name, ref_data_df, input_data, input_data_ref, logger, num_grid, prediction, sess, window_size, pgb_on=False):
     """
 
     :param chr_no: Chromosome number of regions
@@ -90,7 +93,8 @@ def call_peak(chr_no, chr_lengths, file_name, ref_data_df, input_data, input_dat
 
     while True:
         if (eval_counter % 100) == 0:
-            bar = pgb.ProgressBar(max_value=100)
+            if pgb_on:
+                bar = pgb.ProgressBar(max_value=100)
             logger.info("Reading . . . :[chr{}:{}-{}]".format(chr_no+1,window_count,window_count+window_size*100))
 
         if window_count + window_size > chr_lengths[chr_no]:
@@ -98,17 +102,18 @@ def call_peak(chr_no, chr_lengths, file_name, ref_data_df, input_data, input_dat
             writeBed(output_file_name, peaks, logger, printout=True)
             break
 
-        read_count_by_grid = generateReadcounts(input_data, window_count, window_count + window_size, chr_no, file_name, num_grid)
-        ref_data_by_grid = generateRefcounts(input_data_ref, window_count, window_count + window_size, chr_no, ref_data_df, num_grid)
+        read_count_by_grid = generateReadcounts(input_data, window_count, window_count + window_size, chr_no, file_name, num_grid).reshape(input_data_eval.shape)
+        ref_data_by_grid = generateRefcounts(input_data_ref, window_count, window_count + window_size, chr_no, ref_data_df, num_grid).reshape(input_ref_data_eval.shape)
 
-        result_dict = {input_data: read_count_by_grid, input_data_ref: ref_data_by_grid, p_dropout: 1, is_train_step: False}
+        result_dict = {input_data_eval: read_count_by_grid, input_ref_data_eval: ref_data_by_grid, is_train_step: False}
         preds = sess.run(prediction, feed_dict=result_dict)
         class_value_prediction = buildModel.classValueFilter(preds)
 
         peaks += predictionToBedString(class_value_prediction, "chr" + str(chr_no + 1), window_count, stride,
                               num_grid, logger, read_count_by_grid.reshape(num_grid).tolist())
+        if pgb_on:
+            bar.update(eval_counter)
 
-        bar.update(eval_counter)
         eval_counter += 1
 
         if eval_counter == 100:
@@ -152,7 +157,7 @@ def generateRefcounts(input_data_ref, region_start, region_end, chr_no, refGene_
 
 
 def predictionToBedString(prediction, chromosome, region_start, stride,
-        num_grid,logger, reads, min_peak_size=10, max_peak_num=100):
+        num_grid,logger, reads, min_peak_size=10, max_peak_num=50):
     """
     Python list "prediction" which has binary values will will be changed
     as bed-file string. There are two conditions to accept as peak for each
