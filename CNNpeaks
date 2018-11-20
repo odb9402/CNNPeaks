@@ -19,7 +19,7 @@ def main():
     arg_parser.add_argument("-i","--inputDir", help="Input directory including labeled data and bam alignment files."
                                                     "\nIn case of callPeak mode, it will be input bam file to call peaks.")
     arg_parser.add_argument("-l","--labelData", help="Label data for error calling.")
-    arg_parser.add_argument("-g","--gridSize",default=12000, help="Define numbers of grid for each training data")
+    arg_parser.add_argument("-grid","--gridSize",default=12000, help="Define numbers of grid for each training data")
     arg_parser.add_argument("-s","--searchingDist", help="DBSCAN clustering parameter during preprocessing steps")
     arg_parser.add_argument("-eps","--basePointEPS",help="DBSCAN clustering parameter during preprocessing steps")
     arg_parser.add_argument("-w","--windowSize",default=100000,help="Window size for peak calling.")
@@ -27,6 +27,8 @@ def main():
     arg_parser.add_argument("-kf","--KFold",default=0, help="K fold cross validation during training models.")
     arg_parser.add_argument("-ncv","--notCrossValid", action='store_true')
     arg_parser.add_argument("-ln","--labelNum", default=30, help="The number of label for -randomLabel")
+    arg_parser.add_argument("-g","--refGenome", default='hg19', help="Reference genome version.[hg19, hg18, hg38]")
+    arg_parser.add_argument("-r","--regions", help="Specific genome regions for peak calling. eg) chr3:100023400-1000044323 , you can use 's' or 'e' to indicate start and end of the chromosome")
 
     args = arg_parser.parse_args()
 
@@ -46,7 +48,7 @@ def main():
         buildModel(args.inputDir, logger, num_grid=num_grid, K_fold_in=int(args.KFold), cross_valid=not (args.notCrossValid))
     elif args.runMode == 'peakCall':
         from peakCalling.callPeaks import run as callPeaks
-        callPeaks(args.inputDir, logger, window_size=windowSize, num_grid=num_grid, model_num=args.modelNum)
+        callPeaks(args.inputDir, logger, window_size=windowSize, num_grid=num_grid, model_num=args.modelNum, genome=args.refGenome, regions=args.regions)
     elif args.runMode == 'checkData':
         from utility.labelManager import labelManager
         labelManager(args.inputDir)

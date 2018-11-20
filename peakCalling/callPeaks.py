@@ -16,12 +16,12 @@ from buildModel.hyperparameters import *
 from buildModel.defineModel import *
 
 
-def run(input_bam, logger, window_size=100000, num_grid=0, model_num=1):
+def run(input_bam, logger, window_size=100000, num_grid=0, model_num=0, regions=None, genome=None):
     """
 
     :param dir_name:
     :param logger:
-    :param input_bam:
+    :param input_bat:
     :param window_size:
     :param num_grid:
     :return:
@@ -63,15 +63,72 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=1):
     bam_alignment = pysam.AlignmentFile(input_bam , 'rb', index_filename=input_bam + '.bai')
     chr_lengths = bam_alignment.lengths
 
-    for chr_no in range(22):
-        #chr_no+=6
-        ref_data_df = pd.read_table("geneRef/chr{}.bed".format(chr_no + 1), names=['chr','start','end'] , header=None, usecols=[0,1,2])
-        logger.info("Peak calling in chromosome chr{}:".format(chr_no + 1))
-        call_peak(chr_no, chr_lengths, input_bam, ref_data_df, input_data, input_data_ref,
-                logger, num_grid, prediction, sess, window_size)
+    if genome=='hg38':
+        chr_table = ['chr1','chr2','chr3','chr4','chr5','chr6','chr7','chr8','chr9','chr10','chr11'
+            ,'chr12','chr13','chr14','chr15','chr16','chr17','chr18','chr19','chr20','chr21'
+           ,'chr22','chrX','chrY']
+
+    elif genome=='hg19':
+        chr_table = ['chr1','chr2','chr3','chr4','chr5','chr6','chr7','chrX','chr8','chr9','chr10',
+                'chr11','chr12','chr13','chr14','chr15','chr16','chr17','chr18','chr20','chrY',
+                'chr19','chr22','chr21']
+
+    elif genome=='hg18':
+        #chr_table = ['chr1','chr1_random','chr10','chr10_random','chr11','chr11_random','chr12','chr13','chr13_random','chr14','chr15','chr15_random','chr16','chr16_random','chr17','chr17_random','chr18','chr18_random','chr19','chr19_random','chr20','chr21','chr21_random','chr22','chr22_random','chr22_h2_hap1','chr_random','chr','chr_random','chr','chr_random','chr','chr_random','chr','chr_random','chr','chr_random','chr','chr_random','chr','chr_random','chr','chr_random','chr','chr_random']
+        logger.info("hg18 reference genome is not valid yet.")
+
+    else:
+        chr_table = []
+        logger.info("Reference genome must be selected among {hg19, hg18, hg38}")
+
+    logger.info("{} reference genome was selected.".format(genome))
+    logger.info("{}`s table :".format(chr_table))
+    logger.info("{}`s lengths :".format(chr_lengths))
+
+#    if not (regions == None):
+#        chr_index = []
+
+    if regions is not None:
+        logger.info("Specific calling regions was defined :: {}".format(regions))
+        regions = regions.split(':')
+        chromosome = regions[0]
+        regions = regions[1].split('-')
+        call_start = regions[0]
+        call_end = regions[1]
+
+        for i in range(len(chr_table)):
+            if chr_table[i] == chromosome:
+                chr_no = i
+                break
+
+        if call_start == 's':
+            call_start = 1
+        else:
+            call_start = int(call_start)
+
+        if call_end == 'e':
+            call_end = chr_lengths[chr_no]
+        else:
+            call_end = int(call_end)
+
+        logger.info("Chromosome<{}> , <{}> to <{}>".format(chromosome, call_start, call_end))
+
+        ref_data_df = pd.read_table("geneRef/{}.bed".format(chromosome), names=['chr','start','end'] , header=None, usecols=[0,1,2])
+        logger.info("Peak calling in chromosome {}:".format(chromosome))
+        call_peak(chr_no, chr_table, chr_lengths, input_bam, ref_data_df, input_data, input_data_ref,
+                logger, num_grid, prediction, sess, window_size, pgb_on=False, window_start=call_start, window_end=call_end)
+    else:
+        for chr_no in range(len(chr_table)):
+            ref_data_df = pd.read_table("geneRef/{}.bed".format(chr_table[chr_no]), names=['chr','start','end'] , header=None, usecols=[0,1,2])
+            logger.info("Peak calling in chromosome {}:".format(chr_table[chr_no]))
+            call_peak(chr_no, chr_table, chr_lengths, input_bam, ref_data_df, input_data, input_data_ref,
+                    logger, num_grid, prediction, sess, window_size, pgb_on=False)
 
 
-def call_peak(chr_no, chr_lengths, file_name, ref_data_df, input_data, input_data_ref, logger, num_grid, prediction, sess, window_size, pgb_on=False):
+
+
+def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data, input_data_ref, logger, num_grid, prediction, sess, window_size,
+        pgb_on=False, window_start=1, window_end=None):
     """
 
     :param chr_no: Chromosome number of regions
@@ -85,32 +142,37 @@ def call_peak(chr_no, chr_lengths, file_name, ref_data_df, input_data, input_dat
     :param window_size:
     :return:
     """
-    window_count = 1
+    window_count = window_start
+    if window_end == None:
+        window_end = chr_lengths[chr_no]
+
     stride = window_size / num_grid
     eval_counter = 0
     output_file_name = "{}.bed".format(file_name.rsplit('.')[0])
     peaks = []
 
+    logger.info("Length of [{}] is : {}".format(chr_table[chr_no], window_end))
+
     while True:
         if (eval_counter % 100) == 0:
             if pgb_on:
                 bar = pgb.ProgressBar(max_value=100)
-            logger.info("Reading . . . :[chr{}:{}-{}]".format(chr_no+1,window_count,window_count+window_size*100))
+            logger.info("Reading . . . :[{}:{}-{}]".format(chr_table[chr_no],window_count,window_count+window_size*100))
 
-        if window_count + window_size > chr_lengths[chr_no]:
-            logger.info("Reading . . . :[chr{}:{}-{}]".format(chr_no+1,window_count-(window_size*(eval_counter -1)), window_count + window_size))
+        if window_count + window_size > window_end:
+            logger.info("Reading . . . :[{}:{}-{}]".format(chr_table[chr_no],window_count-(window_size*(eval_counter -1)), window_count + window_size))
             writeBed(output_file_name, peaks, logger, printout=True)
             break
 
-        read_count_by_grid = generateReadcounts(input_data, window_count, window_count + window_size, chr_no, file_name, num_grid).reshape(input_data_eval.shape)
-        ref_data_by_grid = generateRefcounts(input_data_ref, window_count, window_count + window_size, chr_no, ref_data_df, num_grid).reshape(input_ref_data_eval.shape)
+        read_count_by_grid = generateReadcounts(input_data, window_count, window_count + window_size, chr_table[chr_no], file_name, num_grid).reshape(input_data_eval.shape)
+        ref_data_by_grid = generateRefcounts(input_data_ref, window_count, window_count + window_size, ref_data_df, num_grid).reshape(input_ref_data_eval.shape)
 
         result_dict = {input_data_eval: read_count_by_grid, input_ref_data_eval: ref_data_by_grid, is_train_step: False}
         preds = sess.run(prediction, feed_dict=result_dict)
         class_value_prediction = buildModel.classValueFilter(preds)
 
-        peaks += predictionToBedString(class_value_prediction, "chr" + str(chr_no + 1), window_count, stride,
-                              num_grid, logger, read_count_by_grid.reshape(num_grid).tolist())
+        peaks += predictionToBedString(class_value_prediction, chr_table[chr_no], window_count, stride,
+                num_grid, logger, read_count_by_grid.reshape(num_grid).tolist())
         if pgb_on:
             bar.update(eval_counter)
 
@@ -124,12 +186,12 @@ def call_peak(chr_no, chr_lengths, file_name, ref_data_df, input_data, input_dat
         window_count += window_size
 
 
-def generateReadcounts(input_data, region_start, region_end, chr_no, file_name, num_grid):
+def generateReadcounts(input_data, region_start, region_end, chr_num, file_name, num_grid):
     read_count_by_grid = []
     stride = (region_end - (region_start + 1)) / num_grid
 
     samtools_call = ['samtools depth -aa -r {} {} > tmp_depth'.format(
-        preProcessing.createRegionStr("chr{}".format(chr_no + 1), int(region_start),int(region_end - 1)), file_name)]
+        preProcessing.createRegionStr("{}".format(chr_num), int(region_start),int(region_end - 1)), file_name)]
     FNULL = open(os.devnull, 'w')
     sp.call(samtools_call, shell=True, stdout=FNULL, stderr=sp.STDOUT)
 
@@ -144,7 +206,7 @@ def generateReadcounts(input_data, region_start, region_end, chr_no, file_name, 
     return read_count_by_grid
 
 
-def generateRefcounts(input_data_ref, region_start, region_end, chr_no, refGene_df, num_grid):
+def generateRefcounts(input_data_ref, region_start, region_end, refGene_df, num_grid):
     stride = (region_end - (region_start + 1)) / num_grid
 
     sub_refGene = preProcessing.makeRefGeneTags(refGene_df[(refGene_df['start'] > region_start)&(refGene_df['end'] < region_end)],
