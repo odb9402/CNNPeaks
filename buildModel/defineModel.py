@@ -1,5 +1,7 @@
 import tensorflow as tf
 from buildModel.hyperparameters import *
+from scipy.signal import gaussian
+import numpy as np
 """
 All tensor objects will be defined as global variables.
 Any source can access to these values for restoring or
@@ -36,7 +38,8 @@ input_ref_data_train = tf.placeholder(tf.float32, shape=(batch_size, target_size
 input_ref_data_eval = tf.placeholder(tf.float32, shape=(batch_size, target_size, 1), name="TestRefData")
 
 #smoothing_filter = tf.constant([[[1/21]],[[2/21]],[[4/21]],[[7/21]],[[4/21]],[[2/21]],[[1/21]]], tf.float32 , name='smoothing_filter')
-smoothing_filter = tf.constant([1/31 for x in range(31)], tf.float32 ,  shape=[31, 1, 1], name='smoothing_filter')
+#smoothing_filter = tf.constant([1/31 for x in range(31)], tf.float32 ,  shape=[31, 1, 1], name='smoothing_filter')
+smoothing_filter = tf.constant(gaussian(101,100)/np.sum(gaussian(101,100)), shape=(101,1,1), name='smoothing_filter')
 
 ###################### STEM FOR REFGENEDEPTH ###########################
 conv1_ref_weight = tf.get_variable("Conv_REF_1", shape=[4, 1, conv1_ref_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
@@ -137,7 +140,8 @@ def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing
     """
     if smoothing:
         input_data_depth_smooth = tf.nn.conv1d(input_data_depth, smoothing_filter, stride=1, padding='SAME')
-        input_data_depth = tf.maximum(input_data_depth_smooth, input_data_depth)
+        #input_data_depth = tf.maximum(input_data_depth_smooth, input_data_depth)
+        input_data_depth = input_data_depth_smooth
 
     if normalize:
         input_mean, input_var = tf.nn.moments(input_data_depth, [1])
@@ -320,7 +324,8 @@ def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, bat
     """
     if smoothing:
         depth_tensor_smooth = tf.nn.conv1d(depth_tensor, smoothing_filter, stride=1, padding='SAME')
-        depth_tensor = tf.maximum(depth_tensor_smooth, depth_tensor)
+        #depth_tensor = tf.maximum(depth_tensor_smooth, depth_tensor)
+        depth_tensor = depth_tensor_smooth
 
     if normalize:
         depth_mean, depth_var = tf.nn.moments(depth_tensor, [1])

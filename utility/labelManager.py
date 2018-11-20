@@ -193,7 +193,6 @@ class labelManager():
             depths = np.array(self.data_list[0][self.fileIndex])
             smoothing_filter = gaussian(self.smoothing_window,self.smoothing_var)/\
                                np.sum(gaussian(self.smoothing_window,self.smoothing_var))
-            #smoothing_filter = [1/31 for x in range(31)]
             conv_depths = np.convolve(depths, smoothing_filter, mode='same')
             #self.subplt.plot(np.maximum(depths, conv_depths).tolist(),'k',markersize=2, linewidth=1)
             self.subplt.plot(conv_depths, 'k', markersize=2, linewidth=1)
