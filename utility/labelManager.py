@@ -23,6 +23,8 @@ class labelManager():
         self.endLoc = 0
         self.fileIndex = 0
         self.smoothing = False
+        self.smoothing_window = 31
+        self.smoothing_var = 1
 
         loads = self.fileNameLoad(directory)
 
@@ -31,9 +33,9 @@ class labelManager():
 
         self.root = Tk()
         self.root.title('Label data checker')
-        self.root.geometry('900x700')
+        #self.root.geometry('600x600')
 
-        self.fig = Figure(figsize=(6,6), dpi=100)
+        self.fig = Figure(figsize=(4,4), dpi=100)
         self.subplt = self.fig.add_subplot(111)
 
         self.drop_button = Button(self.root, text="Drop", command=self.dropLabels)
@@ -43,28 +45,35 @@ class labelManager():
         self.next_button = Button(self.root, text="Next", command=self.nextData)
         self.next_button.grid(row=1, column = 2,sticky=W+E+N+S)
         self.noPeak_button = Button(self.root, text="noPeak", command=lambda: self.adjustData(peak=False))
-        self.noPeak_button.grid(row=4, column = 1, columnspan=2,sticky=W+E+N+S)
+        self.noPeak_button.grid(row=5, column = 1, columnspan=2,sticky=W+E+N+S)
         self.peak_button = Button(self.root, text="peak", command=lambda : self.adjustData(peak=True))
-        self.peak_button.grid(row=5, column = 1, columnspan=2,sticky=W+E+N+S)
+        self.peak_button.grid(row=6, column = 1, columnspan=2,sticky=W+E+N+S)
+        self.smoothParam = Text(self.root, height=2, width=12)
+        self.smoothParam.grid(row=7, column=1)
         self.smooth_button = Button(self.root, text="Smoothing", command=self.smoothingDepth)
-        self.smooth_button.grid(row=6, column = 1, columnspan=2,sticky=W+E+N+S)
+        self.smooth_button.grid(row=7, column = 2,sticky=W+E+N+S)
 
+        self.moveFileLabel = Label(self.root, text=" {}/{} ` th label.".format(self.fileIndex,len(self.data_list[0])))
+        self.moveFileLabel.grid(row=2, column=2)
+        self.moveFileEntry = Entry(self.root, width=12)
+        self.moveFileEntry.bind("<Return>", self.moveFile)
+        self.moveFileEntry.grid(row=2, column=1)
 
         self.startLabel = Label(self.root, text="Start point :")
-        self.startLabel.grid(row=2, column=1)
+        self.startLabel.grid(row=3, column=1)
         self.startAxis = Text(self.root, height = 2, width = 12)
         self.startAxis.insert(END, self.startLoc)
-        self.startAxis.grid(row=2, column = 2)
+        self.startAxis.grid(row=3, column = 2)
 
         self.endLabel = Label(self.root, text="End point   :")
-        self.endLabel.grid(row=3, column=1)
+        self.endLabel.grid(row=4, column=1)
         self.endAxis = Text(self.root, height = 2, width = 12)
         self.endAxis.insert(END, self.endLoc)
-        self.endAxis.grid(row=3, column = 2 )
+        self.endAxis.grid(row=4, column=2)
 
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)
         self.canvas.show()
-        self.canvas.get_tk_widget().grid(row=0, column= 0, rowspan=6, sticky=W+E+N+S, padx=20, pady=20)
+        self.canvas.get_tk_widget().grid(row=0, column= 0, rowspan=8, sticky=W+E+N+S, padx=20, pady=20)
 
         self.drawPlot()
 
@@ -74,8 +83,16 @@ class labelManager():
         self.root.mainloop()
 
 
+    def moveFile(self, event):
+        self.fileIndex = int(self.moveFileEntry.get()) + 1
+        self.drawPlot()
+
     def smoothingDepth(self):
         self.smoothing = not self.smoothing
+        value = self.smoothParam.get('1.0',END)
+        values = value.split(',')
+        self.smoothing_window = int(values[0])
+        self.smoothing_var = int(values[1])
         self.drawPlot()
 
 
@@ -174,10 +191,12 @@ class labelManager():
         ### Draw read input data
         if self.smoothing:
             depths = np.array(self.data_list[0][self.fileIndex])
-            #smoothing_filter = gaussian(31,1)/np.sum(gaussian(31,1))
-            smoothing_filter = [1/31 for x in range(31)]
+            smoothing_filter = gaussian(self.smoothing_window,self.smoothing_var)/\
+                               np.sum(gaussian(self.smoothing_window,self.smoothing_var))
+            #smoothing_filter = [1/31 for x in range(31)]
             conv_depths = np.convolve(depths, smoothing_filter, mode='same')
-            self.subplt.plot(np.maximum(depths, conv_depths).tolist(),'k',markersize=2, linewidth=1)
+            #self.subplt.plot(np.maximum(depths, conv_depths).tolist(),'k',markersize=2, linewidth=1)
+            self.subplt.plot(conv_depths, 'k', markersize=2, linewidth=1)
         else:
             self.subplt.plot(self.data_list[0][self.fileIndex],'k', markersize=2, linewidth=1)
 
@@ -200,6 +219,8 @@ class labelManager():
             if self.data_list[1][self.fileIndex][i] == 1:
                 refSeq_index.append(i)
         self.subplt.plot(refSeq_index, [0 for x in range(len(refSeq_index))], 'bo', markersize=6)
+
+        self.moveFileLabel.configure(text="{}/{} ` th label.".format(self.fileIndex,len(self.data_list[0])))
 
         self.canvas.show()
 

@@ -1,7 +1,15 @@
 from labelManager import labelManager
 from os.path import abspath
 from tkinter.filedialog import askdirectory
+from tkinter import Tk
 
-filename = askdirectory(title="Select Your Directory")
 
-labelManager(abspath(filename))
+
+root = Tk()
+root.withdraw()
+
+dirPath = askdirectory(title="Select Your Directory")
+
+root.destroy()
+
+labelManager(abspath(dirPath))
