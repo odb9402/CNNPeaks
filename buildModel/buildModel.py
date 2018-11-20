@@ -1,14 +1,13 @@
-import math
-import glob
 import os
 import shutil
 
-from scipy import stats
 import pandas as pd
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import random
+
+from utility.utilities import extractChrClass
 from .defineModel import *
 from .hyperparameters import *
 
@@ -239,22 +238,6 @@ def training(sess, loss, prediction, test_prediction, train_step,
     logger.info("Model saved in path : %s" % save_path)
 
 
-def expandingPrediction(input_list, multiple=5):
-    """
-
-    :param input_list:
-    :param multiple:
-    :return:
-    """
-    expanded_list = []
-    for prediction in input_list:
-        for i in range(multiple):
-            expanded_list.append(prediction)
-
-    return expanded_list
-
-
-
 def getTensorStat(logits, targets, batch_size_in=batch_size):
     """
     Return accuracy of the result.
@@ -369,28 +352,6 @@ def classValueFilter(output_value):
             class_value_list.append(0)
 
     return class_value_list
-
-
-def extractChrClass(dir):
-    """
-    Extract a chromosome number and a class number from label file names.
-
-    :param dir:
-    :return:
-    """
-
-    chr_list = set()
-    for ct_file in glob.glob(dir + "/*.ct"):
-        chr_list.add(ct_file.rsplit('/', 1)[1].split('_')[0])
-
-    data_direction = {}
-    for chr in chr_list:
-        cls_list = []
-        for ct_file in glob.glob(dir + "/" + chr + "_*.ct"):
-            cls_list.append(ct_file.rsplit('/', 1)[1].split('_')[1])
-        data_direction[chr] = cls_list
-
-    return data_direction
 
 
 def splitTrainingData(data_list, label_list, ref_list, Kfold=10):

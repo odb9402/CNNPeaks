@@ -2,7 +2,6 @@ from tkinter import *
 import tkinter.messagebox as messagebox
 import os
 import glob
-import buildModel.buildModel as buildModel
 import pandas as pd
 import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
@@ -13,6 +12,9 @@ from math import pi, sqrt, exp
 from scipy.signal import gaussian
 
 import matplotlib
+
+import utility.utilities
+
 
 class labelManager():
 
@@ -29,12 +31,10 @@ class labelManager():
 
         self.root = Tk()
         self.root.title('Label data checker')
-        self.root.geometry('750x550')
+        self.root.geometry('900x700')
 
-        self.fig = Figure(figsize=(5,5), dpi=100)
+        self.fig = Figure(figsize=(6,6), dpi=100)
         self.subplt = self.fig.add_subplot(111)
-        self.subplt.plot(self.data_list[0][self.fileIndex],'k')
-        self.subplt.plot(self.data_list[1][self.fileIndex],'r.')
 
         self.drop_button = Button(self.root, text="Drop", command=self.dropLabels)
         self.drop_button.grid(row=0, column = 1, columnspan=2, sticky=W+E+N+S)
@@ -65,6 +65,8 @@ class labelManager():
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.root)
         self.canvas.show()
         self.canvas.get_tk_widget().grid(row=0, column= 0, rowspan=6, sticky=W+E+N+S, padx=20, pady=20)
+
+        self.drawPlot()
 
         self.fig.canvas.mpl_connect('button_press_event', self.dragStart)
         self.fig.canvas.mpl_connect('button_release_event', self.dragEnd)
@@ -102,6 +104,7 @@ class labelManager():
 
         self.data_list[0].pop(self.fileIndex)
         self.data_list[1].pop(self.fileIndex)
+        self.data_list[2].pop(self.fileIndex)
 
         if self.fileIndex > len(self.data_list[0]):
             self.fileIndex -= 1
@@ -128,15 +131,15 @@ class labelManager():
 
     def adjustData(self, peak=True):
         filename = self.file_list[2][self.fileIndex]
-        length = len(self.data_list[1][self.fileIndex])
+        length = len(self.data_list[2][self.fileIndex])
 
         i = min(int(self.startAxis.get('1.0',END)), int(self.endAxis.get('1.0',END)))
 
         while i < max(int(self.startAxis.get('1.0',END)), int(self.endAxis.get('1.0',END))):
             if peak:
-                self.data_list[1][self.fileIndex][i] = 1
+                self.data_list[2][self.fileIndex][i] = 1
             else:
-                self.data_list[1][self.fileIndex][i] = 0
+                self.data_list[2][self.fileIndex][i] = 0
             i += 1
         self.drawPlot()
 
@@ -145,7 +148,7 @@ class labelManager():
         ###### Save new label ########
         for i in range(length):
             if i % 5 == 0:
-                compressed_label.append(self.data_list[1][self.fileIndex][i])
+                compressed_label.append(self.data_list[2][self.fileIndex][i])
 
         noPeakColumn = []
         for i in range(length//5):
@@ -167,16 +170,37 @@ class labelManager():
 
     def drawPlot(self):
         self.subplt.cla()
+
+        ### Draw read input data
         if self.smoothing:
             depths = np.array(self.data_list[0][self.fileIndex])
             #smoothing_filter = gaussian(31,1)/np.sum(gaussian(31,1))
             smoothing_filter = [1/31 for x in range(31)]
             conv_depths = np.convolve(depths, smoothing_filter, mode='same')
-            print(conv_depths)
-            self.subplt.plot(np.maximum(depths, conv_depths).tolist(),'k.',markersize=2, linewidth=1)
+            self.subplt.plot(np.maximum(depths, conv_depths).tolist(),'k',markersize=2, linewidth=1)
         else:
-            self.subplt.plot(self.data_list[0][self.fileIndex],'k.', markersize=2, linewidth=1)
-        self.subplt.plot(self.data_list[1][self.fileIndex],'r.')
+            self.subplt.plot(self.data_list[0][self.fileIndex],'k', markersize=2, linewidth=1)
+
+        ### Highlight on label
+        onPositive = False
+        start = 0
+        end = 0
+        for i in range(len(self.data_list[2][self.fileIndex])):
+            if self.data_list[2][self.fileIndex][i] == 1 and not onPositive:
+                start = i
+                onPositive = True
+            elif self.data_list[2][self.fileIndex][i] == 0 and onPositive:
+                end = i
+                onPositive = False
+                self.subplt.axvspan(start, end, color='red', alpha=0.3)
+
+        ### Draw refSeq
+        refSeq_index = []
+        for i in range(len(self.data_list[1][self.fileIndex])):
+            if self.data_list[1][self.fileIndex][i] == 1:
+                refSeq_index.append(i)
+        self.subplt.plot(refSeq_index, [0 for x in range(len(refSeq_index))], 'bo', markersize=6)
+
         self.canvas.show()
 
 
@@ -190,9 +214,10 @@ class labelManager():
         input_list = {}
         for dir in dir_list:
             dir = os.path.join(PATH,dir)
-            input_list[dir] = buildModel.extractChrClass(dir)
+            input_list[dir] = utility.utilities.extractChrClass(dir)
 
         data_list = []
+        ref_list = []
         label_list = []
 
         input_file_list = []
@@ -211,10 +236,12 @@ class labelManager():
                     label_file_list.append(label_file_name)
 
                     reads = (pd.read_csv(input_file_name))['readCount'].values.reshape(num_grid)
+                    refs = (pd.read_csv(ref_file_name))['refGeneCount'].values.reshape(num_grid)
                     label = (pd.read_csv(label_file_name))['peak'].values.transpose()
-                    label = buildModel.expandingPrediction(label)
+                    label = utility.utilities.expandingPrediction(label)
 
                     data_list.append(reads)
                     label_list.append(label)
+                    ref_list.append(refs)
 
-        return {'data':(data_list, label_list), 'file_name':(input_file_list, ref_file_list, label_file_list)}
+        return {'data':(data_list,ref_list, label_list), 'file_name':(input_file_list, ref_file_list, label_file_list)}

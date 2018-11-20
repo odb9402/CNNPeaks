@@ -4,6 +4,9 @@ import buildModel.buildModel as buildModel
 import pandas as pd
 import matplotlib.pyplot as plt
 
+import utility.utilities
+
+
 def run(dir_name, logger, num_grid=8000):
     PATH = os.path.abspath(dir_name)
     #bam_files = glob.glob(PATH + '/*.bam')
@@ -18,7 +21,7 @@ def run(dir_name, logger, num_grid=8000):
     input_list = {}
     for dir in dir_list:
         dir = PATH + '/' + dir
-        input_list[dir] = buildModel.extractChrClass(dir)
+        input_list[dir] = utility.utilities.extractChrClass(dir)
 
     train_data_list = []
     train_label_list = []
@@ -31,7 +34,7 @@ def run(dir_name, logger, num_grid=8000):
 
                 reads = (pd.read_csv(input_file_name))['readCount'].as_matrix().reshape(num_grid)
                 label = (pd.read_csv(label_file_name))['peak'].as_matrix().transpose()
-                label = buildModel.expandingPrediction(label)
+                label = utility.utilities.expandingPrediction(label)
 
                 plt.plot(reads,'k')
                 plt.plot(label,'r.')
