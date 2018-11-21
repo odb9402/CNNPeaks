@@ -4,16 +4,52 @@ import os
 import glob
 import pandas as pd
 import numpy as np
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
-from matplotlib.backend_bases import key_press_handler
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import ntpath
 from matplotlib.figure import Figure
-from math import pi, sqrt, exp
-
 from scipy.signal import gaussian
 
-import matplotlib
+def expandingPrediction(input_list, multiple=5):
+    """
 
-import utility.utilities
+    :param input_list:
+    :param multiple:
+    :return:
+    """
+    expanded_list = []
+    for prediction in input_list:
+        for i in range(multiple):
+            expanded_list.append(prediction)
+
+    return expanded_list
+
+
+def extractChrClass(dir):
+    """
+    Extract a chromosome number and a class number from label file names.
+
+    :param dir:
+    :return:
+    """
+
+    chr_list = set()
+
+    for ct_file in glob.glob(dir + "/*.ct"):
+        chr_list.add(path_leaf(ct_file).split('_')[0])
+
+    data_direction = {}
+    for chr in chr_list:
+        cls_list = []
+        for ct_file in glob.glob(dir + "/" + chr + "_*.ct"):
+            cls_list.append(path_leaf(ct_file).split('_')[1])
+        data_direction[chr] = cls_list
+
+    return data_direction
+
+
+def path_leaf(path):
+    head, tail = ntpath.split(path)
+    return tail or ntpath.basename(path)
 
 
 class labelManager():
@@ -53,7 +89,7 @@ class labelManager():
         self.smooth_button = Button(self.root, text="Smoothing", command=self.smoothingDepth)
         self.smooth_button.grid(row=7, column = 2,sticky=W+E+N+S)
 
-        self.moveFileLabel = Label(self.root, text=" {}/{} ` th label.".format(self.fileIndex,len(self.data_list[0])))
+        self.moveFileLabel = Label(self.root, text=" {}/{} ` th label.".format(self.fileIndex + 1,len(self.data_list[0])))
         self.moveFileLabel.grid(row=2, column=2)
         self.moveFileEntry = Entry(self.root, width=12)
         self.moveFileEntry.bind("<Return>", self.moveFile)
@@ -82,9 +118,8 @@ class labelManager():
 
         self.root.mainloop()
 
-
     def moveFile(self, event):
-        self.fileIndex = int(self.moveFileEntry.get()) + 1
+        self.fileIndex = int(self.moveFileEntry.get())
         self.drawPlot()
 
     def smoothingDepth(self):
@@ -95,18 +130,15 @@ class labelManager():
         self.smoothing_var = int(values[1])
         self.drawPlot()
 
-
     def dragStart(self, event):
         self.startLoc = int(event.xdata)
         self.startAxis.delete('1.0', END)
         self.startAxis.insert(END, self.startLoc)
 
-
     def dragEnd(self, event):
         self.endLoc = int(event.xdata)
         self.endAxis.delete('1.0', END)
         self.endAxis.insert(END, self.endLoc)
-
 
     def dropLabels(self):
         os.remove(self.file_list[2][self.fileIndex])
@@ -127,7 +159,6 @@ class labelManager():
             self.fileIndex -= 1
         self.drawPlot()
 
-
     def nextData(self):
         if(len(self.data_list[0]) - 1 < self.fileIndex + 1):
             print("next_index")
@@ -136,7 +167,6 @@ class labelManager():
             self.fileIndex += 1
             self.drawPlot()
 
-
     def prevData(self):
         if(0 > self.fileIndex - 1):
             print("prev_index")
@@ -144,7 +174,6 @@ class labelManager():
         else:
             self.fileIndex -= 1
             self.drawPlot()
-
 
     def adjustData(self, peak=True):
         filename = self.file_list[2][self.fileIndex]
@@ -181,9 +210,6 @@ class labelManager():
         os.remove(filename)
         new_label_df.to_csv(filename)
         print("{} saved.".format(filename))
-
-
-
 
     def drawPlot(self):
         self.subplt.cla()
@@ -223,7 +249,6 @@ class labelManager():
 
         self.canvas.show()
 
-
     def fileNameLoad(self, dir_name, num_grid=12000):
         PATH = os.path.abspath(dir_name)
         dir_list = os.listdir(PATH)
@@ -234,7 +259,7 @@ class labelManager():
         input_list = {}
         for dir in dir_list:
             dir = os.path.join(PATH,dir)
-            input_list[dir] = utility.utilities.extractChrClass(dir)
+            input_list[dir] = extractChrClass(dir)
 
         data_list = []
         ref_list = []
@@ -258,7 +283,7 @@ class labelManager():
                     reads = (pd.read_csv(input_file_name))['readCount'].values.reshape(num_grid)
                     refs = (pd.read_csv(ref_file_name))['refGeneCount'].values.reshape(num_grid)
                     label = (pd.read_csv(label_file_name))['peak'].values.transpose()
-                    label = utility.utilities.expandingPrediction(label)
+                    label = expandingPrediction(label)
 
                     data_list.append(reads)
                     label_list.append(label)
