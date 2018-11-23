@@ -78,17 +78,17 @@ class labelManager():
         self.fig = Figure(figsize=(4,4), dpi=100)
         self.peak_plot = self.fig.add_subplot(111)
 
-        self.drop_button = Button(self.root, text="Drop", command=self.dropLabels)
-        self.drop_button.grid(row=0, column = 1, columnspan=2, sticky=W+E+N+S)
-        self.prev_button = Button(self.root, text="Prev", command=self.prevData)
-        self.prev_button.grid(row=1, column = 1,sticky=W+E+N+S)
-        self.next_button = Button(self.root, text="Next", command=self.nextData)
-        self.next_button.grid(row=1, column = 2,sticky=W+E+N+S)
-        self.noPeak_button = Button(self.root, text="noPeak", command=lambda: self.adjustData(peak=False,criteria='region'))
+        self.prev_button = Button(self.root, text="Prev(Q)", command=self.prevData)
+        self.prev_button.grid(row=0, column = 1,sticky=W+E+N+S)
+        self.next_button = Button(self.root, text="Next(W)", command=self.nextData)
+        self.next_button.grid(row=0, column = 2,sticky=W+E+N+S)
+        self.drop_button = Button(self.root, text="Drop(E)", command=self.dropLabels)
+        self.drop_button.grid(row=1, column = 1, columnspan=2, sticky=W+E+N+S)
+        self.noPeak_button = Button(self.root, text="noPeak(A)", command=lambda: self.adjustData(peak=False,criteria='region'))
         self.noPeak_button.grid(row=5, column = 1, columnspan=2, sticky=W+E+N+S)
-        self.peak_region_button = Button(self.root, text="peak = region", command=lambda : self.adjustData(peak=True, criteria='region'))
+        self.peak_region_button = Button(self.root, text="peak = region(S)", command=lambda : self.adjustData(peak=True, criteria='region'))
         self.peak_region_button.grid(row=6, column = 1, sticky=W+E+N+S)
-        self.peak_threshold_button = Button(self.root, text="peak > threshold",command=lambda: self.adjustData(peak=True,criteria='threshold'))
+        self.peak_threshold_button = Button(self.root, text="peak > threshold(D)",command=lambda: self.adjustData(peak=True,criteria='threshold'))
         self.peak_threshold_button.grid(row=6, column=2, sticky=W+E+N+S)
 
         self.smoothParam = Text(self.root, height=2, width=12)
@@ -120,10 +120,30 @@ class labelManager():
 
         self.drawPlot()
 
+        ### Mouse drag events for region selection
         self.fig.canvas.mpl_connect('button_press_event', self.dragStart)
         self.fig.canvas.mpl_connect('button_release_event', self.dragEnd)
 
+        ### Keyboard events
+        self.root.bind('<Key>', self.keyPressed)
+
         self.root.mainloop()
+
+    def keyPressed(self, event):
+        if event.char == 'q':
+            self.prevData()
+        elif event.char == 'w':
+            self.nextData()
+        elif event.char.lower() == 'a':
+            self.adjustData(peak=False,criteria='region')
+        elif event.char.lower() == 's':
+            self.adjustData(peak=True, criteria='region')
+        elif event.char.lower() == 'd':
+            self.adjustData(peak=True, criteria='threshold')
+        elif event.char.lower() == 'e':
+            self.dropLabels()
+        else:
+            pass
 
     def moveFile(self, event):
         self.fileIndex = int(self.moveFileEntry.get())
@@ -202,6 +222,9 @@ class labelManager():
         elif criteria == 'threshold':
             if self.smoothing:
                 read_depth = self.smoothingInput()
+            else:
+                read_depth = self.data_list[0][self.fileIndex]
+
             for i in range(len(read_depth)):
                 if read_depth[i] >= self.thresholdLoc:
                     self.data_list[2][self.fileIndex][i] = 1
