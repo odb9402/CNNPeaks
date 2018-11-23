@@ -8,6 +8,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import ntpath
 from matplotlib.figure import Figure
 from scipy.signal import gaussian
+from scipy.ndimage.filters import maximum_filter1d
+import matplotlib.pyplot as plt
 
 def expandingPrediction(input_list, multiple=5):
     """
@@ -57,6 +59,7 @@ class labelManager():
     def __init__(self, directory):
         self.startLoc = 0
         self.endLoc = 0
+        self.thresholdLoc = 0
         self.fileIndex = 0
         self.smoothing = False
         self.smoothing_window = 31
@@ -69,10 +72,11 @@ class labelManager():
 
         self.root = Tk()
         self.root.title('Label data checker')
+        self.root.iconbitmap("peakLabelManager.ico")
         #self.root.geometry('600x600')
 
         self.fig = Figure(figsize=(4,4), dpi=100)
-        self.subplt = self.fig.add_subplot(111)
+        self.peak_plot = self.fig.add_subplot(111)
 
         self.drop_button = Button(self.root, text="Drop", command=self.dropLabels)
         self.drop_button.grid(row=0, column = 1, columnspan=2, sticky=W+E+N+S)
@@ -80,10 +84,13 @@ class labelManager():
         self.prev_button.grid(row=1, column = 1,sticky=W+E+N+S)
         self.next_button = Button(self.root, text="Next", command=self.nextData)
         self.next_button.grid(row=1, column = 2,sticky=W+E+N+S)
-        self.noPeak_button = Button(self.root, text="noPeak", command=lambda: self.adjustData(peak=False))
-        self.noPeak_button.grid(row=5, column = 1, columnspan=2,sticky=W+E+N+S)
-        self.peak_button = Button(self.root, text="peak", command=lambda : self.adjustData(peak=True))
-        self.peak_button.grid(row=6, column = 1, columnspan=2,sticky=W+E+N+S)
+        self.noPeak_button = Button(self.root, text="noPeak", command=lambda: self.adjustData(peak=False,criteria='region'))
+        self.noPeak_button.grid(row=5, column = 1, columnspan=2, sticky=W+E+N+S)
+        self.peak_region_button = Button(self.root, text="peak = region", command=lambda : self.adjustData(peak=True, criteria='region'))
+        self.peak_region_button.grid(row=6, column = 1, sticky=W+E+N+S)
+        self.peak_threshold_button = Button(self.root, text="peak > threshold",command=lambda: self.adjustData(peak=True,criteria='threshold'))
+        self.peak_threshold_button.grid(row=6, column=2, sticky=W+E+N+S)
+
         self.smoothParam = Text(self.root, height=2, width=12)
         self.smoothParam.grid(row=7, column=1)
         self.smooth_button = Button(self.root, text="Smoothing", command=self.smoothingDepth)
@@ -132,6 +139,7 @@ class labelManager():
 
     def dragStart(self, event):
         self.startLoc = int(event.xdata)
+        self.thresholdLoc = int(event.ydata)
         self.startAxis.delete('1.0', END)
         self.startAxis.insert(END, self.startLoc)
 
@@ -139,6 +147,7 @@ class labelManager():
         self.endLoc = int(event.xdata)
         self.endAxis.delete('1.0', END)
         self.endAxis.insert(END, self.endLoc)
+        self.drawPlot()
 
     def dropLabels(self):
         os.remove(self.file_list[2][self.fileIndex])
@@ -175,19 +184,28 @@ class labelManager():
             self.fileIndex -= 1
             self.drawPlot()
 
-    def adjustData(self, peak=True):
+    def adjustData(self, peak=True, criteria=None):
         filename = self.file_list[2][self.fileIndex]
         length = len(self.data_list[2][self.fileIndex])
 
-        i = min(int(self.startAxis.get('1.0',END)), int(self.endAxis.get('1.0',END)))
+        if criteria == 'region':
+            i = min(int(self.startAxis.get('1.0',END)), int(self.endAxis.get('1.0',END)))
 
-        while i < max(int(self.startAxis.get('1.0',END)), int(self.endAxis.get('1.0',END))):
-            if peak:
-                self.data_list[2][self.fileIndex][i] = 1
-            else:
-                self.data_list[2][self.fileIndex][i] = 0
-            i += 1
-        self.drawPlot()
+            while i < max(int(self.startAxis.get('1.0',END)), int(self.endAxis.get('1.0',END))):
+                if peak:
+                    self.data_list[2][self.fileIndex][i] = 1
+                else:
+                    self.data_list[2][self.fileIndex][i] = 0
+                i += 1
+            self.drawPlot()
+
+        elif criteria == 'threshold':
+            if self.smoothing:
+                read_depth = self.smoothingInput()
+            for i in range(len(read_depth)):
+                if read_depth[i] >= self.thresholdLoc:
+                    self.data_list[2][self.fileIndex][i] = 1
+            self.drawPlot()
 
         compressed_label = []
 
@@ -212,18 +230,15 @@ class labelManager():
         print("{} saved.".format(filename))
 
     def drawPlot(self):
-        self.subplt.cla()
+        self.peak_plot.cla()
 
         ### Draw read input data
         if self.smoothing:
-            depths = np.array(self.data_list[0][self.fileIndex])
-            smoothing_filter = gaussian(self.smoothing_window,self.smoothing_var)/\
-                               np.sum(gaussian(self.smoothing_window,self.smoothing_var))
-            conv_depths = np.convolve(depths, smoothing_filter, mode='same')
-            #self.subplt.plot(np.maximum(depths, conv_depths).tolist(),'k',markersize=2, linewidth=1)
-            self.subplt.plot(conv_depths, 'k', markersize=2, linewidth=1)
+            read_depth = self.smoothingInput()
+            ##final_depth = (final_depth - final_depth.mean())/(final_depth.std() + 0.0001)
+            self.peak_plot.plot(read_depth, 'k', markersize=2, linewidth=1)
         else:
-            self.subplt.plot(self.data_list[0][self.fileIndex],'k', markersize=2, linewidth=1)
+            self.peak_plot.plot(self.data_list[0][self.fileIndex], 'k', markersize=2, linewidth=1)
 
         ### Highlight on label
         onPositive = False
@@ -236,18 +251,30 @@ class labelManager():
             elif self.data_list[2][self.fileIndex][i] == 0 and onPositive:
                 end = i
                 onPositive = False
-                self.subplt.axvspan(start, end, color='red', alpha=0.3)
+                self.peak_plot.axvspan(start, end, color='red', alpha=0.3)
 
         ### Draw refSeq
         refSeq_index = []
         for i in range(len(self.data_list[1][self.fileIndex])):
             if self.data_list[1][self.fileIndex][i] == 1:
                 refSeq_index.append(i)
-        self.subplt.plot(refSeq_index, [0 for x in range(len(refSeq_index))], 'b|', markersize=8)
+
+self.peak_plot.plot(refSeq_index, [0 for x in range(len(refSeq_index))], 'b|', markersize=8)
+
+        ### Draw Threshold setting
+        height = self.thresholdLoc
+        self.peak_plot.plot([0, len(self.data_list[0][self.fileIndex])],[height,height], 'y--')
 
         self.moveFileLabel.configure(text="{}/{} ` th label.".format(self.fileIndex,len(self.data_list[0])))
-
         self.canvas.show()
+
+    def smoothingInput(self):
+        depths = np.array(self.data_list[0][self.fileIndex])
+        smoothing_filter = gaussian(self.smoothing_window, self.smoothing_var) / \
+                           np.sum(gaussian(self.smoothing_window, self.smoothing_var))
+        union_depths = maximum_filter1d(depths, 51)  ## MAX POOL to extract boarder lines
+        final_depth = np.convolve(union_depths, smoothing_filter, mode='same')  ## Smoothing boarder lines
+        return final_depth
 
     def fileNameLoad(self, dir_name, num_grid=12000):
         PATH = os.path.abspath(dir_name)
