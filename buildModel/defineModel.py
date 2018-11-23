@@ -39,7 +39,7 @@ input_ref_data_eval = tf.placeholder(tf.float32, shape=(batch_size, target_size,
 
 #smoothing_filter = tf.constant([[[1/21]],[[2/21]],[[4/21]],[[7/21]],[[4/21]],[[2/21]],[[1/21]]], tf.float32 , name='smoothing_filter')
 #smoothing_filter = tf.constant([1/31 for x in range(31)], tf.float32 ,  shape=[31, 1, 1], name='smoothing_filter')
-smoothing_filter = tf.constant(gaussian(101,100)/np.sum(gaussian(101,100)), shape=(101,1,1), name='smoothing_filter')
+smoothing_filter = tf.constant(gaussian(51,30)/np.sum(gaussian(51,30)),tf.float32, shape=[51,1,1], name='smoothing_filter')
 
 ###################### STEM FOR REFGENEDEPTH ###########################
 conv1_ref_weight = tf.get_variable("Conv_REF_1", shape=[4, 1, conv1_ref_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
@@ -126,7 +126,7 @@ output_weight = tf.get_variable("Full_Output", shape=[fully_connected_size1, thr
 output_bias = tf.Variable(tf.truncated_normal([threshold_division], stddev=0.1, dtype=tf.float32))
 
 
-def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing=True, normalize=True):
+def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing=True, normalize=True, eps=0.0001):
     """
     Define structure of convolution model.
 
@@ -139,13 +139,15 @@ def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing
     :return: Tensor of the output layer
     """
     if smoothing:
-        input_data_depth_smooth = tf.nn.conv1d(input_data_depth, smoothing_filter, stride=1, padding='SAME')
-        #input_data_depth = tf.maximum(input_data_depth_smooth, input_data_depth)
-        input_data_depth = input_data_depth_smooth
+        depth_tensor_max = tf.nn.pool(input_data_depth, [31], strides=[1], padding='SAME', pooling_type='MAX')
+        depth_tensor_smooth = tf.nn.conv1d(input_data_depth, smoothing_filter, stride=1, padding='SAME')
+        input_data_depth = depth_tensor_smooth
 
     if normalize:
-        input_mean, input_var = tf.nn.moments(input_data_depth, [1])
-        input_data_depth = (input_data_depth -  input_mean)/tf.sqrt(input_var + 1)
+        depth_mean, depth_var = tf.nn.moments(input_data_depth, [1])
+        input_data_depth = (input_data_depth -  depth_mean)/tf.sqrt(depth_var + eps)
+        #depth_max = tf.reduce_max(input_data_depth)
+        #input_data_depth = ((input_data_depth - depth_mean)/(depth_max + 0.00001))*100
 
 
     #Stem of read depth data
@@ -313,7 +315,7 @@ def concatLayer_C(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_
     return concat
 
 
-def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, batch_size_in=batch_size, smoothing=False, normalize=True):
+def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, batch_size_in=batch_size, smoothing=False, normalize=True, eps=0.0001):
     """
     It generate
 
@@ -323,13 +325,15 @@ def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, bat
     :return:
     """
     if smoothing:
+        depth_tensor_max = tf.nn.pool(depth_tensor, [31], strides=[1], padding='SAME', pooling_type='MAX')
         depth_tensor_smooth = tf.nn.conv1d(depth_tensor, smoothing_filter, stride=1, padding='SAME')
-        #depth_tensor = tf.maximum(depth_tensor_smooth, depth_tensor)
         depth_tensor = depth_tensor_smooth
 
     if normalize:
         depth_mean, depth_var = tf.nn.moments(depth_tensor, [1])
-        depth_tensor = (depth_tensor -  depth_mean)/tf.sqrt(depth_var + 1)
+        depth_tensor = (depth_tensor -  depth_mean)/tf.sqrt(depth_var + eps)
+        #depth_max = tf.reduce_max(depth_tensor)
+        #depth_tensor = ((depth_tensor - depth_mean)/(depth_max + 0.00001))*100
 
     depth_tensor = tf.reshape(depth_tensor,[batch_size_in ,div, input_size//div])
     threshold_tensor = tf.reshape(threshold_tensor,[batch_size_in,div,1])
@@ -349,18 +353,18 @@ def aggregatedLoss(label_data_train, prediction_before_sigmoid):
 
     """
     loss_a = tf.reduce_mean(tf.nn.top_k(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction_before_sigmoid,
-        pos_weight=tf.maximum(1.,(loss_weight/2))), k = topK_set_a).values)
+        pos_weight=tf.maximum(1.,(loss_weight/3))), k = topK_set_a).values)
     tf.summary.scalar("Top {} Loss".format(topK_set_a),loss_a)
 
     loss_b = tf.reduce_mean(tf.nn.top_k(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction_before_sigmoid,
-        pos_weight=tf.maximum(1.,(loss_weight/4))), k = topK_set_b).values)
+        pos_weight=tf.maximum(1.,(loss_weight/3))), k = topK_set_b).values)
     tf.summary.scalar("Top {} Loss".format(topK_set_b),loss_b)
 
     loss_c = tf.reduce_mean(tf.nn.top_k(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction_before_sigmoid,
-        pos_weight=tf.maximum(1.,(loss_weight/8))), k = topK_set_c).values)
+        pos_weight=tf.maximum(1.,(loss_weight/3))), k = topK_set_c).values)
     tf.summary.scalar("Top {} Loss".format(topK_set_c),loss_c)
 
-    return 3 * tf.add_n([loss_a,loss_b,loss_c])
+    return tf.add_n([loss_a,loss_b,loss_c])
 
 ######################## Tensor graph for training steps #################################
 model_output  = peakPredictConvModel(input_data_train, input_ref_data_train)

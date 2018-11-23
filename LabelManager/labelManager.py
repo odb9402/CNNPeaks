@@ -243,7 +243,7 @@ class labelManager():
         for i in range(len(self.data_list[1][self.fileIndex])):
             if self.data_list[1][self.fileIndex][i] == 1:
                 refSeq_index.append(i)
-        self.subplt.plot(refSeq_index, [0 for x in range(len(refSeq_index))], 'bo', markersize=6)
+        self.subplt.plot(refSeq_index, [0 for x in range(len(refSeq_index))], 'b|', markersize=8)
 
         self.moveFileLabel.configure(text="{}/{} ` th label.".format(self.fileIndex,len(self.data_list[0])))
 

@@ -1,7 +1,7 @@
 #Model hyperparameters
 class_threshold = 0.5
 
-threshold_division = 10
+threshold_division = 1
 pnRate_threshold = 50
 batch_size = 1
 evaluation_size = 1
