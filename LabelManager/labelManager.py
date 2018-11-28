@@ -96,7 +96,7 @@ class labelManager():
         self.smooth_button = Button(self.root, text="Smoothing", command=self.smoothingDepth)
         self.smooth_button.grid(row=7, column = 2,sticky=W+E+N+S)
 
-        self.moveFileLabel = Label(self.root, text=" {}/{} ` th label.".format(self.fileIndex + 1,len(self.data_list[0])))
+        self.moveFileLabel = Label(self.root, text=" {}/{} ` th label.".format(self.fileIndex + 1, len(self.data_list[0])))
         self.moveFileLabel.grid(row=2, column=2)
         self.moveFileEntry = Entry(self.root, width=12)
         self.moveFileEntry.bind("<Return>", self.moveFile)
@@ -147,6 +147,7 @@ class labelManager():
 
     def moveFile(self, event):
         self.fileIndex = int(self.moveFileEntry.get())
+        self.moveFileLabel.focus_set()
         self.drawPlot()
 
     def smoothingDepth(self):
@@ -155,11 +156,12 @@ class labelManager():
         values = value.split(',')
         self.smoothing_window = int(values[0])
         self.smoothing_var = int(values[1])
+        self.moveFileLabel.focus_set()
         self.drawPlot()
 
     def dragStart(self, event):
         self.startLoc = int(event.xdata)
-        self.thresholdLoc = int(event.ydata)
+        self.thresholdLoc = float(event.ydata)
         self.startAxis.delete('1.0', END)
         self.startAxis.insert(END, self.startLoc)
 
@@ -209,14 +211,18 @@ class labelManager():
         length = len(self.data_list[2][self.fileIndex])
 
         if criteria == 'region':
-            i = min(int(self.startAxis.get('1.0',END)), int(self.endAxis.get('1.0',END)))
-
-            while i < max(int(self.startAxis.get('1.0',END)), int(self.endAxis.get('1.0',END))):
+            start = min(int(self.startAxis.get('1.0',END)), int(self.endAxis.get('1.0',END)))
+            end = max(int(self.startAxis.get('1.0',END)), int(self.endAxis.get('1.0',END)))
+            if start < 0:
+                start = 0
+            elif end >= length:
+                end = length-1
+            while start < end:
                 if peak:
-                    self.data_list[2][self.fileIndex][i] = 1
+                    self.data_list[2][self.fileIndex][start] = 1
                 else:
-                    self.data_list[2][self.fileIndex][i] = 0
-                i += 1
+                    self.data_list[2][self.fileIndex][start] = 0
+                start += 1
             self.drawPlot()
 
         elif criteria == 'threshold':
@@ -263,7 +269,7 @@ class labelManager():
         else:
             self.peak_plot.plot(self.data_list[0][self.fileIndex], 'k', markersize=2, linewidth=1)
 
-        ### Highlight on label
+        ### Draw peak label by highlighting
         onPositive = False
         start = 0
         end = 0
@@ -271,7 +277,7 @@ class labelManager():
             if self.data_list[2][self.fileIndex][i] == 1 and not onPositive:
                 start = i
                 onPositive = True
-            elif self.data_list[2][self.fileIndex][i] == 0 and onPositive:
+            elif (self.data_list[2][self.fileIndex][i] == 0 or i == len(self.data_list[2][self.fileIndex]) ) and onPositive:
                 end = i
                 onPositive = False
                 self.peak_plot.axvspan(start, end, color='red', alpha=0.3)
@@ -281,14 +287,14 @@ class labelManager():
         for i in range(len(self.data_list[1][self.fileIndex])):
             if self.data_list[1][self.fileIndex][i] == 1:
                 refSeq_index.append(i)
-
-self.peak_plot.plot(refSeq_index, [0 for x in range(len(refSeq_index))], 'b|', markersize=8)
+        self.peak_plot.plot(refSeq_index, [0 for x in range(len(refSeq_index))], 'b|', markersize=8)
 
         ### Draw Threshold setting
         height = self.thresholdLoc
         self.peak_plot.plot([0, len(self.data_list[0][self.fileIndex])],[height,height], 'y--')
 
-        self.moveFileLabel.configure(text="{}/{} ` th label.".format(self.fileIndex,len(self.data_list[0])))
+        self.moveFileLabel.configure(text="{}/{} ` th label.".format(self.fileIndex + 1,len(self.data_list[0])))
+        self.moveFileLabel.focus_set()
         self.canvas.show()
 
     def smoothingInput(self):

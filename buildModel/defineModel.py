@@ -39,7 +39,7 @@ input_ref_data_eval = tf.placeholder(tf.float32, shape=(batch_size, target_size,
 
 #smoothing_filter = tf.constant([[[1/21]],[[2/21]],[[4/21]],[[7/21]],[[4/21]],[[2/21]],[[1/21]]], tf.float32 , name='smoothing_filter')
 #smoothing_filter = tf.constant([1/31 for x in range(31)], tf.float32 ,  shape=[31, 1, 1], name='smoothing_filter')
-smoothing_filter = tf.constant(gaussian(51,30)/np.sum(gaussian(51,30)),tf.float32, shape=[51,1,1], name='smoothing_filter')
+smoothing_filter = tf.constant(gaussian(101,30)/np.sum(gaussian(101,30)),tf.float32, shape=[101,1,1], name='smoothing_filter')
 
 ###################### STEM FOR REFGENEDEPTH ###########################
 conv1_ref_weight = tf.get_variable("Conv_REF_1", shape=[4, 1, conv1_ref_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
@@ -126,7 +126,7 @@ output_weight = tf.get_variable("Full_Output", shape=[fully_connected_size1, thr
 output_bias = tf.Variable(tf.truncated_normal([threshold_division], stddev=0.1, dtype=tf.float32))
 
 
-def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing=True, normalize=True, eps=0.0001):
+def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing=True, normalize=True, eps=0.00001):
     """
     Define structure of convolution model.
 
@@ -140,14 +140,12 @@ def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing
     """
     if smoothing:
         depth_tensor_max = tf.nn.pool(input_data_depth, [31], strides=[1], padding='SAME', pooling_type='MAX')
-        depth_tensor_smooth = tf.nn.conv1d(input_data_depth, smoothing_filter, stride=1, padding='SAME')
+        depth_tensor_smooth = tf.nn.conv1d(depth_tensor_max, smoothing_filter, stride=1, padding='SAME')
         input_data_depth = depth_tensor_smooth
 
     if normalize:
         depth_mean, depth_var = tf.nn.moments(input_data_depth, [1])
         input_data_depth = (input_data_depth -  depth_mean)/tf.sqrt(depth_var + eps)
-        #depth_max = tf.reduce_max(input_data_depth)
-        #input_data_depth = ((input_data_depth - depth_mean)/(depth_max + 0.00001))*100
 
 
     #Stem of read depth data
@@ -315,7 +313,7 @@ def concatLayer_C(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_
     return concat
 
 
-def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, batch_size_in=batch_size, smoothing=False, normalize=True, eps=0.0001):
+def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, batch_size_in=batch_size, smoothing=True, normalize=True, eps=0.00001):
     """
     It generate
 
@@ -326,7 +324,7 @@ def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, bat
     """
     if smoothing:
         depth_tensor_max = tf.nn.pool(depth_tensor, [31], strides=[1], padding='SAME', pooling_type='MAX')
-        depth_tensor_smooth = tf.nn.conv1d(depth_tensor, smoothing_filter, stride=1, padding='SAME')
+        depth_tensor_smooth = tf.nn.conv1d(depth_tensor_max, smoothing_filter, stride=1, padding='SAME')
         depth_tensor = depth_tensor_smooth
 
     if normalize:
@@ -380,5 +378,3 @@ with tf.control_dependencies(update_ops):
 ####################### Tensor graph for test steps ######################################
 test_model_output = peakPredictConvModel(input_data_eval, input_ref_data_eval)
 test_prediction = tf.nn.sigmoid(generateOutput(test_model_output, input_data_eval, div=threshold_division, smoothing=True))
-
-

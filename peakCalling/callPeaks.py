@@ -10,6 +10,8 @@ import string
 import matplotlib.pyplot as plt
 import subprocess as sp
 import progressbar as pgb
+import time
+import readCounts
 
 from multiprocessing import cpu_count, Process, Manager
 from buildModel.hyperparameters import *
@@ -82,8 +84,8 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=0, regions=
         logger.info("Reference genome must be selected among {hg19, hg18, hg38}")
 
     logger.info("{} reference genome was selected.".format(genome))
-    logger.info("{}`s table :".format(chr_table))
-    logger.info("{}`s lengths :".format(chr_lengths))
+    #logger.info("{}`s table :".format(chr_table))
+    #logger.info("{}`s lengths :".format(chr_lengths))
 
 #    if not (regions == None):
 #        chr_index = []
@@ -119,16 +121,16 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=0, regions=
                 logger, num_grid, prediction, sess, window_size, pgb_on=False, window_start=call_start, window_end=call_end)
     else:
         for chr_no in range(len(chr_table)):
-            ref_data_df = pd.read_table("geneRef/{}.bed".format(chr_table[chr_no]), names=['chr','start','end'] , header=None, usecols=[0,1,2])
+            ref_data_df = pd.read_table("geneRef/{}.bed".format(chr_table[chr_no]), names=['start','end'] , header=None, usecols=[1,2])
             logger.info("Peak calling in chromosome {}:".format(chr_table[chr_no]))
             call_peak(chr_no, chr_table, chr_lengths, input_bam, ref_data_df, input_data, input_data_ref,
-                    logger, num_grid, prediction, sess, window_size, pgb_on=False)
+                    logger, num_grid, prediction, sess, window_size, pgb_on=True)
 
 
 
 
-def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data, input_data_ref, logger, num_grid, prediction, sess, window_size,
-        pgb_on=False, window_start=1, window_end=None):
+def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data, input_data_ref,
+        logger, num_grid, prediction, sess, window_size, pgb_on=False, window_start=1, window_end=None):
     """
 
     :param chr_no: Chromosome number of regions
@@ -153,6 +155,8 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
 
     logger.info("Length of [{}] is : {}".format(chr_table[chr_no], window_end))
 
+    ref_data = ref_data_df.values
+
     while True:
         if (eval_counter % 100) == 0:
             if pgb_on:
@@ -161,11 +165,12 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
 
         if window_count + window_size > window_end:
             logger.info("Reading . . . :[{}:{}-{}]".format(chr_table[chr_no],window_count-(window_size*(eval_counter -1)), window_count + window_size))
-            writeBed(output_file_name, peaks, logger, printout=True)
+            writeBed(output_file_name, peaks, logger, printout=False)
             break
 
-        read_count_by_grid = generateReadcounts(input_data, window_count, window_count + window_size, chr_table[chr_no], file_name, num_grid).reshape(input_data_eval.shape)
-        ref_data_by_grid = generateRefcounts(input_data_ref, window_count, window_count + window_size, ref_data_df, num_grid).reshape(input_ref_data_eval.shape)
+        read_count_by_grid = readCounts.generateReadcounts(window_count, window_count + window_size, chr_table[chr_no], file_name, num_grid).reshape(input_data_eval.shape)
+
+        ref_data_by_grid = readCounts.generateRefcounts(window_count, window_count + window_size, ref_data, num_grid).reshape(input_ref_data_eval.shape)
 
         result_dict = {input_data_eval: read_count_by_grid, input_ref_data_eval: ref_data_by_grid, is_train_step: False}
         preds = sess.run(prediction, feed_dict=result_dict)
@@ -186,34 +191,69 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
         window_count += window_size
 
 
-def generateReadcounts(input_data, region_start, region_end, chr_num, file_name, num_grid):
+def generateReadcounts(region_start, region_end, chr_num, file_name, num_grid):
     read_count_by_grid = []
     stride = (region_end - (region_start + 1)) / num_grid
 
-    samtools_call = ['samtools depth -aa -r {} {} > tmp_depth'.format(
+    samtools_command = ['samtools depth -aa -r {} {}'.format(
         preProcessing.createRegionStr("{}".format(chr_num), int(region_start),int(region_end - 1)), file_name)]
-    FNULL = open(os.devnull, 'w')
-    sp.call(samtools_call, shell=True, stdout=FNULL, stderr=sp.STDOUT)
+    samtools_call = sp.Popen(samtools_command, shell=True, stdout=sp.PIPE, stderr=sp.STDOUT)
+    samtools_lines = samtools_call.stdout.readlines()
+    samtools_call.poll()
+    print("sp call :: {}".format(end-start))
 
-    depth_data = pd.read_table('tmp_depth', header=None, usecols=[2], names=['readCount'])
+    depths = []
+    for i in range(len(samtools_lines)):
+        depths.append(str(samtools_lines[i])[:-3].rsplit('t',1)[1])
 
     for step in range(num_grid):
-        read_count_by_grid.append(depth_data['readCount'][int(step * stride)])
+        read_count_by_grid.append(depths[int(step * stride)])
 
     read_count_by_grid = np.array(read_count_by_grid, dtype=float)
-    read_count_by_grid = read_count_by_grid.reshape(input_data.shape)
 
     return read_count_by_grid
 
 
-def generateRefcounts(input_data_ref, region_start, region_end, refGene_df, num_grid):
+def generateRefcounts(region_start, region_end, refGene, num_grid):
     stride = (region_end - (region_start + 1)) / num_grid
+    refGene_depth_list = []
 
-    sub_refGene = preProcessing.makeRefGeneTags(refGene_df[(refGene_df['start'] > region_start)&(refGene_df['end'] < region_end)],
-            region_start, region_end, stride, num_grid)
+    def searchRef(bp, s, e):
+        mid = int((e+s)/ 2)
+        if mid == s:
+            return mid
+        else:
+            if refGene[mid][0] < bp:
+                return searchRef(bp, mid, e)
+            elif refGene[mid][0] > bp:
+                return searchRef(bp, s, mid)
+            else:
+                return mid
 
-    sub_refGene = np.array(sub_refGene, dtype=float)
-    sub_refGene = sub_refGene.reshape(input_data_ref.shape)
+    L = len(refGene)
+
+    start_index = searchRef(region_start, 0, L)
+
+    i = start_index
+    end_index = start_index
+
+    while region_end > refGene[i][0]:
+        end_index = i
+        i += 1
+
+    for step in range(num_grid):
+        location = int(region_start + stride*step)
+        hit = False
+
+        for j in range(start_index, end_index + 1):
+            if refGene[j][0] < location and location < refGene[j][1]:
+                refGene_depth_list.append(1)
+                hit = True
+                break
+        if not hit:
+            refGene_depth_list.append(0)
+
+    sub_refGene = np.array(refGene_depth_list, dtype=float)
 
     return sub_refGene
 

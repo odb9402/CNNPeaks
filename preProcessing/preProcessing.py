@@ -7,6 +7,7 @@ import subprocess as sp
 import random
 import progressbar as pgb
 import time
+import numpy as np
 
 from multiprocessing import cpu_count, Process, Manager
 from sklearn.cluster import DBSCAN
@@ -159,7 +160,7 @@ def makeTrainFrags(bam_file, label_data_df, searching_dist, num_grid, cell_type,
             logger.info("["+output_refGene_file+"] is created.")
 
 
-def makeRefGeneTags(refGene_df, start, end, stride, num_grid):
+def makeRefGeneTags(refGene_df, start, end, stride, num_grid, dataType='pd'):
     """
 
     :param refGene_df: refGene_df has binary data indicating reference gene
@@ -173,6 +174,10 @@ def makeRefGeneTags(refGene_df, start, end, stride, num_grid):
     """
 
     refGene_depth_list = []
+
+    refGene = refGene_df.values[1][0]
+    print(refGene)
+    exit()
 
     start_point = 0
 
@@ -194,9 +199,12 @@ def makeRefGeneTags(refGene_df, start, end, stride, num_grid):
                 depth = 1
             index += 1
 
-    refGene_depth = pd.DataFrame(refGene_depth_list, columns=['refGeneCount'], dtype=int)
-
-    return refGene_depth
+    if dataType == 'pd':
+        return pd.DataFrame(refGene_depth_list, columns=['refGeneCount'], dtype=int)
+    elif dataType == 'list':
+        return refGene_depth_list
+    else:
+        return refGene_depth_list
 
 
 
@@ -281,6 +289,7 @@ def createBamIndex(input_bam):
     :param input_bam: A input bam file name.
     """
     sp.call(['sudo bamtools index -in ' + input_bam], shell=True)
+
 
 
 def createRegionStr(chr, start, end=None):
