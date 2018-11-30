@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import subprocess as sp
 import progressbar as pgb
 import time
-import readCounts
+from readCounts import generateReadcounts, generateRefcounts
 
 from multiprocessing import cpu_count, Process, Manager
 from buildModel.hyperparameters import *
@@ -130,7 +130,7 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=0, regions=
 
 
 def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data, input_data_ref,
-        logger, num_grid, prediction, sess, window_size, pgb_on=False, window_start=1, window_end=None):
+        logger, num_grid, prediction, sess, window_size, pgb_on=False, window_start=1, window_end=None, window_chunk=500):
     """
 
     :param chr_no: Chromosome number of regions
@@ -158,19 +158,29 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
     ref_data = ref_data_df.values
 
     while True:
-        if (eval_counter % 100) == 0:
+        if (eval_counter % window_chunk) == 0:
             if pgb_on:
-                bar = pgb.ProgressBar(max_value=100)
-            logger.info("Reading . . . :[{}:{}-{}]".format(chr_table[chr_no],window_count,window_count+window_size*100))
+                bar = pgb.ProgressBar(max_value=window_chunk)
+            logger.info("Generate Read Counts . . .")
+            if window_count + window_size*window_chunk < window_end:
+                read_count_chunk = generateReadcounts(window_count,window_count+window_size*window_chunk, chr_table[chr_no], file_name, num_grid, window_chunk)
+                end = window_count+window_size*window_chunk
+            else:
+                window_n = int((window_end - window_count)/ window_size)
+                read_count_chunk = generateReadcounts(window_count,
+                        window_count+window_size*window_n, chr_table[chr_no], file_name, num_grid, window_n)
+                end = window_end
+            logger.info("Calling . . . :[{}:{}-{}]".
+                    format(chr_table[chr_no],window_count,end))
 
         if window_count + window_size > window_end:
-            logger.info("Reading . . . :[{}:{}-{}]".format(chr_table[chr_no],window_count-(window_size*(eval_counter -1)), window_count + window_size))
+            logger.info("Peak calling for [{}] is done.".format(chr_table[chr_no]))
             writeBed(output_file_name, peaks, logger, printout=False)
             break
 
-        read_count_by_grid = readCounts.generateReadcounts(window_count, window_count + window_size, chr_table[chr_no], file_name, num_grid).reshape(input_data_eval.shape)
-
-        ref_data_by_grid = readCounts.generateRefcounts(window_count, window_count + window_size, ref_data, num_grid).reshape(input_ref_data_eval.shape)
+        read_count_by_grid = read_count_chunk[eval_counter*num_grid:(eval_counter+1)*num_grid].reshape(input_data_eval.shape)
+        ref_data_by_grid = generateRefcounts(window_count, window_count+window_size,
+                ref_data, num_grid).reshape(input_ref_data_eval.shape)
 
         result_dict = {input_data_eval: read_count_by_grid, input_ref_data_eval: ref_data_by_grid, is_train_step: False}
         preds = sess.run(prediction, feed_dict=result_dict)
@@ -183,79 +193,12 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
 
         eval_counter += 1
 
-        if eval_counter == 100:
+        if eval_counter == window_chunk:
             writeBed(output_file_name, peaks, logger, printout=False)
             eval_counter = 0
             peaks =[]
 
         window_count += window_size
-
-
-def generateReadcounts(region_start, region_end, chr_num, file_name, num_grid):
-    read_count_by_grid = []
-    stride = (region_end - (region_start + 1)) / num_grid
-
-    samtools_command = ['samtools depth -aa -r {} {}'.format(
-        preProcessing.createRegionStr("{}".format(chr_num), int(region_start),int(region_end - 1)), file_name)]
-    samtools_call = sp.Popen(samtools_command, shell=True, stdout=sp.PIPE, stderr=sp.STDOUT)
-    samtools_lines = samtools_call.stdout.readlines()
-    samtools_call.poll()
-    print("sp call :: {}".format(end-start))
-
-    depths = []
-    for i in range(len(samtools_lines)):
-        depths.append(str(samtools_lines[i])[:-3].rsplit('t',1)[1])
-
-    for step in range(num_grid):
-        read_count_by_grid.append(depths[int(step * stride)])
-
-    read_count_by_grid = np.array(read_count_by_grid, dtype=float)
-
-    return read_count_by_grid
-
-
-def generateRefcounts(region_start, region_end, refGene, num_grid):
-    stride = (region_end - (region_start + 1)) / num_grid
-    refGene_depth_list = []
-
-    def searchRef(bp, s, e):
-        mid = int((e+s)/ 2)
-        if mid == s:
-            return mid
-        else:
-            if refGene[mid][0] < bp:
-                return searchRef(bp, mid, e)
-            elif refGene[mid][0] > bp:
-                return searchRef(bp, s, mid)
-            else:
-                return mid
-
-    L = len(refGene)
-
-    start_index = searchRef(region_start, 0, L)
-
-    i = start_index
-    end_index = start_index
-
-    while region_end > refGene[i][0]:
-        end_index = i
-        i += 1
-
-    for step in range(num_grid):
-        location = int(region_start + stride*step)
-        hit = False
-
-        for j in range(start_index, end_index + 1):
-            if refGene[j][0] < location and location < refGene[j][1]:
-                refGene_depth_list.append(1)
-                hit = True
-                break
-        if not hit:
-            refGene_depth_list.append(0)
-
-    sub_refGene = np.array(refGene_depth_list, dtype=float)
-
-    return sub_refGene
 
 
 def predictionToBedString(prediction, chromosome, region_start, stride,

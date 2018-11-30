@@ -1,34 +1,39 @@
 import numpy as np
 cimport numpy as np
 import subprocess as sp
+from cpython cimport array
+from libc.stdlib cimport malloc, free
+from cython.parallel import prange
 
-def generateReadcounts(int region_start, int region_end, str chr_num, str file_name, int num_grid):
-    cdef list read_count_by_grid = []
-    cdef int stride = (region_end - (region_start + 1)) / num_grid
+def generateReadcounts(int region_start, int region_end, str chr_num, str file_name, int num_grid, int window_num):
+    cdef float[:] read_count = np.empty(num_grid*window_num, dtype=np.float32)
+    
+    cdef int stride = (region_end - (region_start + 1)) / (num_grid * window_num)
+    cdef list samtools_command
 
-    cdef list samtools_command = ['samtools depth -aa -r {} {}'.format(
-        "{}:{}-{}".format(chr_num,region_start,(region_end - 1)), file_name)]
+    if region_end == -1:
+        samtools_command = ['samtools depth -aa -r {} {}'.format(chr_num, file_name)]
+    else:
+        samtools_command = ['samtools depth -aa -r {} {}'.format("{}:{}-{}".
+            format(chr_num,region_start,(region_end - 1)), file_name)]
+    
     samtools_call = sp.Popen(samtools_command, shell=True, stdout=sp.PIPE, stderr=sp.STDOUT)
-    cdef list samtools_lines = samtools_call.stdout.readlines()
     samtools_call.poll()
-
-    for i in range(len(samtools_lines)):
-        samtools_lines[i] = int(str(samtools_lines[i])[:-3].rsplit('t',1)[1])
-
-    for step in range(num_grid):
-        read_count_by_grid.append(samtools_lines[(step * stride)])
-
-    cdef np.ndarray read_count_nparr = np.array(read_count_by_grid, dtype=float)
-
-    return read_count_nparr
+    
+    cdef list samtools_lines = samtools_call.stdout.readlines()
+    for step in range(num_grid * window_num):
+        read_count[step] = float(str(samtools_lines[step * stride])[:-3].rsplit('t',1)[1])
+    
+    return np.asarray(read_count)
 
 
 def generateRefcounts(int region_start, int region_end, np.ndarray refGene, int num_grid):
     cdef int stride = (region_end - (region_start + 1)) / num_grid
-    cdef list refGene_depth_list = []
+    cdef float[:] refGene_depth = np.empty(num_grid, dtype=np.float32)
 
     def searchRef(int bp, int s,int e):
-        cdef int mid = ((e+s)/ 2)
+        cdef int mid = int((e+s)/ 2)
+        
         if mid == s:
             return mid
         else:
@@ -38,15 +43,14 @@ def generateRefcounts(int region_start, int region_end, np.ndarray refGene, int 
                 return searchRef(bp, s, mid)
             else:
                 return mid
-
-    cdef int L = len(refGene)
+    cdef int L = len(refGene) - 1
 
     cdef int start_index = searchRef(region_start, 0, L)
 
     cdef int i = start_index
     cdef int end_index = start_index
 
-    while region_end > refGene[i][0]:
+    while L > i and region_end > refGene[i][0]:
         end_index = i
         i += 1
 
@@ -59,13 +63,10 @@ def generateRefcounts(int region_start, int region_end, np.ndarray refGene, int 
 
         for j in range(start_index, end_index + 1):
             if refGene[j][0] < location and location < refGene[j][1]:
-                refGene_depth_list.append(1)
+                refGene_depth[step] = 1.
                 hit = 1
                 break
         if hit == 0:
-            refGene_depth_list.append(0)
+            refGene_depth[step] = 0.
 
-    cdef np.ndarray sub_refGene = np.array(refGene_depth_list, dtype=float)
-
-    return sub_refGene
-
+    return np.asarray(refGene_depth)
