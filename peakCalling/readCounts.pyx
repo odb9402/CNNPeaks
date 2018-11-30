@@ -8,7 +8,7 @@ from cython.parallel import prange
 def generateReadcounts(int region_start, int region_end, str chr_num, str file_name, int num_grid, int window_num):
     cdef float[:] read_count = np.empty(num_grid*window_num, dtype=np.float32)
     
-    cdef int stride = (region_end - (region_start + 1)) / (num_grid * window_num)
+    cdef double stride = (region_end - (region_start + 1))/float(num_grid * window_num)
     cdef list samtools_command
 
     if region_end == -1:
@@ -22,13 +22,13 @@ def generateReadcounts(int region_start, int region_end, str chr_num, str file_n
     
     cdef list samtools_lines = samtools_call.stdout.readlines()
     for step in range(num_grid * window_num):
-        read_count[step] = float(str(samtools_lines[step * stride])[:-3].rsplit('t',1)[1])
+        read_count[step] = float(str(samtools_lines[int(step * stride)])[:-3].rsplit('t',1)[1])
     
     return np.asarray(read_count)
 
 
 def generateRefcounts(int region_start, int region_end, np.ndarray refGene, int num_grid):
-    cdef int stride = (region_end - (region_start + 1)) / num_grid
+    cdef float stride = (region_end - (region_start + 1)) / float(num_grid)
     cdef float[:] refGene_depth = np.empty(num_grid, dtype=np.float32)
 
     def searchRef(int bp, int s,int e):
@@ -58,7 +58,7 @@ def generateRefcounts(int region_start, int region_end, np.ndarray refGene, int 
     cdef char hit = 0
     
     for step in range(num_grid):
-        location = region_start + stride * step
+        location = int(region_start + stride * step)
         hit = 0
 
         for j in range(start_index, end_index + 1):

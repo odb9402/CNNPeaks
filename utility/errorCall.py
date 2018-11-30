@@ -35,3 +35,6 @@ def run(input_bed_file, input_label_file, logger):
     print("\nTP: {}, TN: {}, FP: {}, FN: {}".format(TP, TN, FP, FN))
     print("\nACC: {} , FN_Rate: {} , FP_Rate: {}".format((TP+TN)/(TP+TN+FP+FN), FN / N, FP / P))
     print("\nSensitivity: {} , Specificity: {}\n\n".format(TP/(TP+FN), TN/(TN+FP)))
+    sens = TP/(TP+FN)
+    spec = TN/(TN+FP)
+    print("\nF1 Score: {}\n\n".format((2*sens*spec)/(sens+spec))

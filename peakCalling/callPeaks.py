@@ -11,8 +11,9 @@ import matplotlib.pyplot as plt
 import subprocess as sp
 import progressbar as pgb
 import time
+import math
 from readCounts import generateReadcounts, generateRefcounts
-
+from bedGen import predictionToBedString
 from multiprocessing import cpu_count, Process, Manager
 from buildModel.hyperparameters import *
 from buildModel.defineModel import *
@@ -28,8 +29,6 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=0, regions=
     :param num_grid:
     :return:
     """
-    global num_peaks
-    num_peaks = 0
 
     #tf.reset_default_graph()
 
@@ -170,8 +169,7 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
                 read_count_chunk = generateReadcounts(window_count,
                         window_count+window_size*window_n, chr_table[chr_no], file_name, num_grid, window_n)
                 end = window_end
-            logger.info("Calling . . . :[{}:{}-{}]".
-                    format(chr_table[chr_no],window_count,end))
+            logger.info("Calling . . . :[{}:{}-{}]".format(chr_table[chr_no],window_count,end))
 
         if window_count + window_size > window_end:
             logger.info("Peak calling for [{}] is done.".format(chr_table[chr_no]))
@@ -184,10 +182,10 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
 
         result_dict = {input_data_eval: read_count_by_grid, input_ref_data_eval: ref_data_by_grid, is_train_step: False}
         preds = sess.run(prediction, feed_dict=result_dict)
-        class_value_prediction = buildModel.classValueFilter(preds)
+        class_value_prediction = np.array(buildModel.classValueFilter(preds))
 
         peaks += predictionToBedString(class_value_prediction, chr_table[chr_no], window_count, stride,
-                num_grid, logger, read_count_by_grid.reshape(num_grid).tolist())
+                num_grid, read_count_by_grid.reshape(num_grid), 10, 50)
         if pgb_on:
             bar.update(eval_counter)
 
@@ -201,64 +199,13 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
         window_count += window_size
 
 
-def predictionToBedString(prediction, chromosome, region_start, stride,
-        num_grid,logger, reads, min_peak_size=10, max_peak_num=50):
-    """
-    Python list "prediction" which has binary values will will be changed
-    as bed-file string. There are two conditions to accept as peak for each
-    prediction.
-
-    1. Peak size must be higher than min_peak_size.
-    2. The number of peak in the single window cannot be higher than max_peak_num.
-
-    If "predicition" cannot satisfy these conditions, the function return empty list.
-
-    :param prediction:
-    :param logger:
-    :return:
-    """
-    global num_peaks
-    peak_size = 0
-    peaks = []
-    num_peaks_in_window = 0
-
-    for step in range(num_grid):
-        if prediction[step] is 1:
-            peak_size += 1
-        else:
-            if peak_size is not 0:
-                # Condition 1: peak size should be higher than min_peak_size.
-                if peak_size > min_peak_size:
-                    end_point = region_start + ( stride * step )
-                    start_point = end_point - ( peak_size * stride )
-
-                    min_depth = np.amin(reads[step - peak_size : step])
-                    avg_depth = np.mean(reads[step - peak_size : step])
-                    max_depth = np.amax(reads[step - peak_size : step])
-
-                    peaks.append("{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(chromosome, int(start_point), int(end_point), "{}_{:5}".format(chromosome,random.randint(0,100000)), min_depth, avg_depth, max_depth))
-                    num_peaks_in_window += 1
-
-                peak_size = 0
-
-    # Condition 2 : The number of peaks must be lower than max_peak_num.
-    if len(peaks) > max_peak_num:
-        return []
-    else:
-        num_peaks += num_peaks_in_window
-        return peaks
-
 
 def writeBed(output_file, peaks, logger, printout=False):
-    global num_peaks
 
     if not os.path.isfile(output_file):
         bed_file = open(output_file, 'w')
     else:
         bed_file = open(output_file, 'a')
-
-    if printout == True:
-        logger.info("# peaks:{}, #peaks in window: {}".format(num_peaks, len(peaks)))
 
     for peak in peaks:
         bed_file.write(peak)
