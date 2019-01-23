@@ -1,12 +1,12 @@
 import os
 import shutil
-
 import pandas as pd
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import random
-
+from scipy.ndimage.filters import maximum_filter1d
+from scipy.signal import gaussian
 from utility.utilities import extractChrClass
 from .defineModel import *
 from .hyperparameters import *
@@ -34,6 +34,8 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10, cross_valid = True):
         dir = PATH + '/' + dir
         input_list[dir] = extractChrClass(dir)
 
+    print("smoothing filter size A :{}".format(filter_size_a))
+    print("smoothing filter size B :{}".format(filter_size_b))
     print("Learning Rate :{}".format(learning_rate))
     print("Threshold division :{}".format(threshold_division))
 
@@ -63,8 +65,8 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10, cross_valid = True):
         logger.info("DIRECTORY (TARGET) [{}]# of labels : <{}>".format(label_num,dir))
 
     K_fold = K_fold_in
-    input_data_list, label_data_list, ref_data_list = splitTrainingData(input_data_names, label_data_names, ref_data_names
-                                                                       , Kfold=K_fold)
+    input_data_list, label_data_list, ref_data_list = splitTrainingData(input_data_names, label_data_names
+            , ref_data_names, Kfold=K_fold)
     if not os.path.isdir(os.getcwd() + "/models"):      ### Make directory for save the model
         os.mkdir(os.getcwd() + "/models")
 
@@ -75,8 +77,6 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10, cross_valid = True):
         tf.summary.scalar("Loss",loss)
         tf.summary.scalar("Sensitivity step{}",sens)
         tf.summary.scalar("Specificity step{}",spec)
-        #tf.summary.scalar("Test sens", test_sens)
-        #tf.summary.scalar("Test spec", test_spec)
 
         training_data = []
         training_ref = []
@@ -97,15 +97,15 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10, cross_valid = True):
         if not os.path.isdir(os.getcwd() + "/models/model_{}".format(i)):
             os.mkdir(os.getcwd() + "/models/model_{}".format(i))
 
-        training(sess, loss, prediction, test_prediction, train_step, training_data, training_label , training_ref, test_data, test_label, test_ref, logger, num_grid, i)
+        training(sess, loss, prediction, test_prediction, train_step, training_data, training_label
+                , training_ref, test_data, test_label, test_ref, logger, num_grid, i)
 
         if cross_valid == False:
             break
 
 
-def training(sess, loss, prediction, test_prediction, train_step,
-        train_data_list, train_label_list, train_ref_list, test_data_list, test_label_list, test_ref_list,
-            logger, num_grid, step_num):
+def training(sess, loss, prediction, test_prediction, train_step, train_data_list, train_label_list
+        , train_ref_list, test_data_list, test_label_list, test_ref_list, logger, num_grid, step_num):
     """
 
     :param train_data_list:
@@ -151,6 +151,9 @@ def training(sess, loss, prediction, test_prediction, train_step,
     spec_containor_for_mean = []
     sens_containor_for_mean = []
 
+    test_spec_containor_for_mean = []
+    test_sens_containor_for_mean = []
+
     # Start of the training process
     for i in range(generations):
         rand_index = np.random.choice(len(train_data_list), size=batch_size)
@@ -183,55 +186,67 @@ def training(sess, loss, prediction, test_prediction, train_step,
 
         writer.add_summary(summary, i)
 
-
         # Recording results of test data
+        eval_index = np.random.choice(len(test_data_list), size=batch_size)
+
+        eval_x = []
+        eval_ref = []
+        eval_y = []
+
+        for j in range(batch_size):
+            eval_x.append(train_data_list[rand_index[j]]['readCount'].values)
+            eval_ref.append(train_ref_list[rand_index[j]]['refGeneCount'].values)
+            eval_y.append(np.repeat(train_label_list[rand_index[j]][['peak']].values.transpose(),5))
+
+        eval_x = np.array(eval_x).reshape(input_data_eval.shape)
+        eval_ref = np.array(eval_ref).reshape(input_ref_data_eval.shape)
+        eval_y = np.array(eval_y).reshape(label_data_eval.shape)
+
+        test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref
+                , is_train_step:False}
+
+        test_preds = sess.run(test_prediction, feed_dict=test_dict)
+        temp_test_stat = getStat(test_preds, eval_y, num_grid=num_grid)
+        
+        if i % 5 == 0:
+            patternVis(eval_x, eval_y, eval_ref, test_preds)
+        
+        test_spec_containor_for_mean.append(temp_test_stat['spec'])
+        if temp_test_stat['sens'] != -1:
+            test_sens_containor_for_mean.append(temp_test_stat['sens'])
+
         if (i + 1) % eval_every == 0:
-            eval_index = np.random.choice(len(test_data_list), size=batch_size)
-
-            eval_x = test_data_list[eval_index[0]]['readCount'].values
-            eval_x = eval_x.reshape(input_data_eval.shape)
-            eval_ref = test_ref_list[eval_index[0]]['refGeneCount'].values
-            eval_ref = eval_ref.reshape(input_ref_data_eval.shape)
-
-            eval_y = test_label_list[eval_index[0]][['peak']].values.transpose()
-            eval_y = np.repeat(eval_y, 5)
-            eval_y = eval_y.reshape(label_data_eval.shape)
-
-            pnRate_eval = pnRate(eval_y)
-
-            test_dict = {input_data_eval: eval_x, label_data_eval: eval_y, input_ref_data_eval: eval_ref, is_train_step:False, p_dropout:1}
-
-            test_preds = sess.run(test_prediction, feed_dict=test_dict)
-
-            test_stat = getStat(test_preds, eval_y, num_grid=num_grid)
-
-            loss_mean = sum(loss_containor_for_mean)/float(len(loss_containor_for_mean))
             if len(sens_containor_for_mean) == 0:
                 sens_mean = -1.
             else:
                 sens_mean = sum(sens_containor_for_mean)/float(len(sens_containor_for_mean))
+                loss_mean = sum(loss_containor_for_mean)/float(len(loss_containor_for_mean))
             spec_mean = sum(spec_containor_for_mean)/float(len(spec_containor_for_mean))
+
+            if len(sens_containor_for_mean) == 0:
+                test_sens_mean = -1.
+            else:
+                test_sens_mean = sum(test_sens_containor_for_mean)/float(len(test_sens_containor_for_mean))
+            test_spec_mean = sum(test_spec_containor_for_mean)/float(len(test_spec_containor_for_mean))
+
+            logger.info('Generation # {}. Loss: {:.2f}. Test: SENS:{:.2f} SPEC:{:.2f}| Train: SENS:{:.2f} SPEC:{:.2f}\n'.format(i+1, loss_mean, test_sens_mean, test_spec_mean, sens_mean, spec_mean))
 
             train_loss.append(loss_mean)
             train_spec.append(spec_mean)
             train_sens.append(sens_mean)
-            test_spec.append(test_stat['spec'])
-            test_sens.append(test_stat['sens'])
+            test_spec.append(test_spec_mean)
+            test_sens.append(test_sens_mean)
 
             loss_containor_for_mean.clear()
             spec_containor_for_mean.clear()
             sens_containor_for_mean.clear()
+            test_spec_containor_for_mean.clear()
+            test_sens_containor_for_mean.clear()
 
-            if test_stat['sens'] == -1.0:
-                logger.info('Generation # {}. TrainLoss: {:.2f}.  PNRate:--.--| Test: SENS:-.-- SPEC:{:.2f}| Train: SENS:{:.2f}, SPEC:{:.2f}\n'.
-                        format(i+1, loss_mean, test_stat['spec'], sens_mean, spec_mean))
-            else:
-                logger.info('Generation # {}. TrainLoss: {:.2f}.  PNRate:{:.2f}| Test: SENS:{:.2f} SPEC:{:.2f}| Train: SENS:{:.2f}, SPEC:{:.2f}\n'.
-                        format(i+1, loss_mean, pnRate_eval, test_stat['sens'], test_stat['spec'], sens_mean, spec_mean))
-
-    visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, train_sens, train_spec, train_loss, K_fold=str(step_num))
-    visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
-                        test_ref_list, test_prediction, k=len(test_data_list), K_fold=str(step_num))
+    visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, train_sens, train_spec
+            , train_loss, K_fold=str(step_num))
+    visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list
+            , test_label_list, test_ref_list, test_prediction, k=len(test_data_list), K_fold=str(step_num))
 
     saver = tf.train.Saver()
     save_path = saver.save(sess, os.getcwd() + "/models/model{}.ckpt".format(step_num,step_num))
@@ -356,7 +371,6 @@ def classValueFilter(output_value):
 
 def splitTrainingData(data_list, label_list, ref_list, Kfold=10):
     """
-
     If Kfold is zero, it just split two parts
 
     :param list_data:
@@ -397,6 +411,88 @@ def splitTrainingData(data_list, label_list, ref_list, Kfold=10):
     return test_data, test_label, test_ref
 
 
+def patternVis(reads, labels, refs, preds, num_grid=12000,min_peak_size=10, max_peak_num=50):
+    reads = reads.reshape(num_grid)
+    refs = refs.reshape(num_grid)
+    reads = maximum_filter1d(reads, filter_size_a)  ## MAX POOL to extract boarder lines
+    smoothing_filter = gaussian(filter_size_b, 50) / np.sum(gaussian(filter_size_b, 50))
+    reads = np.convolve(reads, smoothing_filter, mode='same')  ## Smoothing boarder lines
+    
+    #plt.subplot(2,1,2, autoscale_on=True,position=[0,2,1,0.2])
+    #plt.plot(preds.reshape(num_grid))
+    
+    plt.subplot(2,1,2, autoscale_on=True,position=[0.05,2,0.9,0.2])
+    plt.imshow(preds.reshape(num_grid)[np.newaxis,:], cmap="jet", vmax=1, vmin=0, aspect="auto")
+            
+    preds = classValueFilter(preds)
+    labels = classValueFilter(labels)
+
+    ############# Peak post processing ##########
+    peak_num = 0
+
+    if preds[0] > 0:
+        peak_size = 1
+        peak_num += 1
+    else:
+        peak_size = 0
+
+    for pred_index in range(len(preds)-1):
+        if preds[pred_index+1] > 0:
+            peak_size += 1
+        else:
+            if peak_size < min_peak_size:
+                for j in range(peak_size):
+                    preds[pred_index-j] = 0
+                peak_size=0
+            else:
+                peak_num += 1
+                peak_size = 0
+
+    if peak_num > max_peak_num:
+        for j in range(len(preds)):
+            preds[j] = 0
+    #############################################
+
+    y_index = []
+    y = []
+    for index in range(len(preds)):
+        if preds[index] > 0:
+            y_index.append(index)
+            y.append(labels[index])
+
+    ref_index = []
+    ref = []
+    for index in range(len(refs)):
+        if refs[index] > 0:
+            ref_index.append(index)
+            ref.append(-1)
+            
+    plt.subplot(2,1,1,position=[0,2.2,1,1])
+    plt.plot(reads.reshape(num_grid).tolist(),'k', markersize=2, linewidth=1)
+    plt.plot(y_index,y, 'r.', label='Model prediction')
+    plt.plot(ref_index, ref, 'b|', markersize=8)
+
+    onPositive = False
+    start = 0
+    end = 0
+    for j in range(len(labels)):
+        if labels[j] == 1 and not onPositive:
+            start = j
+            onPositive = True
+        elif (labels[j] == 0 or j == len(labels)-1) and onPositive:
+            end = j
+            onPositive = False
+            plt.axvspan(start, end, color='red', alpha=0.3)
+
+
+    plt.title('Peak prediction result by regions')
+    plt.xlabel('Regions')
+    plt.ylabel('Read Count')
+    plt.legend(loc='upper right')
+    plt.show()
+    plt.clf()
+
+
 def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
                         test_ref_list, test_prediction, k = 1, K_fold="", min_peak_size=10, max_peak_num=50):
     """
@@ -428,12 +524,18 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
                          is_train_step: False, p_dropout:1}
             show_preds = sess.run(test_prediction, feed_dict=show_dict)
 
+            show_x = show_x.reshape(num_grid)
+            smoothing_filter = gaussian(filter_size_b, 50) / np.sum(gaussian(filter_size_b, 50))
+            show_x = maximum_filter1d(show_x, filter_size_a)  ## MAX POOL to extract boarder lines
+            show_x = np.convolve(show_x, smoothing_filter, mode='same')  ## Smoothing boarder lines
+
+            show_ref = show_ref.reshape(num_grid)
+            
+            plt.subplot(2,1,2, autoscale_on=True,position=[0,2,1,0.2])
+            plt.imshow(show_preds.reshape(num_grid)[np.newaxis,:], cmap="jet", vmax=1, vmin=0, aspect="auto")
+            
             show_preds = classValueFilter(show_preds)
             show_y = classValueFilter(show_y)
-
-            for index in range(len(show_preds)):
-                if show_preds[index] > 0:
-                    show_preds[index] += 1
 
             ############# Peak post processing ##########
             peak_num = 0
@@ -454,28 +556,45 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
                         peak_size=0
                     else:
                         peak_num += 1
+                        peak_size = 0
 
-            if peak_num < max_peak_num:
-                for k in range(len(show_preds)):
-                    show_preds[k] = 0
+            if peak_num > max_peak_num:
+                for j in range(len(show_preds)):
+                    show_preds[j] = 0
             #############################################
 
             y_index = []
             y = []
-            pred_index = []
-            pred = []
-
             for index in range(len(show_preds)):
-                if show_y[index] > 0:
+                if show_preds[index] > 0:
                     y_index.append(index)
                     y.append(show_y[index])
-                if show_preds[index] > 0:
-                    pred_index.append(index)
-                    pred.append(show_preds[index])
 
-            plt.plot(show_x.reshape(num_grid).tolist(),'k')
-            plt.plot(y_index,y, 'b.', label='Real prediction')
-            plt.plot(pred_index,pred, 'r.', label='Model prediction')
+            ref_index = []
+            ref = []
+            for index in range(len(show_ref)):
+                if show_ref[index] > 0:
+                    ref_index.append(index)
+                    ref.append(-1)
+            
+            plt.subplot(2,1,1,position=[0,2.2,1,1])
+            plt.plot(show_x.reshape(num_grid).tolist(),'k', markersize=2, linewidth=1)
+            plt.plot(y_index,y, 'r.', label='Model prediction')
+            plt.plot(ref_index, ref, 'b|', markersize=8)
+
+            onPositive = False
+            start = 0
+            end = 0
+            for j in range(len(show_y)):
+                if show_y[j] == 1 and not onPositive:
+                    start = j
+                    onPositive = True
+                elif (show_y[j] == 0 or j == len(show_y)-1) and onPositive:
+                    end = j
+                    onPositive = False
+                    plt.axvspan(start, end, color='red', alpha=0.3)
+
+
             plt.title('Peak prediction result by regions')
             plt.xlabel('Regions')
             plt.ylabel('Read Count')

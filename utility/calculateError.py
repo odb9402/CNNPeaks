@@ -1,6 +1,6 @@
 import os
 
-def calculate_error(peak_data, labeled_data, strong_call = False):
+def calculate_error(peak_data, labeled_data, strong_call = True):
     """
     calculate actual error by numbering to wrong label
     :param peak_data:
@@ -26,7 +26,7 @@ def calculate_error(peak_data, labeled_data, strong_call = False):
     possible_FN = 0.0
 
     for label in labeled_data:
-        if label['peakStat'] == 'peaks':
+        if label['peakStat'].lower() == 'peaks':
             possible_FN += 1
             state = is_peak(peak_data, label['regions'], weak_predict=True)
 
@@ -36,9 +36,9 @@ def calculate_error(peak_data, labeled_data, strong_call = False):
                 scores += state
                 TP += 1
 
-        elif (label['peakStat'] == 'peakStart') or (label['peakStat'] == 'peakEnd'):
-            if strong_call is False:
-                possible_FP += 1
+        elif (label['peakStat'].lower() == 'peakstart') or (label['peakStat'].lower() == 'peakend'):
+            #if strong_call is False:
+            #    possible_FP += 1
             possible_FN += 1
             state = is_peak(peak_data, label['regions'], weak_predict= not strong_call)
 
@@ -49,7 +49,7 @@ def calculate_error(peak_data, labeled_data, strong_call = False):
             else:
                 scores += state
 
-        elif label['peakStat'] == 'noPeak':
+        elif label['peakStat'].lower() == 'nopeak':
             possible_FP += 1
 
             state = is_noPeak(peak_data, label['regions'])
@@ -61,7 +61,7 @@ def calculate_error(peak_data, labeled_data, strong_call = False):
                 TN += 1
 
         else:
-            print("label type error")
+            print("label type error :::{}".format(label['peakStat']))
             exit()
 
     #print("possible FN {} possible FP {}".format(possible_FN,possible_FP))
@@ -133,7 +133,7 @@ def is_noPeak(target, value, tolerance=0):
     steps = 1
 
     while True:
-        find_matched = is_same(target, value, index, 0)
+        find_matched = is_same(target, value, index, tolerance)
 
         if find_matched is 'less':
             max_index = index
@@ -208,9 +208,9 @@ def is_same(target, value, index, tolerance):
     :return:
     """
 
-    if value[1] + tolerance <= int(target[index]['region_s']):
+    if value[1] + tolerance < int(target[index]['region_s']):
         return 'less'
-    elif value[0] - tolerance >= int(target[index]['region_e']):
+    elif value[0] - tolerance > int(target[index]['region_e']):
         return 'upper'
     else:
         return 'in'

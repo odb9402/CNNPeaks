@@ -123,7 +123,7 @@ def run(file_name, input_chromosome = None, input_cellType = None):
     # cannot found label about selected area.
     if peak_labels is -1:
         return -1
-
+    
     return peak_labels
 
 

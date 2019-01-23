@@ -12,9 +12,11 @@ def run(input_bed_file, input_label_file, logger):
     FP = 0.
     TN = 0.
     TP = 0.
-
+    
+    cell_type = input_bed_file.rsplit('_',1)[1].split('.')[0]
+    
     for i in range(22):
-        chr_labels = loadLabel(input_label_file, input_chromosome="chr{}".format(i + 1))
+        chr_labels = loadLabel(input_label_file, input_chromosome="chr{}".format(i + 1), input_cellType = cell_type)
         chr_peaks = list(filter(lambda peak: peak['chr'] == 'chr{}'.format(i + 1), peaks))
         #logger.info("chr{}".format(i + 1))
         temp_x, temp_y, FNFP = calculateError(chr_peaks, chr_labels)
@@ -33,8 +35,8 @@ def run(input_bed_file, input_label_file, logger):
     print("\n\npossible # of Negatives: {} , possible # of Positives: {}".format(N, P))
     print("\nP: {}, N: {}".format(TP+FP, TN+FN))
     print("\nTP: {}, TN: {}, FP: {}, FN: {}".format(TP, TN, FP, FN))
-    print("\nACC: {} , FN_Rate: {} , FP_Rate: {}".format((TP+TN)/(TP+TN+FP+FN), FN / N, FP / P))
+    print("\nACC: {} , FN_Rate: {} , FP_Rate: {}".format((TP+TN)/(TP+TN+FP+FN), FN /(TN+FN), FP/(FP+TP)))
     print("\nSensitivity: {} , Specificity: {}\n\n".format(TP/(TP+FN), TN/(TN+FP)))
     sens = TP/(TP+FN)
     spec = TN/(TN+FP)
-    print("\nF1 Score: {}\n\n".format((2*sens*spec)/(sens+spec))
+    print("\nF1 Score: {}\n\n".format((2*sens*spec)/(sens+spec)))

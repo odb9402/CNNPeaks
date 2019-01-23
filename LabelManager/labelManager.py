@@ -301,7 +301,7 @@ class labelManager():
         depths = np.array(self.data_list[0][self.fileIndex])
         smoothing_filter = gaussian(self.smoothing_window, self.smoothing_var) / \
                            np.sum(gaussian(self.smoothing_window, self.smoothing_var))
-        union_depths = maximum_filter1d(depths, 51)  ## MAX POOL to extract boarder lines
+        union_depths = maximum_filter1d(depths, 15)  ## MAX POOL to extract boarder lines
         final_depth = np.convolve(union_depths, smoothing_filter, mode='same')  ## Smoothing boarder lines
         return final_depth
 

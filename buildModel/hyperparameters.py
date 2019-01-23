@@ -1,18 +1,21 @@
 #Model hyperparameters
 class_threshold = 0.5
 
-threshold_division = 1
+init_depth = 1
 pnRate_threshold = 50
-batch_size = 1
+batch_size = 1 
 evaluation_size = 1
-generations = 10000
+generations = 1500
 eval_every = 20
-learning_rate = 0.0005
+learning_rate = 0.0001
 target_size = 12000
 topK_set_a = 6000
 topK_set_b = 3000
 topK_set_c = 1500
 topK_set_d = 750
+
+filter_size_a = 101
+filter_size_b = 301
 
 conv1_ref_features = 4
 
@@ -71,6 +74,7 @@ max_pool_size4 = 3
 max_pool_size5 = 2
 max_pool_size6 = 2
 
-fully_connected_size1 = 1024
-fully_connected_size2 = 1024
+fully_connected_size1 = 500 
+fully_connected_size2 = 250
+threshold_division = 50
 fully_connected_size_sub = 300

@@ -30,15 +30,10 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=0, regions=
     :return:
     """
 
-    #tf.reset_default_graph()
-
     input_data = tf.placeholder(tf.float32, shape=(batch_size, num_grid, 1), name="testData")
     input_data_ref = tf.placeholder(tf.float32, shape=(batch_size, num_grid, 1), name="TestRefData")
 
     sess = tf.Session()
-
-    #model_output = peakPredictConvModel(input_data, input_data_ref, logger)[0]
-    #prediction = tf.nn.sigmoid(generateOutput(model_output, input_data, div=threshold_division))
 
     model_output = test_model_output
     prediction = test_prediction
@@ -114,10 +109,10 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=0, regions=
 
         logger.info("Chromosome<{}> , <{}> to <{}>".format(chromosome, call_start, call_end))
 
-        ref_data_df = pd.read_table("geneRef/{}.bed".format(chromosome), names=['chr','start','end'] , header=None, usecols=[0,1,2])
+        ref_data_df = pd.read_table("geneRef/{}.bed".format(chromosome), names=['start','end'] , header=None, usecols=[1,2])
         logger.info("Peak calling in chromosome {}:".format(chromosome))
         call_peak(chr_no, chr_table, chr_lengths, input_bam, ref_data_df, input_data, input_data_ref,
-                logger, num_grid, prediction, sess, window_size, pgb_on=False, window_start=call_start, window_end=call_end)
+                logger, num_grid, prediction, sess, window_size, pgb_on=True, window_start=call_start, window_end=call_end)
     else:
         for chr_no in range(len(chr_table)):
             ref_data_df = pd.read_table("geneRef/{}.bed".format(chr_table[chr_no]), names=['start','end'] , header=None, usecols=[1,2])
@@ -126,10 +121,8 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=0, regions=
                     logger, num_grid, prediction, sess, window_size, pgb_on=True)
 
 
-
-
 def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data, input_data_ref,
-        logger, num_grid, prediction, sess, window_size, pgb_on=False, window_start=1, window_end=None, window_chunk=500):
+        logger, num_grid, prediction, sess, window_size, pgb_on=False, window_start=1, window_end=None, window_chunk=600):
     """
 
     :param chr_no: Chromosome number of regions
@@ -162,8 +155,8 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
                 bar = pgb.ProgressBar(max_value=window_chunk)
             logger.info("Generate Read Counts . . .")
             if window_count + window_size*window_chunk < window_end:
-                read_count_chunk = generateReadcounts(window_count,window_count+window_size*window_chunk, chr_table[chr_no], file_name, num_grid, window_chunk)
-                end = window_count+window_size*window_chunk
+                read_count_chunk = generateReadcounts(window_count,window_count+window_size*window_chunk-1, chr_table[chr_no], file_name, num_grid, window_chunk)
+                end = window_count+window_size*window_chunk -1
             else:
                 window_n = int((window_end - window_count)/ window_size)
                 read_count_chunk = generateReadcounts(window_count,
@@ -182,14 +175,16 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
 
         result_dict = {input_data_eval: read_count_by_grid, input_ref_data_eval: ref_data_by_grid, is_train_step: False}
         preds = sess.run(prediction, feed_dict=result_dict)
-        class_value_prediction = np.array(buildModel.classValueFilter(preds))
+        #class_value_prediction = np.array(buildModel.classValueFilter(preds))
+        class_value_prediction = np.array(preds.reshape(num_grid))
 
         peaks += predictionToBedString(class_value_prediction, chr_table[chr_no], window_count, stride,
                 num_grid, read_count_by_grid.reshape(num_grid), 10, 50)
-        if pgb_on:
-            bar.update(eval_counter)
 
         eval_counter += 1
+
+        if pgb_on:
+            bar.update(eval_counter)
 
         if eval_counter == window_chunk:
             writeBed(output_file_name, peaks, logger, printout=False)
@@ -199,9 +194,7 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
         window_count += window_size
 
 
-
 def writeBed(output_file, peaks, logger, printout=False):
-
     if not os.path.isfile(output_file):
         bed_file = open(output_file, 'w')
     else:

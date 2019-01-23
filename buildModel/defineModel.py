@@ -37,16 +37,14 @@ label_data_eval = tf.placeholder(tf.float32, shape=(batch_size, 1, target_size))
 input_ref_data_train = tf.placeholder(tf.float32, shape=(batch_size, target_size, 1), name="TrainRefData")
 input_ref_data_eval = tf.placeholder(tf.float32, shape=(batch_size, target_size, 1), name="TestRefData")
 
-#smoothing_filter = tf.constant([[[1/21]],[[2/21]],[[4/21]],[[7/21]],[[4/21]],[[2/21]],[[1/21]]], tf.float32 , name='smoothing_filter')
-#smoothing_filter = tf.constant([1/31 for x in range(31)], tf.float32 ,  shape=[31, 1, 1], name='smoothing_filter')
-smoothing_filter = tf.constant(gaussian(101,30)/np.sum(gaussian(101,30)),tf.float32, shape=[101,1,1], name='smoothing_filter')
+smoothing_filter = tf.constant(gaussian(filter_size_b,50)/np.sum(gaussian(filter_size_b,50)),tf.float32, shape=[filter_size_b,1,1], name='smoothing_filter')
 
 ###################### STEM FOR REFGENEDEPTH ###########################
-conv1_ref_weight = tf.get_variable("Conv_REF_1", shape=[4, 1, conv1_ref_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
+conv1_ref_weight = tf.get_variable("Conv_REF_1", shape=[3, 1, conv1_ref_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 
 ############################ STEM Layer  ###############################
-conv1_weight = tf.get_variable("Conv_STEM1", shape=[4, 1, conv1_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
-conv2_weight = tf.get_variable("Conv_STEM2", shape=[2, conv1_features, conv2_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
+conv1_weight = tf.get_variable("Conv_STEM1", shape=[5, 1, conv1_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
+conv2_weight = tf.get_variable("Conv_STEM2", shape=[3, conv1_features, conv2_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 conv1_bias = tf.get_variable("Conv_STEM1_bias", shape=[conv1_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 conv2_bias = tf.get_variable("Conv_STEM2_bias", shape=[conv2_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 
@@ -72,21 +70,21 @@ convAvg2_weight = tf.get_variable("Conv_avg_W2", shape=[2, layer2_width, convAvg
 
 ############################ Inception 3 ###############################
 layer3_width = conv2a_features + conv2b_features + (layer2_width *2 ) + conv2c_features
-conv3a_weight = tf.get_variable("Conv_3A", shape=[4, layer3_width, conv3a_features],initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
-conv3b_weight = tf.get_variable("Conv_3B", shape=[3, layer3_width, conv3b_features],initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
+conv3a_weight = tf.get_variable("Conv_3A", shape=[5, layer3_width, conv3a_features],initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
+conv3b_weight = tf.get_variable("Conv_3B", shape=[4, layer3_width, conv3b_features],initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 conv3c_weight = tf.get_variable("Conv_3C", shape=[3, layer3_width, conv3c_features],initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 
 ############################ Inception 4 ###############################
 layer4_width = conv3a_features + conv3b_features + conv3c_features + layer3_width
 conv4a_weight = tf.get_variable("Conv_4A", shape=[4, layer4_width, conv4a_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
-conv4b_weight = tf.get_variable("Conv_4B", shape=[2, layer4_width, conv4b_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
-conv4c_weight = tf.get_variable("Conv_4C", shape=[3, layer4_width, conv4c_features],initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
+conv4b_weight = tf.get_variable("Conv_4B", shape=[3, layer4_width, conv4b_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
+conv4c_weight = tf.get_variable("Conv_4C", shape=[2, layer4_width, conv4c_features],initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 
 ############################ Inception 5 ###############################
 layer5_width = conv4a_features + conv4b_features + conv4c_features +layer4_width
 conv5a_weight = tf.get_variable("Conv_5A", shape=[4, layer5_width, conv5a_features],initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
-conv5b_weight = tf.get_variable("Conv_5B", shape=[2, layer5_width, conv5b_features],initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
-conv5c_weight = tf.get_variable("Conv_5C", shape=[3, layer5_width, conv5c_features],initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
+conv5b_weight = tf.get_variable("Conv_5B", shape=[3, layer5_width, conv5b_features],initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
+conv5c_weight = tf.get_variable("Conv_5C", shape=[2, layer5_width, conv5c_features],initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 
 ############################ Inception 6  ###############################
 layer6_width = conv5a_features + conv5b_features + conv5c_features +layer5_width
@@ -111,22 +109,12 @@ final_conv_size = resulting_width * ( layer_full_width )
 full1_weight = tf.get_variable("Full_W1", shape=[final_conv_size, fully_connected_size1],initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 full2_weight = tf.get_variable("Full_W2", shape=[fully_connected_size1, fully_connected_size2], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 
-############################ sub_optimizer #############################
-"""
-It cannot be tried because of lack of GPU memory
-
-full_sub_input_size = layer1_width * 6000
-full_sub_weight = tf.get_variable("Full_W_sub", shape=[full_sub_input_size, fully_connected_size_sub],initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
-output_sub_weight = tf.get_variable("Full_Output_sub", shape=[fully_connected_size_sub, threshold_division], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
-output_sub_bias = tf.Variable(tf.truncated_normal([threshold_division], stddev=0.1, dtype=tf.float32))
-"""
-
 ############################ Output ###############################
-output_weight = tf.get_variable("Full_Output", shape=[fully_connected_size1, threshold_division], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
+output_weight = tf.get_variable("Full_Output", shape=[fully_connected_size2, threshold_division], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 output_bias = tf.Variable(tf.truncated_normal([threshold_division], stddev=0.1, dtype=tf.float32))
 
 
-def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing=True, normalize=True, eps=0.00001):
+def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing=True, normalize=False, eps=0.00001):
     """
     Define structure of convolution model.
 
@@ -138,15 +126,17 @@ def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing
     :param input_data:
     :return: Tensor of the output layer
     """
+    input_data_depth = input_data_depth + init_depth 
+
     if smoothing:
-        depth_tensor_max = tf.nn.pool(input_data_depth, [31], strides=[1], padding='SAME', pooling_type='MAX')
+        depth_tensor_max = tf.nn.pool(input_data_depth, [filter_size_a], strides=[1], padding='SAME', pooling_type='MAX')
         depth_tensor_smooth = tf.nn.conv1d(depth_tensor_max, smoothing_filter, stride=1, padding='SAME')
         input_data_depth = depth_tensor_smooth
 
     if normalize:
         depth_mean, depth_var = tf.nn.moments(input_data_depth, [1])
         input_data_depth = (input_data_depth -  depth_mean)/tf.sqrt(depth_var + eps)
-
+    
 
     #Stem of read depth data
     conv1 = tf.nn.conv1d(input_data_depth, conv1_weight, stride=1, padding='SAME')
@@ -173,21 +163,21 @@ def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing
     print("Stem_concat : {}".format(input_concat.shape))
 
     # Inception modules 1 to 6
-    concat1 = concatLayer_C(input_concat, conv1a_weight, convMax1_weight, conv1b_weight, convAvg1_weight, conv1c_weight, 2)
+    concat1 = concatLayer_A(input_concat, conv1a_weight, convMax1_weight, conv1b_weight, convAvg1_weight, conv1c_weight, 2)
 
-    concat2 = concatLayer_C(concat1, conv2a_weight, convMax2_weight, conv2b_weight, convAvg2_weight, conv2c_weight, 2)
+    concat2 = concatLayer_A(concat1, conv2a_weight, convMax2_weight, conv2b_weight, convAvg2_weight, conv2c_weight, 2)
 
-    concat3 = concatLayer_A(concat2, conv3a_weight, conv3b_weight, conv3c_weight, 3)
+    concat3 = concatLayer_B(concat2, conv3a_weight, conv3b_weight, conv3c_weight, 3)
     concat3 = concat3 + tf.nn.pool(tf.concat([concat1 for x in range(4)], axis=2), [6], strides=[6], pooling_type='AVG', padding='SAME')
 
-    concat4 = concatLayer_A(concat3, conv4a_weight, conv4b_weight, conv4c_weight, 2)
+    concat4 = concatLayer_B(concat3, conv4a_weight, conv4b_weight, conv4c_weight, 2)
 
-    concat5 = concatLayer_A(concat4, conv5a_weight, conv5b_weight, conv5c_weight, 2)
+    concat5 = concatLayer_B(concat4, conv5a_weight, conv5b_weight, conv5c_weight, 2)
     concat5 = concat5 + tf.nn.pool(tf.concat([concat3 for x in range(3)], axis=2), [4], strides=[4], pooling_type='AVG', padding='SAME')
 
-    concat6 = concatLayer_B(concat5, conv6a_weight, conv6b_weight, conv6c_weight, conv6d_weight, 5)
+    concat6 = concatLayer_C(concat5, conv6a_weight, conv6b_weight, conv6c_weight, conv6d_weight, 5)
 
-    concat7 = concatLayer_B(concat6, conv7a_weight, conv7b_weight, conv7c_weight, conv7d_weight, 5)
+    concat7 = concatLayer_C(concat6, conv7a_weight, conv7b_weight, conv7c_weight, conv7d_weight, 5)
     concat7 = concat7 + tf.nn.pool(tf.concat([concat5 for x in range(2)], axis=2), [25], strides=[25], pooling_type='AVG', padding='SAME')
 
     concat7 = tf.nn.pool(concat7, [5], strides=[5], padding='SAME', pooling_type='AVG')
@@ -213,7 +203,7 @@ def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing
     return final_threshold_output
 
 
-def concatLayer_A(source_layer, conv1_w, conv2_w, conv3_w, pooling_size):
+def concatLayer_B(source_layer, conv1_w, conv2_w, conv3_w, pooling_size):
     """
     Define concat layer which like Inception module.
 
@@ -245,7 +235,7 @@ def concatLayer_A(source_layer, conv1_w, conv2_w, conv3_w, pooling_size):
     return concat
 
 
-def concatLayer_B(source_layer, conv1_w, conv2_w, conv3_w, conv4_w, pooling_size):
+def concatLayer_C(source_layer, conv1_w, conv2_w, conv3_w, conv4_w, pooling_size):
     """
     Define concat layer which like Inception module.
 
@@ -278,11 +268,11 @@ def concatLayer_B(source_layer, conv1_w, conv2_w, conv3_w, conv4_w, pooling_size
     conv4 = tf.nn.relu(conv4)
 
     concat = tf.concat([conv1, conv2, conv3, conv4], axis=2)
-    print("Concat Type B :{}".format(concat.shape))
+    print("Concat Type C :{}".format(concat.shape))
     return concat
 
 
-def concatLayer_C(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_w, pooling_size):
+def concatLayer_A(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_w, pooling_size):
     """
     Define concat layer which like Inception module.
 
@@ -302,18 +292,18 @@ def concatLayer_C(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_
     conv3 = tf.contrib.layers.batch_norm(conv3, is_training=is_train_step, data_format='NHWC', decay=0.9, zero_debias_moving_mean=True)
     conv3 = tf.nn.relu(conv3)
 
-    max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[2],
+    max_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size,],
             padding='SAME', pooling_type='MAX')
 
-    avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[2],
+    avg_pool = tf.nn.pool(source_layer, [pooling_size], strides=[pooling_size,],
             padding='SAME', pooling_type='AVG')
 
     concat = tf.concat([conv1, avg_pool, conv2, max_pool, conv3], axis=2)
-    print("Concat Type C :{}".format(concat.shape))
+    print("Concat Type A :{}".format(concat.shape))
     return concat
 
 
-def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, batch_size_in=batch_size, smoothing=True, normalize=True, eps=0.00001):
+def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, batch_size_in=batch_size, smoothing=True, normalize=False, t=1, eps=0.00001):
     """
     It generate
 
@@ -322,8 +312,10 @@ def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, bat
     :param div:
     :return:
     """
+    depth_tensor = depth_tensor + init_depth 
+    
     if smoothing:
-        depth_tensor_max = tf.nn.pool(depth_tensor, [31], strides=[1], padding='SAME', pooling_type='MAX')
+        depth_tensor_max = tf.nn.pool(depth_tensor, [filter_size_a], strides=[1], padding='SAME', pooling_type='MAX')
         depth_tensor_smooth = tf.nn.conv1d(depth_tensor_max, smoothing_filter, stride=1, padding='SAME')
         depth_tensor = depth_tensor_smooth
 
@@ -332,7 +324,7 @@ def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, bat
         depth_tensor = (depth_tensor -  depth_mean)/tf.sqrt(depth_var + eps)
         #depth_max = tf.reduce_max(depth_tensor)
         #depth_tensor = ((depth_tensor - depth_mean)/(depth_max + 0.00001))*100
-
+        
     depth_tensor = tf.reshape(depth_tensor,[batch_size_in ,div, input_size//div])
     threshold_tensor = tf.reshape(threshold_tensor,[batch_size_in,div,1])
     print("depth tensor :{}".format(depth_tensor.shape))
@@ -343,6 +335,9 @@ def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, bat
     result_tensor = tf.reshape(result_tensor,[batch_size_in, 1, input_size])
     print("result tensor after:{}\n".format(result_tensor.shape))
 
+    if not (t == 1):
+        result_tensor = result_tensor * t 
+
     return result_tensor
 
 
@@ -351,24 +346,22 @@ def aggregatedLoss(label_data_train, prediction_before_sigmoid):
 
     """
     loss_a = tf.reduce_mean(tf.nn.top_k(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction_before_sigmoid,
-        pos_weight=tf.maximum(1.,(loss_weight/3))), k = topK_set_a).values)
+        pos_weight=tf.maximum(1.,(loss_weight))), k = topK_set_a).values)
     tf.summary.scalar("Top {} Loss".format(topK_set_a),loss_a)
 
     loss_b = tf.reduce_mean(tf.nn.top_k(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction_before_sigmoid,
-        pos_weight=tf.maximum(1.,(loss_weight/3))), k = topK_set_b).values)
+        pos_weight=tf.maximum(1.,(loss_weight))), k = 750).values)
     tf.summary.scalar("Top {} Loss".format(topK_set_b),loss_b)
 
-    loss_c = tf.reduce_mean(tf.nn.top_k(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction_before_sigmoid,
-        pos_weight=tf.maximum(1.,(loss_weight/3))), k = topK_set_c).values)
-    tf.summary.scalar("Top {} Loss".format(topK_set_c),loss_c)
+    return loss_a
 
-    return tf.add_n([loss_a,loss_b,loss_c])
 
 ######################## Tensor graph for training steps #################################
 model_output  = peakPredictConvModel(input_data_train, input_ref_data_train)
 prediction_before_sigmoid = generateOutput(model_output, input_data_train, div=threshold_division, smoothing=True)
 prediction = tf.nn.sigmoid(prediction_before_sigmoid)
 loss = aggregatedLoss(label_data_train, prediction_before_sigmoid)
+#loss = topKAverageLoss(label_data_train, prediction_before_sigmoid)
 
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 with tf.control_dependencies(update_ops):

@@ -1,6 +1,8 @@
 import math
 import random
 import numpy as np
+import scipy.stats as st
+import sys
 cimport numpy as np
 
 def predictionToBedString(np.ndarray prediction, str chromosome, int region_start, double stride,
@@ -20,23 +22,29 @@ def predictionToBedString(np.ndarray prediction, str chromosome, int region_star
     """
     cdef int peak_size = 0
     cdef list peaks = []
+    cdef double eps = sys.float_info.min
+    
     cdef double end_point
     cdef double start_point
     
-    cdef double z_score_mean
+    cdef double threshold_pvalue = 1
+    cdef double p_value
+    cdef double p_value_mean
+    cdef double p_value_var
+    cdef double var
     cdef double mean
-    cdef double std
-
+    cdef double score
     cdef double min_depth
     cdef double avg_depth
     cdef double max_depth
 
     cdef str random_name
 
-    bed_template = "{}\t{}\t{}\t{}\t{:.2f}\t{}\t{:.2f}\t{}\n"
-
+    #bed_template = "{}\t{}\t{}\t{}\t{:.6f}\t{}\t{:.2f}\t{}\n"
+    bed_template = "{}\t{}\t{}\t{}\t{:.3f}\t{:.3f}\t{:.6f}\t{:.6f}\t{:.6f}\n"
+    
     for step in range(num_grid):
-        if prediction[step] == 1:
+        if prediction[step] > 0.5 :
             peak_size += 1
         else:
             if not (peak_size == 0):
@@ -44,20 +52,28 @@ def predictionToBedString(np.ndarray prediction, str chromosome, int region_star
                 if peak_size > min_peak_size:
                     end_point = region_start + ( stride * step )
                     start_point = end_point - ( peak_size * stride )
-
-                    std = math.sqrt(np.var(reads)+0.000001)
+                    
                     mean = np.mean(reads)
-                    z_score_mean = float(np.mean((reads[step - peak_size : step] - mean)/std))
+                    
                     min_depth = np.amin(reads[step - peak_size : step])
                     avg_depth = np.mean(reads[step - peak_size : step])
                     max_depth = np.amax(reads[step - peak_size : step])
-
-                    random_name = "{}_{:5}".format(chromosome,random.randint(0,100000))
-
-                    peaks.append(bed_template.format(chromosome, int(start_point), int(end_point), random_name, z_score_mean, min_depth, avg_depth, max_depth))
+                    
+                    avg_sig = np.mean(prediction[step - peak_size : step])
+                    
+                    p_value_mean = st.poisson.cdf(mean, avg_depth)
+                    p_value_max = st.poisson.cdf(mean, max_depth)
+                    
+                    score_narrow = -math.log10(p_value_max+eps)*avg_sig*100
+                    score_broad = -math.log10(p_value_mean+eps)*avg_sig*100
+                    
+                    random_name = "{}_{}".format(chromosome,random.randint(0,100000))
+                    if p_value < threshold_pvalue:
+                        peaks.append(bed_template.format(chromosome, int(start_point), int(end_point), random_name, score_narrow, score_broad, avg_sig, p_value_mean, p_value_max))
+                    else:
+                        pass
 
                 peak_size = 0
-
 
     # Condition 2 : The number of peaks must be lower than max_peak_num.
     if len(peaks) > max_peak_num:

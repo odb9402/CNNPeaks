@@ -33,7 +33,6 @@ def generateRefcounts(int region_start, int region_end, np.ndarray refGene, int 
 
     def searchRef(int bp, int s,int e):
         cdef int mid = int((e+s)/ 2)
-        
         if mid == s:
             return mid
         else:
@@ -43,6 +42,7 @@ def generateRefcounts(int region_start, int region_end, np.ndarray refGene, int 
                 return searchRef(bp, s, mid)
             else:
                 return mid
+    
     cdef int L = len(refGene) - 1
 
     cdef int start_index = searchRef(region_start, 0, L)
