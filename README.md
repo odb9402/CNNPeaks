@@ -4,7 +4,7 @@ CNN-Peaks
 CNN-peaks is a **Convolution Neural Network(CNN)** based ChIP-Seq peak calling software. 
 
 <p align="center">
-    <img src="https://github.com/odb9402/ConvPeaks/blob/master/CNNpeaks.tif" alt="CNN-Peaks logo">
+    <img src="https://github.com/odb9402/ConvPeaks/blob/master/CNNpeaks.png" alt="CNN-Peaks logo">
 </p>
 
 ----------
