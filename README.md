@@ -84,10 +84,13 @@ Labeled data
 --------------- 
 CNN-peaks uses labeled data which has its own format. All these approach that use labeled data for marking is from [1]. Examples of labeled data is as the following below. (It based on ASCII)
 
->
+
 > chr1:1,000,000-1,100,000 peaks K562
+
 > chr1:1,100,000-1,200,000 peakStart K562
+
 > chr1:1,250,000-1,300,000 peakEnd K562
+
 > chr2:10,000,000-10,002,000 peaks
 
 
