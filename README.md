@@ -80,7 +80,7 @@ And CNN-peaks also gives some additional processes for cleaning labeled data, ca
 
 Labeled data
 --------------- 
-CNN-peaks uses labeled data which has its own format. All these approach that use labeled data for marking is from [1]. Examples of labeled data is as the following below. (It based on ASCII)
+CNN-peaks uses labeled data which has its own format. All these approaches that use labeled data for marking are from [1]. Examples of labeled data is as the following below. (It based on ASCII)
 
 
 > chr1:1,000,000-1,100,000 peaks K562
@@ -92,7 +92,7 @@ CNN-peaks uses labeled data which has its own format. All these approach that us
 > chr2:10,000,000-10,002,000 peaks
 
 
-In line 1, **peaks**, this means that cell K562 at least has one peak in a region (chr1:1,000,000-1,100,000). In line 2, 3 ,**peakStart, peakEnd**,  it means that cell K562 just only one peak in the regions. In line 4, there is no peak in that regions about K562 or other cell because there is no matched cell line name at this raw. If you want to use this label data on other cells,  all these line 1-4 mean **noPeak** because there is no cell name in  the lines.  If you want to know specific rules or methods of this labeling work, please look [here.](https://academic.oup.com/bioinformatics/article/33/4/491/2608653/Optimizing-ChIP-seq-peak-detectors-using-visual)
+In line 1, **peaks**, this means that cell K562 at least has one peak in a region (chr1:1,000,000-1,100,000). In line 2, 3 ,**peakStart, peakEnd**,  it means that cell K562 just only one peak in the regions. In line 4, there is no peak in those regions about K562 or other cells because there is no matched cell line name at this raw. If you want to use this label data on other cells,  all these line 1-4 mean **noPeak** because there is no cell name in  the lines.  If you want to know specific rules or methods of this labeling work, please look [here.](https://academic.oup.com/bioinformatics/article/33/4/491/2608653/Optimizing-ChIP-seq-peak-detectors-using-visual)
 
 
 Usage of CNN-peaks
@@ -126,7 +126,7 @@ As a result, directories that include labeled data , reference gene data and rea
 
 ### **2. Build CNN-peaks model with preprocessed data**
 
-After you created your own training data with our **preprocess** module, you can build CNN-peaks model by using our **buildModel** module. The module run as 10-cross validation so it will throw 10 models. But you can adjust this by using -k parameter so that you can build your model with k-fold cross validation. Results of running the module include visualization of peak predictions about test data, train and test sensitivity and specificity during training process and trained models. You can check those visualization results and saved tensorflow variables at a "models" directory in a path of CNNpeaks.
+After you created your own training data with our **preprocess** module, you can build CNN-peaks model by using our **buildModel** module. The module run as 10-cross validation so it will throw 10 models. But you can adjust this by using -k parameter so that you can build your model with k-fold cross validation. Results of running the module include visualization of peak predictions about test data, train and test sensitivity and specificity during the training process and trained models. You can check those visualization results and saved tensorflow variables at a "models" directory in a path of CNNpeaks.
 
 > **CNN model building:**
 >
@@ -134,7 +134,7 @@ After you created your own training data with our **preprocess** module, you can
 
 
 
-### **3. Peak calling with a trained model**
+### **3. Peak calling with the a trained model**
 
 If you finish build your CNNpeaks model, **buildModel** module generated 'k' numbers of saved tensorflow variables. All you have to do is just pick your saved model number and bam alignment file as an input of peak calling.
 
