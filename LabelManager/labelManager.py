@@ -1,15 +1,18 @@
-from tkinter import *
-import tkinter.messagebox as messagebox
 import os
 import glob
 import pandas as pd
 import numpy as np
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import ntpath
+import bamnostic as bs
+
+from tkinter import *
+import tkinter.messagebox as messagebox
+from tkinter.filedialog import askdirectory
+from tkinter.filedialog import askopenfilename
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from scipy.signal import gaussian
 from scipy.ndimage.filters import maximum_filter1d
-import matplotlib.pyplot as plt
 
 def expandingPrediction(input_list, multiple=5):
     """
@@ -55,25 +58,32 @@ def path_leaf(path):
 
 
 class labelManager():
-
-    def __init__(self, directory):
+    def __init__(self):
         self.startLoc = 0
         self.endLoc = 0
         self.thresholdLoc = 0
         self.fileIndex = 0
         self.smoothing = False
-        self.smoothing_window = 31
-        self.smoothing_var = 1
-
-        loads = self.fileNameLoad(directory)
-
-        self.data_list = loads['data']
-        self.file_list = loads['file_name']
+        self.edge_det_window = 101
+        self.smoothing_window = 301
+        self.smoothing_var = 51
+        self.data_list = [[]]
+        self.file_list = ['None']
 
         self.root = Tk()
         self.root.title('Label data checker')
         self.root.iconbitmap("peakLabelManager.ico")
-        #self.root.geometry('600x600')
+
+        self.menu_bar = Menu(self.root)
+
+        self.file_menu = Menu(self.menu_bar, tearoff=0)
+        self.file_menu.add_command(label="Load genomic segments (Training set)", command=self.selectSegments)
+        self.file_menu.add_command(label="Load bam alignment", command=self.selectBam)
+        self.menu_bar.add_cascade(label="New file", menu=self.file_menu)
+
+        self.option_menu = Menu(self.menu_bar, tearoff=0)
+        self.option_menu.add_command(label="Smoothing intensity", command=self.smoothingSetting)
+        self.menu_bar.add_cascade(label="Options", menu=self.option_menu)
 
         self.fig = Figure(figsize=(4,4), dpi=100)
         self.peak_plot = self.fig.add_subplot(111)
@@ -91,10 +101,8 @@ class labelManager():
         self.peak_threshold_button = Button(self.root, text="peak > threshold(D)",command=lambda: self.adjustData(peak=True,criteria='threshold'))
         self.peak_threshold_button.grid(row=6, column=2, sticky=W+E+N+S)
 
-        self.smoothParam = Text(self.root, height=2, width=12)
-        self.smoothParam.grid(row=7, column=1)
         self.smooth_button = Button(self.root, text="Smoothing", command=self.smoothingDepth)
-        self.smooth_button.grid(row=7, column = 2,sticky=W+E+N+S)
+        self.smooth_button.grid(row=7, column = 1, columnspan=2, sticky=W+E+N+S)
 
         self.moveFileLabel = Label(self.root, text=" {}/{} ` th label.".format(self.fileIndex + 1, len(self.data_list[0])))
         self.moveFileLabel.grid(row=2, column=2)
@@ -118,15 +126,13 @@ class labelManager():
         self.canvas.show()
         self.canvas.get_tk_widget().grid(row=0, column= 0, rowspan=8, sticky=W+E+N+S, padx=20, pady=20)
 
-        self.drawPlot()
-
         ### Mouse drag events for region selection
         self.fig.canvas.mpl_connect('button_press_event', self.dragStart)
         self.fig.canvas.mpl_connect('button_release_event', self.dragEnd)
 
         ### Keyboard events
         self.root.bind('<Key>', self.keyPressed)
-
+        self.root.config(menu=self.menu_bar)
         self.root.mainloop()
 
     def keyPressed(self, event):
@@ -152,10 +158,6 @@ class labelManager():
 
     def smoothingDepth(self):
         self.smoothing = not self.smoothing
-        value = self.smoothParam.get('1.0',END)
-        values = value.split(',')
-        self.smoothing_window = int(values[0])
-        self.smoothing_var = int(values[1])
         self.moveFileLabel.focus_set()
         self.drawPlot()
 
@@ -298,14 +300,15 @@ class labelManager():
         self.canvas.show()
 
     def smoothingInput(self):
+        print(self.edge_det_window, self.smoothing_window, self.smoothing_var)
         depths = np.array(self.data_list[0][self.fileIndex])
         smoothing_filter = gaussian(self.smoothing_window, self.smoothing_var) / \
                            np.sum(gaussian(self.smoothing_window, self.smoothing_var))
-        union_depths = maximum_filter1d(depths, 15)  ## MAX POOL to extract boarder lines
+        union_depths = maximum_filter1d(depths, self.edge_det_window)  ## MAX POOL to extract boarder lines
         final_depth = np.convolve(union_depths, smoothing_filter, mode='same')  ## Smoothing boarder lines
         return final_depth
 
-    def fileNameLoad(self, dir_name, num_grid=12000):
+    def segmentLoad(self, dir_name, num_grid=12000):
         PATH = os.path.abspath(dir_name)
         dir_list = os.listdir(PATH)
 
@@ -346,3 +349,61 @@ class labelManager():
                     ref_list.append(refs)
 
         return {'data':(data_list,ref_list, label_list), 'file_name':(input_file_list, ref_file_list, label_file_list)}
+
+    def selectSegments(self):
+        dirPath = askdirectory(title="Select Your Directory")
+        dirPath = os.path.abspath(dirPath)
+
+        loads = self.segmentLoad(dirPath)
+
+        self.data_list = loads['data']
+        self.file_list = loads['file_name']
+
+        self.drawPlot()
+
+    def selectBam(self):
+        bam_file_name = askopenfilename(title="Select Your File")
+        bam_path = os.path.abspath(bam_file_name)
+        bam_index_path = bam_path + ".bai"
+        print(bam_path, bam_index_path)
+        self.bam = bs.AlignmentFile(bam_path, filepath_index=bam_index_path)
+        print(self.bam.header)
+        print(self.bam.head(n=5))
+
+    def smoothingSetting(self):
+        smoothingSettingFrame = Toplevel(self.root)
+        smoothingSettingFrame.title('Smoothing configuration')
+        smoothingSettingFrame.iconbitmap("peakLabelManager.ico")
+
+        pickingEdge_label = Label(smoothingSettingFrame, text="Picking edge width")
+        pickingEdge_label.grid(row=0, column=0, sticky=W+E+N+S)
+        smoothing_label = Label(smoothingSettingFrame, text="Smoothing width")
+        smoothing_label.grid(row=1, column=0, sticky=W+E+N+S)
+        smoothingVar_label = Label(smoothingSettingFrame, text="Smoothing intensity")
+        smoothingVar_label.grid(row=2, column=0, sticky=W+E+N+S)
+
+        pickingEdge = Text(smoothingSettingFrame, height = 2, width = 12)
+        pickingEdge.grid(row=0, column=1, sticky=W+E+N+S)
+        pickingEdge.insert(END, self.edge_det_window)
+        smoothing = Text(smoothingSettingFrame, height = 2, width = 12)
+        smoothing.grid(row=1, column=1, sticky=W+E+N+S)
+        smoothing.insert(END, self.smoothing_window)
+        smoothingVar = Text(smoothingSettingFrame, height = 2, width = 12)
+        smoothingVar.grid(row=2, column=1, sticky=W+E+N+S)
+        smoothingVar.insert(END, self.smoothing_var)
+
+        def changeVal():
+            self.edge_det_window = int(pickingEdge.get('1.0', END))
+            self.smoothing_window = int(smoothing.get('1.0', END))
+            self.smoothing_var = int(smoothingVar.get('1.0', END))
+            smoothingSettingFrame.destroy()
+
+        adapt = Button(smoothingSettingFrame, text="OK", command=changeVal)
+        adapt.grid(row=3, column=0, columnspan=2, sticky=W+E+N+S)
+
+        cancle = Button(smoothingSettingFrame, text="Cancel", command=smoothingSettingFrame.destroy)
+        cancle.grid(row=4, column=0, columnspan=2, sticky=W + E + N + S)
+
+        smoothingSettingFrame.mainloop()
+
+labelManager()
