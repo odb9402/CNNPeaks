@@ -65,7 +65,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         zip \
         zlib1g-dev \
         wget \
-        python3_tk \
+        python3-tk \
         tk-dev \
         && \
     rm -rf /var/lib/apt/lists/* && \
@@ -79,7 +79,7 @@ RUN apt-get update && \
         apt-get install libnvinfer-dev=4.1.2-1+cuda9.0
 
 RUN apt-get upgrade -y --no-install-recommends \
-    python3_tk
+    python3-tk
 
 # Link NCCL libray and header where the build script expects them.
 RUN mkdir /usr/local/cuda-9.0/lib &&  \

@@ -58,31 +58,12 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=0, regions=
 
     bam_alignment = pysam.AlignmentFile(input_bam , 'rb', index_filename=input_bam + '.bai')
     chr_lengths = bam_alignment.lengths
-
-    if genome=='hg38':
-        chr_table = ['chr1','chr2','chr3','chr4','chr5','chr6','chr7','chr8','chr9','chr10','chr11'
-            ,'chr12','chr13','chr14','chr15','chr16','chr17','chr18','chr19','chr20','chr21'
-           ,'chr22','chrX','chrY']
-
-    elif genome=='hg19':
-        chr_table = ['chr1','chr2','chr3','chr4','chr5','chr6','chr7','chrX','chr8','chr9','chr10',
-                'chr11','chr12','chr13','chr14','chr15','chr16','chr17','chr18','chr20','chrY',
-                'chr19','chr22','chr21']
-
-    elif genome=='hg18':
-        #chr_table = ['chr1','chr1_random','chr10','chr10_random','chr11','chr11_random','chr12','chr13','chr13_random','chr14','chr15','chr15_random','chr16','chr16_random','chr17','chr17_random','chr18','chr18_random','chr19','chr19_random','chr20','chr21','chr21_random','chr22','chr22_random','chr22_h2_hap1','chr_random','chr','chr_random','chr','chr_random','chr','chr_random','chr','chr_random','chr','chr_random','chr','chr_random','chr','chr_random','chr','chr_random','chr','chr_random']
-        logger.info("hg18 reference genome is not valid yet.")
-
-    else:
-        chr_table = []
-        logger.info("Reference genome must be selected among {hg19, hg18, hg38}")
-
-    logger.info("{} reference genome was selected.".format(genome))
+    
+    chr_table = list(bam_alignment.references)
+    
+    #logger.info("{} reference genome was selected.".format(genome))
     #logger.info("{}`s table :".format(chr_table))
     #logger.info("{}`s lengths :".format(chr_lengths))
-
-#    if not (regions == None):
-#        chr_index = []
 
     if regions is not None:
         logger.info("Specific calling regions was defined :: {}".format(regions))
@@ -150,13 +131,19 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
     ref_data = ref_data_df.values
 
     while True:
+        ### Make genomic segment for each window ( # of window: window_chunk )
         if (eval_counter % window_chunk) == 0:
+            ### ProgressBar
             if pgb_on:
                 bar = pgb.ProgressBar(max_value=window_chunk)
             logger.info("Generate Read Counts . . .")
+            
+            ### If remained genomic regions are enough to create the large window chunk.
             if window_count + window_size*window_chunk < window_end:
                 read_count_chunk = generateReadcounts(window_count,window_count+window_size*window_chunk-1, chr_table[chr_no], file_name, num_grid, window_chunk)
                 end = window_count+window_size*window_chunk -1
+            
+            ### If a size of window chunk is larger than remained genome.
             else:
                 window_n = int((window_end - window_count)/ window_size)
                 read_count_chunk = generateReadcounts(window_count,
@@ -164,6 +151,7 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
                 end = window_end
             logger.info("Calling . . . :[{}:{}-{}]".format(chr_table[chr_no],window_count,end))
 
+        ### END OF PEAK CALLING FOR ONE CHROMOSOME :: write remained predicted peaks.
         if window_count + window_size > window_end:
             logger.info("Peak calling for [{}] is done.".format(chr_table[chr_no]))
             writeBed(output_file_name, peaks, logger, printout=False)
@@ -175,7 +163,6 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
 
         result_dict = {input_data_eval: read_count_by_grid, input_ref_data_eval: ref_data_by_grid, is_train_step: False}
         preds = sess.run(prediction, feed_dict=result_dict)
-        #class_value_prediction = np.array(buildModel.classValueFilter(preds))
         class_value_prediction = np.array(preds.reshape(num_grid))
 
         peaks += predictionToBedString(class_value_prediction, chr_table[chr_no], window_count, stride,

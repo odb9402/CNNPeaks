@@ -27,7 +27,6 @@ def main():
     arg_parser.add_argument("-kf","--KFold",default=0, help="K fold cross validation during training models.")
     arg_parser.add_argument("-ncv","--notCrossValid", action='store_true')
     arg_parser.add_argument("-ln","--labelNum", default=30, help="The number of label for -randomLabel")
-    arg_parser.add_argument("-g","--refGenome", default='hg19', help="Reference genome version.[hg19, hg18, hg38]")
     arg_parser.add_argument("-r","--regions", help="Specific genome regions for peak calling. eg) chr3:100023400-1000044323 , you can use 's' or 'e' to indicate start and end of the chromosome")
 
     args = arg_parser.parse_args()
