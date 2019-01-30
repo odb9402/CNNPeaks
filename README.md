@@ -225,7 +225,6 @@ After calling peaks by CNN-Peaks model, you can filter out some peaks with scori
 The pre-trained CNN-Peaks model is available.  You do not have to train your model if you use this well-tuned model.  To use the model, you just have to move "models" directory into your CNN-Peaks working directory which is outer most directory of CNN-Peaks.
 
 ### 1. [Alpha](https://drive.google.com/open?id=1LXcIfpLuTS_Q4qO75tBVTATmVASSl4jT)
-------
 The Alpha model had been trained with 2997 genomic segments with narrow histone modifications such as H3K4me3 and small amounts of transcription factors such as MAX.
 
 
