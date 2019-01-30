@@ -183,7 +183,7 @@ After calling peaks by CNN-Peaks model, you can filter out some peaks with scori
 |         |                   |                                                              |
 
 
-
+<a href="164.125.34.223/CNNPeaks_Alpha/alphaModel.tar" download>Test</a>
 ------
 ------
 >**CITATION**
