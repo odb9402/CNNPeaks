@@ -12,6 +12,23 @@ CNN-peaks is a **Convolution Neural Network(CNN)** based ChIP-Seq peak calling s
 
 ## Install
 
+### 0. Overview
+
+You can prepare to use CNN-Peaks via running a script "install.sh" in the CNN-Peaks directory.
+
+> ```
+> chmod 775 install.sh
+> ./install.sh
+> ```
+
+If you want to GPU-accelerated CNN-Peaks, please check "GPU-accelerated CNN-Peaks"
+
+Details of the install are below ( you do not have to follow these descriptions since install.sh work well ):
+
+
+
+### 1. Python packages
+
 CNN-Peaks needs Python higher than 3.x. CNN-Peaks requires several Python packages including Tensorflow. 
 
 > **Required Python packages:**
@@ -27,10 +44,12 @@ CNN-Peaks needs Python higher than 3.x. CNN-Peaks requires several Python packag
 > **Install with pip**
 >
 > ```
-> pip install numpy scipy sklearn tensorflow pandas progressbar2 pysam
+> pip install numpy scipy sklearn tensorflow pandas progressbar2 pysam tensorflow-gpu
 > ```
 
 
+
+### 2. Samtools (htslib)
 
 If you do not have samtools which is higher than 1.7 version you should install it.
 
@@ -40,10 +59,26 @@ If you do not have samtools which is higher than 1.7 version you should install 
 > cd dependencies
 > ./install_samtools.sh
 > ```
->
-> 
 
-Note that if you want to GPU accelerated CNN-Peaks, your tensorflow should be configured to use GPU.
+
+
+### 3. Extern modules of CNN-Peaks
+
+After installing required Python packages and samtools ( htslib ) with above scripts, CNN-Peaks have to compile C, Cython extern modules using the below script:
+
+> ```
+> ./build.sh
+> ```
+
+
+
+### 4. GPU-accelerated CNN-Peaks
+
+Note that if you want to GPU accelerated CNN-Peaks, your tensorflow should be configured to use GPU. Please check [here](https://www.tensorflow.org/install/gpu) for a description to configure GPU support for CNN-Peaks.
+
+
+
+
 
 ## Install with Docker
 
@@ -52,6 +87,12 @@ You can build Docker image if you want to run CNN-peaks on your Docker container
 ------
 
 ## Quick start
+
+Install for CNN-Peaks:
+
+
+
+
 
 Examples of CNN-peaks command:
 
@@ -95,7 +136,7 @@ In line 1, **peaks**, this means that cell K562 at least has one peak in a regio
 
 ### **1. Training data to build a CNN-peaks model.**
 
-Before you try to call peaks with your ChIP-Seq Data, CNN-peaks model should be trained by internal module in CNN-peaks. CNN-peaks gives **preprocessing** module for generating actual training data samples with labeled data and bam alignment files of them. You can use our labeled data sample or use your own labeled data to generate training data. When you use its preprocessing module, the input of the module is a single directory which includes labeled data and bam files. For example, a directory which has name "./TestPreProcess" includes these files:
+Before you try to call peaks with your ChIP-Seq Data, CNN-peaks model should be trained by the internal module in CNN-peaks. CNN-peaks gives **preprocessing** module for generating actual training data samples with labeled data and bam alignment files of them. You can use our labeled data sample or use your own labeled data to generate training data. When you use its preprocessing module, the input of the module is a single directory which includes labeled data and bam files. For example, a directory which has name "./TestPreProcess" includes these files:
 
 > **preprocessing:**
 >
