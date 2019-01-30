@@ -183,7 +183,7 @@ After calling peaks by CNN-Peaks model, you can filter out some peaks with scori
 |         |                   |                                                              |
 
 
-[Alpha]https://drive.google.com/open?id=1LXcIfpLuTS_Q4qO75tBVTATmVASSl4jT
+[Alpha](https://drive.google.com/open?id=1LXcIfpLuTS_Q4qO75tBVTATmVASSl4jT)
 
 ------
 ------
