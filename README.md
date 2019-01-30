@@ -18,7 +18,7 @@ You can prepare to use CNN-Peaks via running a script "install.sh" in the CNN-Pe
 > ./install.sh
 > ```
 
-If you want to GPU-accelerated CNN-Peaks, please check "GPU-accelerated CNN-Peaks"
+If you want to GPU-accelerated CNN-Peaks, please check ["GPU-accelerated CNN-Peaks"](https://github.com/odb9402/ConvPeaks#4-gpu-accelerated-cnn-peaks)
 
 Details of the install are below ( you do not have to follow these descriptions since install.sh work well ):
 
@@ -107,7 +107,7 @@ Examples of CNN-peaks command:
 
 
 
-Note that you can use pre-trained models for CNN-Peaks calling.  Please check "Using pre-trained models" for details. 
+Note that you can use pre-trained models for CNN-Peaks calling.  Please check ["Using pre-trained models"](https://github.com/odb9402/ConvPeaks#using-pre-trained-models) for details. 
 
 > **peak calling with trained model:**
 >
