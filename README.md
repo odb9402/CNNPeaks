@@ -6,9 +6,6 @@
 
 CNN-peaks is a **Convolution Neural Network(CNN)** based ChIP-Seq peak calling software. 
 
-[TOC]
-
-
 
 ## Install
 
