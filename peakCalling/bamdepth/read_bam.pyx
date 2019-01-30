@@ -10,7 +10,5 @@ def genReadCount(file_name : bytes, reg : bytes, size : int):
     
     for i in xrange(size):
         read_counts_np[i] = read_counts[i]
-    for i in xrange(size):
-        print(read_counts_np[i])
     
     return np.asarray(read_counts_np)

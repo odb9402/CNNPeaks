@@ -106,7 +106,7 @@ int* readbamMain(const char* input_file_name, const char* input_reg)
         while(tid > prev_tid){
             if(prev_tid >= 0 && !reg){
                 while(++prev_pos < h->target_len[prev_tid]){
-                    printf("pos0 : %d\t0\n",prev_pos);
+                    //printf("pos0 : %d\t0\n",prev_pos);
                     output_depths[output_idx++] = 0;
                 }
             }
@@ -118,7 +118,7 @@ int* readbamMain(const char* input_file_name, const char* input_reg)
         while (++prev_pos < pos) {
             if (prev_pos < beg)
                 continue;
-            printf("pos1 : %d\t0\n",prev_pos);
+            //printf("pos1 : %d\t0\n",prev_pos);
             output_depths[output_idx++] = 0;
         }
         
@@ -132,10 +132,10 @@ int* readbamMain(const char* input_file_name, const char* input_reg)
                 if (p->is_del || p->is_refskip) ++m; // having dels or refskips at tid:pos
                 else if (bam_get_qual(p->b)[p->qpos] < baseQ) ++m; // low base quality
             }
-            printf("pos2 : %d\t%d", pos,n_plp[i] - m); // Read depth output (Only for depth>=1) 
+            //printf("pos2 : %d\t%d", pos,n_plp[i] - m); // Read depth output (Only for depth>=1) 
             output_depths[output_idx++] = n_plp[i]-m;
         }
-        putchar('\n');
+        //putchar('\n');
     }
     free(n_plp);
     free(plp);
@@ -151,8 +151,8 @@ int* readbamMain(const char* input_file_name, const char* input_reg)
         while (++prev_pos < h->target_len[prev_tid]) {
             if (prev_pos >= end)
                 break;
-            printf("pos3 : %d\t",prev_pos);
-            printf("0\n");
+            //printf("pos3 : %d\t",prev_pos);
+            //printf("0\n");
             output_depths[output_idx++] = 0;
         }
         prev_tid++;

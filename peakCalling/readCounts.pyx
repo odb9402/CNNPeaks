@@ -4,27 +4,19 @@ import subprocess as sp
 from cpython cimport array
 from libc.stdlib cimport malloc, free
 from cython.parallel import prange
+import peakCalling.bamdepth.readbam as readbam
 
 def generateReadcounts(int region_start, int region_end, str chr_num, str file_name, int num_grid, int window_num):
-    cdef float[:] read_count = np.empty(num_grid*window_num, dtype=np.float32)
+    cdef float[:] read_counts = np.empty(num_grid*window_num, dtype=np.float32)
     
     cdef double stride = (region_end - (region_start + 1))/float(num_grid * window_num)
-    cdef list samtools_command
-
-    if region_end == -1:
-        samtools_command = ['samtools depth -aa -r {} {}'.format(chr_num, file_name)]
-    else:
-        samtools_command = ['samtools depth -aa -r {} {}'.format("{}:{}-{}".
-            format(chr_num,region_start,(region_end - 1)), file_name)]
     
-    samtools_call = sp.Popen(samtools_command, shell=True, stdout=sp.PIPE, stderr=sp.STDOUT)
-    samtools_call.poll()
+    cdef int[:] read_counts_all = readbam.genReadCount(str.encode(file_name),str.encode("{}:{}-{}".format(chr_num, region_start,(region_end-1))),region_end-region_start+1)
     
-    cdef list samtools_lines = samtools_call.stdout.readlines()
     for step in range(num_grid * window_num):
-        read_count[step] = float(str(samtools_lines[int(step * stride)])[:-3].rsplit('t',1)[1])
+        read_counts[step] = float(read_counts_all[int(step*stride)])
     
-    return np.asarray(read_count)
+    return np.asarray(read_counts)
 
 
 def generateRefcounts(int region_start, int region_end, np.ndarray refGene, int num_grid):

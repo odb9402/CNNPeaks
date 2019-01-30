@@ -47,7 +47,7 @@ def main():
         buildModel(args.inputDir, logger, num_grid=num_grid, K_fold_in=int(args.KFold), cross_valid=not (args.notCrossValid))
     elif args.runMode == 'peakCall':
         from peakCalling.callPeaks import run as callPeaks
-        callPeaks(args.inputDir, logger, window_size=windowSize, num_grid=num_grid, model_num=args.modelNum, genome=args.refGenome, regions=args.regions)
+        callPeaks(args.inputDir, logger, window_size=windowSize, num_grid=num_grid, model_num=args.modelNum,  regions=args.regions)
     elif args.runMode == 'checkData':
         from utility.labelManager import labelManager
         labelManager(args.inputDir)

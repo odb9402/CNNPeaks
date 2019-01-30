@@ -60,10 +60,6 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=0, regions=
     chr_lengths = bam_alignment.lengths
     
     chr_table = list(bam_alignment.references)
-    
-    #logger.info("{} reference genome was selected.".format(genome))
-    #logger.info("{}`s table :".format(chr_table))
-    #logger.info("{}`s lengths :".format(chr_lengths))
 
     if regions is not None:
         logger.info("Specific calling regions was defined :: {}".format(regions))
@@ -103,7 +99,7 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=0, regions=
 
 
 def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data, input_data_ref,
-        logger, num_grid, prediction, sess, window_size, pgb_on=False, window_start=1, window_end=None, window_chunk=600):
+        logger, num_grid, prediction, sess, window_size, pgb_on=False, window_start=1, window_end=None, window_chunk=100):
     """
 
     :param chr_no: Chromosome number of regions
