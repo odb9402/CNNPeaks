@@ -27,21 +27,19 @@ def predictionToBedString(np.ndarray prediction, str chromosome, int region_star
     cdef double end_point
     cdef double start_point
     
-    cdef double threshold_pvalue = 1
-    cdef double p_value
+    cdef double threshold_score = 0
+    cdef double p_value_max
     cdef double p_value_mean
-    cdef double p_value_var
     cdef double var
     cdef double mean
-    cdef double score
-    cdef double min_depth
+    cdef double score_narrow
+    cdef double score_broad
     cdef double avg_depth
     cdef double max_depth
+    cdef double avg_sig
 
     cdef str random_name
-
-    #bed_template = "{}\t{}\t{}\t{}\t{:.6f}\t{}\t{:.2f}\t{}\n"
-    bed_template = "{}\t{}\t{}\t{}\t{:.3f}\t{:.3f}\t{:.6f}\t{:.6f}\t{:.6f}\n"
+    cdef str bed_template = "{}\t{}\t{}\t{}\t{:.3f}\t{:.3f}\t{:.6f}\t{:.6f}\t{:.6f}\n"
     
     for step in range(num_grid):
         if prediction[step] > 0.5 :
@@ -55,7 +53,6 @@ def predictionToBedString(np.ndarray prediction, str chromosome, int region_star
                     
                     mean = np.mean(reads)
                     
-                    min_depth = np.amin(reads[step - peak_size : step])
                     avg_depth = np.mean(reads[step - peak_size : step])
                     max_depth = np.amax(reads[step - peak_size : step])
                     
@@ -68,7 +65,8 @@ def predictionToBedString(np.ndarray prediction, str chromosome, int region_star
                     score_broad = -math.log10(p_value_mean+eps)*avg_sig*100
                     
                     random_name = "{}_{}".format(chromosome,random.randint(0,100000))
-                    if p_value < threshold_pvalue:
+                    
+                    if score_narrow > threshold_score:
                         peaks.append(bed_template.format(chromosome, int(start_point), int(end_point), random_name, score_narrow, score_broad, avg_sig, p_value_mean, p_value_max))
                     else:
                         pass

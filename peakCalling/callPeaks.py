@@ -92,7 +92,10 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=0, regions=
                 logger, num_grid, prediction, sess, window_size, pgb_on=True, window_start=call_start, window_end=call_end)
     else:
         for chr_no in range(len(chr_table)):
-            ref_data_df = pd.read_table("geneRef/{}.bed".format(chr_table[chr_no]), names=['start','end'] , header=None, usecols=[1,2])
+            if os.path.isfile("geneRef/{}.bed".format(chr_table[chr_no])):
+                ref_data_df = pd.read_table("geneRef/{}.bed".format(chr_table[chr_no]), names=['start','end'] , header=None, usecols=[1,2])
+            else:
+                ref_data_df = pd.Dataframe(names=['start','end'], header=None, usecols=[1,2])
             logger.info("Peak calling in chromosome {}:".format(chr_table[chr_no]))
             call_peak(chr_no, chr_table, chr_lengths, input_bam, ref_data_df, input_data, input_data_ref,
                     logger, num_grid, prediction, sess, window_size, pgb_on=True)
@@ -125,7 +128,7 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
     logger.info("Length of [{}] is : {}".format(chr_table[chr_no], window_end))
 
     ref_data = ref_data_df.values
-
+    
     while True:
         ### Make genomic segment for each window ( # of window: window_chunk )
         if (eval_counter % window_chunk) == 0:
@@ -156,14 +159,14 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
         read_count_by_grid = read_count_chunk[eval_counter*num_grid:(eval_counter+1)*num_grid].reshape(input_data_eval.shape)
         ref_data_by_grid = generateRefcounts(window_count, window_count+window_size,
                 ref_data, num_grid).reshape(input_ref_data_eval.shape)
-
+        
         result_dict = {input_data_eval: read_count_by_grid, input_ref_data_eval: ref_data_by_grid, is_train_step: False}
         preds = sess.run(prediction, feed_dict=result_dict)
         class_value_prediction = np.array(preds.reshape(num_grid))
-
+        
         peaks += predictionToBedString(class_value_prediction, chr_table[chr_no], window_count, stride,
                 num_grid, read_count_by_grid.reshape(num_grid), 10, 50)
-
+        
         eval_counter += 1
 
         if pgb_on:
