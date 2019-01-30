@@ -95,7 +95,7 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_num=0, regions=
             if os.path.isfile("geneRef/{}.bed".format(chr_table[chr_no])):
                 ref_data_df = pd.read_table("geneRef/{}.bed".format(chr_table[chr_no]), names=['start','end'] , header=None, usecols=[1,2])
             else:
-                ref_data_df = pd.Dataframe(names=['start','end'], header=None, usecols=[1,2])
+                ref_data_df = pd.DataFrame(names=['start','end'], header=None, usecols=[1,2])
             logger.info("Peak calling in chromosome {}:".format(chr_table[chr_no]))
             call_peak(chr_no, chr_table, chr_lengths, input_bam, ref_data_df, input_data, input_data_ref,
                     logger, num_grid, prediction, sess, window_size, pgb_on=True)

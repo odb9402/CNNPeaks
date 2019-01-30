@@ -24,7 +24,7 @@ def main():
     arg_parser.add_argument("-eps","--basePointEPS",help="DBSCAN clustering parameter during preprocessing steps")
     arg_parser.add_argument("-w","--windowSize",default=100000,help="Window size for peak calling.")
     arg_parser.add_argument("-n","--modelNum",default=0, help="Define which model to call peak.")
-    arg_parser.add_argument("-kf","--KFold",default=0, help="K fold cross validation during training models.")
+    arg_parser.add_argument("-kf","--KFold",default=10, help="K fold cross validation during training models.")
     arg_parser.add_argument("-ncv","--notCrossValid", action='store_true')
     arg_parser.add_argument("-ln","--labelNum", default=30, help="The number of label for -randomLabel")
     arg_parser.add_argument("-r","--regions", help="Specific genome regions for peak calling. eg) chr3:100023400-1000044323 , you can use 's' or 'e' to indicate start and end of the chromosome")
