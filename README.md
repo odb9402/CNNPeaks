@@ -18,7 +18,7 @@ You can prepare to use CNN-Peaks via running a script "install.sh" in the CNN-Pe
 > ./install.sh
 > ```
 
-If you want to GPU-accelerated CNN-Peaks, please check "GPU-accelerated CNN-Peaks"
+If you want to GPU-accelerated CNN-Peaks, please check ["GPU-accelerated CNN-Peaks"](https://github.com/odb9402/ConvPeaks#4-gpu-accelerated-cnn-peaks)
 
 Details of the install are below ( you do not have to follow these descriptions since install.sh work well ):
 
@@ -107,7 +107,7 @@ Examples of CNN-peaks command:
 
 
 
-Note that you can use pre-trained models for CNN-Peaks calling.  Please check "Using pre-trained models" for details. 
+Note that you can use pre-trained models for CNN-Peaks calling.  Please check ["Using pre-trained models"](https://github.com/odb9402/ConvPeaks#using-pre-trained-models) for details. 
 
 > **peak calling with trained model:**
 >
@@ -225,9 +225,6 @@ After calling peaks by CNN-Peaks model, you can filter out some peaks with scori
 The pre-trained CNN-Peaks model is available.  You do not have to train your model if you use this well-tuned model.  To use the model, you just have to move "models" directory into your CNN-Peaks working directory which is outer most directory of CNN-Peaks.
 
 ### 1. [Alpha](https://drive.google.com/open?id=1LXcIfpLuTS_Q4qO75tBVTATmVASSl4jT)
-
-------
-
 The Alpha model had been trained with 2997 genomic segments with narrow histone modifications such as H3K4me3 and small amounts of transcription factors such as MAX.
 
 
