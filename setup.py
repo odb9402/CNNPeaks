@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup_requires = ['samtools', 'bamtools']
 
-install_requires = ['pysam','scipy','numpy','sklearn','tensorflow','pandas','progressbar2']
+install_requires = ['pysam','scipy','numpy','sklearn','tensorflow-gpu','pandas','progressbar2']
 
 dependency_links =[]
 

@@ -174,10 +174,11 @@ def makeRefGeneTags(refGene_df, start, end, stride, num_grid, dataType='pd'):
     """
 
     refGene_depth_list = []
-
-    refGene = refGene_df.values[1][0]
-    print(refGene)
-    exit()
+        
+    #print(refGene_df.values)
+    #refGene = refGene_df.values[1][0]
+    #print(refGene)
+    #exit()
 
     start_point = 0
 

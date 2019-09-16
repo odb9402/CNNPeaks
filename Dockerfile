@@ -53,6 +53,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libnccl2=2.2.13-1+cuda9.0 \
         libnccl-dev=2.2.13-1+cuda9.0 \
         libcurl3-dev \
+        libbz2-dev \
+        liblzma-dev \
         libfreetype6-dev \
         libhdf5-serial-dev \
         libpng12-dev \
@@ -86,10 +88,6 @@ RUN mkdir /usr/local/cuda-9.0/lib &&  \
     ln -s /usr/lib/x86_64-linux-gnu/libnccl.so.2 /usr/local/cuda/lib/libnccl.so.2 && \
     ln -s /usr/include/nccl.h /usr/local/cuda/include/nccl.h
 
-# TODO(tobyboyd): Remove after license is excluded from BUILD file.
-RUN gunzip /usr/share/doc/libnccl2/NCCL-SLA.txt.gz && \
-    cp /usr/share/doc/libnccl2/NCCL-SLA.txt /usr/local/cuda/
-
 ARG USE_PYTHON_3_NOT_2=True
 ARG _PY_SUFFIX=${USE_PYTHON_3_NOT_2:+3}
 ARG PYTHON=python${_PY_SUFFIX}
@@ -117,6 +115,11 @@ RUN echo "deb [arch=amd64] http://storage.googleapis.com/bazel-apt stable jdk1.8
     apt-get update && \
     apt-get install -y bazel
 
+# Install htslib
+RUN wget https://github.com/samtools/htslib/releases/download/1.9/htslib-1.9.tar.bz2
+RUN tar -xvf htslib-1.9.tar.bz2
+RUN cd htslib-1.9 && ./configure && make && make install
+
 RUN pip --no-cache-dir install \
         Pillow \
         h5py \
@@ -130,13 +133,19 @@ RUN pip --no-cache-dir install \
         scipy \
         sklearn \
 		progressbar2\
-        tensorflow-gpu 
+        tensorflow-gpu\
+        cython
+
+RUN git clone http://github.com/odb9402/CNNPeaks 
+
+RUN cd CNNPeaks/dependencies && ./install_samtools.sh
+RUN cd .. && ./build.sh
 
 RUN ln -s /usr/include/python3.5 python3
 RUN ln -s /usr/include/python3.5 python
 
-WORKDIR /home
+WORKDIR /CNNpeaks
 
-RUN alias python=python3
+RUN alias python='/usr/bin/python3'
 
 RUN ["/bin/bash"] 

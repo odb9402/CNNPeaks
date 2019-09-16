@@ -15,7 +15,6 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10, cross_valid = True):
     """
     This is a main function to build convolution neural network model
     for peak prediction.
-
     :param dir_name:
     :param logger:
     :param num_grid:
@@ -107,7 +106,6 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10, cross_valid = True):
 def training(sess, loss, prediction, test_prediction, train_step, train_data_list, train_label_list
         , train_ref_list, test_data_list, test_label_list, test_ref_list, logger, num_grid, step_num):
     """
-
     :param train_data_list:
     :param train_label_list:
     :param test_data_list:
@@ -194,9 +192,9 @@ def training(sess, loss, prediction, test_prediction, train_step, train_data_lis
         eval_y = []
 
         for j in range(batch_size):
-            eval_x.append(train_data_list[rand_index[j]]['readCount'].values)
-            eval_ref.append(train_ref_list[rand_index[j]]['refGeneCount'].values)
-            eval_y.append(np.repeat(train_label_list[rand_index[j]][['peak']].values.transpose(),5))
+            eval_x.append(test_data_list[eval_index[j]]['readCount'].values)
+            eval_ref.append(test_ref_list[eval_index[j]]['refGeneCount'].values)
+            eval_y.append(np.repeat(test_label_list[eval_index[j]][['peak']].values.transpose(),5))
 
         eval_x = np.array(eval_x).reshape(input_data_eval.shape)
         eval_ref = np.array(eval_ref).reshape(input_ref_data_eval.shape)
@@ -258,7 +256,6 @@ def getTensorStat(logits, targets, batch_size_in=batch_size):
     Return accuracy of the result.
     Acc = ( TP + TN ) / ( TP + TN + FN + FP )
     ( TP + TN + FN + FP ) = num_grid
-
     :param logits:
     :param targets:
     :return:
@@ -289,7 +286,6 @@ def getStat(logits, targets, batch_size_in=batch_size, num_grid=0):
     Return accuracy of the result.
     Acc = ( TP + TN ) / ( TP + TN + FN + FP )
     ( TP + TN + FN + FP ) = num_grid
-
     :param logits:
     :param targets:
     :return:
@@ -326,7 +322,6 @@ def pnRate(targets, batch_size_in=batch_size):
     Return the The ratio of Negative#/ Positive#.
     It will be used for weights of loss function to adjust
     between sensitivity and specificity.
-
     :param targets:
     :param num_grid:
     :return:
@@ -353,7 +348,6 @@ def classValueFilter(output_value):
     For output of model, probabilities of a final vector will be changed
     as binary values by checking whether elements of vector are higher or lower than
     class_threshold that defined in hyperparameters.py.
-
     :param output_value:
     :return: a binary vector that indicates having peak or not.
     """
@@ -372,7 +366,6 @@ def classValueFilter(output_value):
 def splitTrainingData(data_list, label_list, ref_list, Kfold=10):
     """
     If Kfold is zero, it just split two parts
-
     :param list_data:
     :param Kfold:
     :return:
@@ -496,7 +489,6 @@ def patternVis(reads, labels, refs, preds, num_grid=12000,min_peak_size=10, max_
 def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list, test_label_list,
                         test_ref_list, test_prediction, k = 1, K_fold="", min_peak_size=10, max_peak_num=50):
     """
-
     :param batch_size:
     :param input_data_eval:
     :param num_grid:
@@ -607,7 +599,6 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
 def visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, train_sens, train_spec, train_loss, K_fold =""):
     """
     Create matplotlib figures about a plot of loss function values and accuracy values.
-
     :param eval_every:
     :param generations:
     :param test_acc:

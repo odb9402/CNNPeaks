@@ -23,7 +23,7 @@ def main():
     arg_parser.add_argument("-s","--searchingDist", help="DBSCAN clustering parameter during preprocessing steps")
     arg_parser.add_argument("-eps","--basePointEPS",help="DBSCAN clustering parameter during preprocessing steps")
     arg_parser.add_argument("-w","--windowSize",default=100000,help="Window size for peak calling.")
-    arg_parser.add_argument("-n","--modelNum",default=0, help="Define which model to call peak.")
+    arg_parser.add_argument("-n","--modelName",default=None, help="Define which model to call peak.")
     arg_parser.add_argument("-kf","--KFold",default=10, help="K fold cross validation during training models.")
     arg_parser.add_argument("-ncv","--notCrossValid", action='store_true')
     arg_parser.add_argument("-ln","--labelNum", default=30, help="The number of label for -randomLabel")
@@ -47,7 +47,7 @@ def main():
         buildModel(args.inputDir, logger, num_grid=num_grid, K_fold_in=int(args.KFold), cross_valid=not (args.notCrossValid))
     elif args.runMode == 'peakCall':
         from peakCalling.callPeaks import run as callPeaks
-        callPeaks(args.inputDir, logger, window_size=windowSize, num_grid=num_grid, model_num=args.modelNum,  regions=args.regions)
+        callPeaks(args.inputDir, logger, window_size=windowSize, num_grid=num_grid, model_name=args.modelName,  regions=args.regions)
     elif args.runMode == 'checkData':
         from utility.labelManager import labelManager
         labelManager(args.inputDir)

@@ -49,7 +49,7 @@ conv1_bias = tf.get_variable("Conv_STEM1_bias", shape=[conv1_features], initiali
 conv2_bias = tf.get_variable("Conv_STEM2_bias", shape=[conv2_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 
 ############################ Inception 1 ###############################
-layer1_width = conv2_features + conv1_ref_features
+layer1_width = conv2_features #+ conv1_ref_features
 conv1a_weight = tf.get_variable("Conv_1A", shape=[4, layer1_width, conv1a_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 conv1b_weight = tf.get_variable("Conv_1B", shape=[3, layer1_width, conv1b_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 conv1c_weight = tf.get_variable("Conv_1C", shape=[2, layer1_width, conv1c_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
@@ -117,11 +117,9 @@ output_bias = tf.Variable(tf.truncated_normal([threshold_division], stddev=0.1, 
 def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing=True, normalize=False, eps=0.00001):
     """
     Define structure of convolution model.
-
     It will return two final output tensor.
      1. Sub output tensor for training steps
      2. Final output tensor for training and test steps
-
     :param logger:
     :param input_data:
     :return: Tensor of the output layer
@@ -159,7 +157,7 @@ def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing
             padding='SAME', pooling_type='MAX')
     print("Stem_Ref 1 : {}".format(max_pool1_ref.shape))
 
-    input_concat = tf.concat([max_pool1, max_pool1_ref],axis = 2)
+    input_concat = max_pool1 #tf.concat([max_pool1, max_pool1_ref],axis = 2)
     print("Stem_concat : {}".format(input_concat.shape))
 
     # Inception modules 1 to 6
@@ -206,7 +204,6 @@ def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing
 def concatLayer_B(source_layer, conv1_w, conv2_w, conv3_w, pooling_size):
     """
     Define concat layer which like Inception module.
-
     :param source_layer:
     :param conv1_w:
     :param conv2_w:
@@ -238,7 +235,6 @@ def concatLayer_B(source_layer, conv1_w, conv2_w, conv3_w, pooling_size):
 def concatLayer_C(source_layer, conv1_w, conv2_w, conv3_w, conv4_w, pooling_size):
     """
     Define concat layer which like Inception module.
-
     :param source_layer:
     :param conv1_w:
     :param conv_max_w:
@@ -275,7 +271,6 @@ def concatLayer_C(source_layer, conv1_w, conv2_w, conv3_w, conv4_w, pooling_size
 def concatLayer_A(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_w, pooling_size):
     """
     Define concat layer which like Inception module.
-
     :param source_layer:
     :param pooling_size:
     :return:
@@ -306,7 +301,6 @@ def concatLayer_A(source_layer, conv1_w, conv_max_w, conv2_w, conv_avg_w, conv3_
 def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, batch_size_in=batch_size, smoothing=True, normalize=False, t=1, eps=0.00001):
     """
     It generate
-
     :param threshold_tensor: This tensor represents read-depth thresholds which have size of 'div'
     :param depth_tensor: This tensor represents
     :param div:
@@ -343,15 +337,14 @@ def generateOutput(threshold_tensor, depth_tensor, div=10, input_size=12000, bat
 
 def aggregatedLoss(label_data_train, prediction_before_sigmoid):
     """
-
     """
     loss_a = tf.reduce_mean(tf.nn.top_k(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction_before_sigmoid,
         pos_weight=tf.maximum(1.,(loss_weight))), k = topK_set_a).values)
-    tf.summary.scalar("Top {} Loss".format(topK_set_a),loss_a)
+    tf.summary.scalar("Top_{}_Loss".format(topK_set_a),loss_a)
 
     loss_b = tf.reduce_mean(tf.nn.top_k(tf.nn.weighted_cross_entropy_with_logits(targets=label_data_train, logits=prediction_before_sigmoid,
         pos_weight=tf.maximum(1.,(loss_weight))), k = 750).values)
-    tf.summary.scalar("Top {} Loss".format(topK_set_b),loss_b)
+    tf.summary.scalar("Top_{}_Loss".format(topK_set_b),loss_b)
 
     return loss_a
 

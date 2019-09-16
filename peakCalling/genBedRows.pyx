@@ -27,7 +27,7 @@ def predictionToBedString(np.ndarray prediction, str chromosome, int region_star
     cdef double end_point
     cdef double start_point
     
-    cdef double threshold_score = 0
+    cdef double threshold_score = 200
     cdef double p_value_max
     cdef double p_value_mean
     cdef double var
