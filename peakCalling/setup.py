@@ -1,13 +1,14 @@
 from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Build import cythonize
+import numpy
 
 cython_ext_modules = [Extension("readCounts",["readCounts.pyx"]),
             Extension("bedGen",["genBedRows.pyx"])]
 
 c_ext_modules =[Extension("readbam",
                           sources = ["./bamdepth/readbam.c","./bamdepth/htslib/libhts.a"],
-                        include_dirs=["./bamdepth/htslib","./bamdepth/htslib/htslib"],
+                        include_dirs=["./bamdepth/htslib","./bamdepth/htslib/htslib",numpy.get_include()],
                          library_dirs=["./bamdepth/htslib","./bamdepth/htslib/htslib"],
                          libraries=["z","m","pthread"])]
 

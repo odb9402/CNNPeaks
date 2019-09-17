@@ -136,10 +136,6 @@ RUN pip --no-cache-dir install \
         tensorflow-gpu\
         cython
 
-RUN git clone http://github.com/odb9402/CNNPeaks 
-
-RUN cd CNNPeaks/dependencies && ./install_samtools.sh
-RUN cd CNNPeaks && ./build.sh
 
 RUN ln -s /usr/include/python3.5 python3
 RUN ln -s /usr/include/python3.5 python
@@ -147,5 +143,9 @@ RUN ln -s /usr/include/python3.5 python
 WORKDIR /CNNpeaks
 
 RUN alias python='/usr/bin/python3'
+
+RUN git clone http://github.com/odb9402/CNNPeaks 
+RUN cd CNNPeaks/dependencies && ./install_samtools.sh
+RUN cd CNNPeaks && ./build.sh
 
 RUN ["/bin/bash"] 
