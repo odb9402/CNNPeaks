@@ -3,8 +3,11 @@ from distutils.extension import Extension
 from Cython.Build import cythonize
 import numpy
 
-cython_ext_modules = [Extension("readCounts",["readCounts.pyx"]),
-            Extension("bedGen",["genBedRows.pyx"])]
+cython_ext_modules = [Extension("readCounts",["readCounts.pyx"],
+                                include_dirs=[numpy.get_include()])
+                      ,
+            Extension("bedGen",["genBedRows.pyx"],
+                      include_dirs=[numpy.get_include()])]
 
 c_ext_modules =[Extension("readbam",
                           sources = ["./bamdepth/readbam.c","./bamdepth/htslib/libhts.a"],
