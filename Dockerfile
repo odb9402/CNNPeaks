@@ -139,7 +139,7 @@ RUN pip --no-cache-dir install \
 RUN git clone http://github.com/odb9402/CNNPeaks 
 
 RUN cd CNNPeaks/dependencies && ./install_samtools.sh
-RUN cd .. && ./build.sh
+RUN cd CNNPeaks && ./build.sh
 
 RUN ln -s /usr/include/python3.5 python3
 RUN ln -s /usr/include/python3.5 python

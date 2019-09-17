@@ -7,7 +7,7 @@ extension = Extension(
     name = "readbam",
     sources=['read_bam.pyx'],
     libraries=["readbam","hts"],
-    library_dirs=[".","/usr/local/lib"]#,"./htslib"],
+    library_dirs=[".","/usr/local/lib"],#,"./htslib"],
     include_dirs=[".","./htslib",numpy.get_include()]
 )
 
