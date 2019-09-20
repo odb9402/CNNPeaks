@@ -24,7 +24,7 @@ max_pool_size_ref2 = 2
 max_pool_size_ref3 = 2
 
 conv1_features = 16
-conv2_features = 36
+conv2_features = 32 
 
 conv1a_features = 16
 conv1b_features = 16

@@ -49,7 +49,7 @@ conv1_bias = tf.get_variable("Conv_STEM1_bias", shape=[conv1_features], initiali
 conv2_bias = tf.get_variable("Conv_STEM2_bias", shape=[conv2_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 
 ############################ Inception 1 ###############################
-layer1_width = conv2_features #+ conv1_ref_features
+layer1_width = conv2_features + conv1_ref_features
 conv1a_weight = tf.get_variable("Conv_1A", shape=[4, layer1_width, conv1a_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 conv1b_weight = tf.get_variable("Conv_1B", shape=[3, layer1_width, conv1b_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
 conv1c_weight = tf.get_variable("Conv_1C", shape=[2, layer1_width, conv1c_features], initializer= tf.contrib.layers.variance_scaling_initializer(factor=1.0, mode='FAN_AVG',uniform='True'))
@@ -157,7 +157,7 @@ def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing
             padding='SAME', pooling_type='MAX')
     print("Stem_Ref 1 : {}".format(max_pool1_ref.shape))
 
-    input_concat = max_pool1 #tf.concat([max_pool1, max_pool1_ref],axis = 2)
+    input_concat = tf.concat([max_pool1, max_pool1_ref],axis = 2) #max_pool1
     print("Stem_concat : {}".format(input_concat.shape))
 
     # Inception modules 1 to 6
