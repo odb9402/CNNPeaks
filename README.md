@@ -1,3 +1,4 @@
+
 <p align="center">
     <img src="https://github.com/odb9402/ConvPeaks/blob/master/CNNpeaks.png" alt="CNN-Peaks logo">
 </p>
@@ -6,6 +7,20 @@
 
 CNN-peaks is a **Convolution Neural Network(CNN)** based ChIP-Seq peak calling software. 
 
+
+## Install with Docker
+
+We highly recommend that use Docker to install CNN-Peaks. CNN-Peaks easily can be installed by building docker-image using our Dockerfile. However, you might use [Nvidia-docker](https://github.com/odb9402/ConvPeaks#4-gpu-accelerated-cnn-peaks) to run GPU-accelerated CNN-Peaks.
+
+
+
+> ```
+> ### Docker run example ( In the cloned repository )
+> nvidia-docker build . -t cnnpeaks:test
+> nvidia-docker run -i -t -v <data directory>:/CNNpeaks/CNNPeaks/data cnnpeaks:test
+> ```
+
+After building Docker image for CNN-Peaks, you can use CNN-Peaks as described in [Here](https://github.com/odb9402/ConvPeaks#Quick-start).
 
 ## Install
 
@@ -117,7 +132,7 @@ Note that you can use pre-trained models for CNN-Peaks calling.  Please check ["
 
 ## Labeled data
 
-CNN-peaks uses labeled data which has its own format. All these approaches that use labeled data for marking are from [1]. Examples of labeled data are as the following below. (It based on ASCII)
+CNN-peaks uses labeled data which has its format. All these approaches that use labeled data for marking are from [1]. Examples of labeled data are as the below. (It based on ASCII)
 
 > chr1:1,000,000-1,100,000 peaks K562
 
@@ -145,7 +160,7 @@ Before you try to call peaks with your ChIP-Seq Data, CNN-peaks model should be 
 > - H3K36me3_K562.bam
 > - H3K36me3_A549.bam
 
-Each file must follow a format of the filename that is **Target_CellName.bam**. The case of labeled data, it must be like this: **Target_AnyString.txt**. The labeled data of this example H3K36me3_None.txt has data which includes both of K562 and A549.
+Each file must follow a format of the filename that is **Target_CellName.bam**. The case of labeled data, it must be like this: **Target_AnyString.txt**. The labeled data of this example H3K36me3_None.txt has data which includes both K562 and A549.
 As a result, directories that include labeled data, reference gene data and read depth data are generated.
 
 > **./TestPreProcess:**
@@ -160,7 +175,7 @@ As a result, directories that include labeled data, reference gene data and read
 
 ### **2. Build CNN-peaks model with preprocessed data**
 
-After you created your own training data with our **preprocess** module, you can build CNN-peaks model by using our **buildModel** module. Results of running the module include visualization of peak predictions about test data, train and test sensitivity and specificity during the training process and trained models in a "models" directory. You can check those visualization results and saved tensorflow variables at the "models" directory in a path of CNNpeaks.
+After you created your training data with our **preprocess** module, you can build CNN-peaks model by using our **buildModel** module. Results of running the module include visualization of peak predictions about test data, train and test sensitivity and specificity during the training process and trained models in a "models" directory. You can check those visualization results and saved tensorflow variables at the "models" directory in a path of CNNpeaks.
 
 
 
@@ -182,7 +197,7 @@ If you finish building your CNNpeaks model, **buildModel** module generated 'k' 
 
 ## Output format of CNN-Peaks
 
-Basically, the output format of CNN-Peaks follows regular .bed format which is tab delimited. 1 to 5`th columns is absolutely same with a regular bed file format that can be displayed in an annotation track for visualization tools such as UCSC genome browser and IGV.
+The output format of CNN-Peaks follows regular .bed format which is tab delimited. 1 to 5`th columns is same with a regular bed file format that can be displayed in an annotation track for visualization tools such as UCSC genome browser and IGV.
 
 Field of CNN-Peaks output format is:
 
