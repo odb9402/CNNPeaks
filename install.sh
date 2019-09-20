@@ -1,7 +1,6 @@
 sudo apt-get install -y --no-install-recommends bamtools \
     libbz2-dev \
     liblzma-dev
-    
 
 ### INSTALL HTSLIB 
 wget https://github.com/samtools/htslib/releases/download/1.9/htslib-1.9.tar.bz2

@@ -133,7 +133,7 @@ RUN pip --no-cache-dir install \
         scipy \
         sklearn \
 		progressbar2\
-        tensorflow-gpu\
+        tensorflow-gpu==1.9.0\
         cython
 
 

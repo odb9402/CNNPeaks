@@ -11,7 +11,7 @@ from utility.utilities import extractChrClass
 from .defineModel import *
 from .hyperparameters import *
 
-def run(dir_name, logger, num_grid=0, K_fold_in=10, cross_valid = True):
+def run(dir_name, logger, num_grid=0, K_fold_in=10, cross_valid = False):
     """
     This is a main function to build convolution neural network model
     for peak prediction.
@@ -246,6 +246,7 @@ def training(sess, loss, prediction, test_prediction, train_step, train_data_lis
     visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, sess, test_data_list
             , test_label_list, test_ref_list, test_prediction, k=len(test_data_list), K_fold=str(step_num))
 
+    logger.info("Saving CNNPeaks")
     saver = tf.train.Saver()
     save_path = saver.save(sess, os.getcwd() + "/models/model{}.ckpt".format(step_num,step_num))
     logger.info("Model saved in path : %s" % save_path)
