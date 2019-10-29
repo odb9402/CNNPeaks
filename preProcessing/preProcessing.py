@@ -2,6 +2,7 @@ import pandas as pd
 import pysam
 import glob
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import re
 import subprocess as sp
 import random

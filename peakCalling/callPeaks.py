@@ -1,10 +1,11 @@
 import preProcessing.preProcessing as preProcessing
 import buildModel.buildModel as buildModel
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 import numpy as np
 import pandas as pd
 import pysam
-import os
 import random
 import string
 import matplotlib.pyplot as plt
@@ -19,7 +20,7 @@ from buildModel.hyperparameters import *
 from buildModel.defineModel import *
 
 
-def run(input_bam, logger, window_size=100000, num_grid=0, model_name=None, regions=None, genome=None):
+def run(input_bam, logger, window_size=100000, num_grid=0, model_name=None, regions=None, genome=None, bed_name=None):
     """
 
     :param dir_name:
@@ -88,23 +89,25 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_name=None, regi
 
         logger.info("Chromosome<{}> , <{}> to <{}>".format(chromosome, call_start, call_end))
 
-        ref_data_df = pd.read_table("geneRef/{}.bed".format(chromosome), names=['start','end'] , header=None, usecols=[1,2])
+        ref_data_df = pd.read_csv("geneRef/{}.bed".format(chromosome), names=['start','end'] , header=None, usecols=[1,2], sep='\t')
         logger.info("Peak calling in chromosome {}:".format(chromosome))
         call_peak(chr_no, chr_table, chr_lengths, input_bam, ref_data_df, input_data, input_data_ref,
-                logger, num_grid, prediction, sess, window_size, pgb_on=True, window_start=call_start, window_end=call_end)
+                logger, num_grid, prediction, sess, window_size, pgb_on=True, window_start=call_start, window_end=call_end, bed_name=bed_name)
     else:
         for chr_no in range(len(chr_table)):
             if os.path.isfile("geneRef/{}.bed".format(chr_table[chr_no])):
-                ref_data_df = pd.read_table("geneRef/{}.bed".format(chr_table[chr_no]), names=['start','end'] , header=None, usecols=[1,2])
+                ref_data_df = pd.read_csv("geneRef/{}.bed".format(chr_table[chr_no]), names=['start','end'] , header=None, usecols=[1,2], sep='\t')
             else:
-                ref_data_df = pd.DataFrame(header=None)
+                logger.info("Chromosome {} is invalid.".format(chr_table[chr_no]))
+                continue
+                #ref_data_df = pd.DataFrame(header=None)
             logger.info("Peak calling in chromosome {}:".format(chr_table[chr_no]))
             call_peak(chr_no, chr_table, chr_lengths, input_bam, ref_data_df, input_data, input_data_ref,
-                    logger, num_grid, prediction, sess, window_size, pgb_on=True)
+                    logger, num_grid, prediction, sess, window_size, pgb_on=True, bed_name=bed_name)
 
 
 def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data, input_data_ref,
-        logger, num_grid, prediction, sess, window_size, pgb_on=False, window_start=1, window_end=None, window_chunk=100):
+        logger, num_grid, prediction, sess, window_size, pgb_on=False, window_start=1, window_end=None, window_chunk=500, bed_name=None):
     """
 
     :param chr_no: Chromosome number of regions
@@ -124,7 +127,11 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
 
     stride = window_size / num_grid
     eval_counter = 0
-    output_file_name = "{}.bed".format(file_name.rsplit('.')[0])
+    if bed_name == None:
+        output_file_name = "{}.bed".format(file_name.rsplit('.')[0])
+    else:
+        output_file_name = bed_name
+    logger.info("Output bed file name : {}".format(output_file_name))
     peaks = []
 
     logger.info("Length of [{}] is : {}".format(chr_table[chr_no], window_end))
@@ -147,6 +154,9 @@ def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data
             ### If a size of window chunk is larger than remained genome.
             else:
                 window_n = int((window_end - window_count)/ window_size)
+                if window_n < 1:
+                    logger.info("The remained region is less than window size.")
+                    break
                 read_count_chunk = generateReadcounts(window_count,
                         window_count+window_size*window_n, chr_table[chr_no], file_name, num_grid, window_n)
                 end = window_end

@@ -195,7 +195,8 @@ def peakPredictConvModel(input_data_depth, input_data_ref, test=False, smoothing
     fully_connected2 = tf.nn.relu(fully_connected2)
     print("Fully connected B :{}".format(fully_connected2.shape))
 
-    final_threshold_output = (tf.add(tf.matmul(fully_connected2, output_weight), output_bias))
+    final_threshold_output = tf.matmul(fully_connected2, output_weight)
+    final_threshold_output = tf.add(final_threshold_output, output_bias)
     print("Threshold Output :{}".format(final_threshold_output.shape))
 
     return final_threshold_output

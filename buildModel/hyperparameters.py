@@ -5,9 +5,9 @@ init_depth = 1
 pnRate_threshold = 50
 batch_size = 1 
 evaluation_size = 1
-generations = 1000
+generations = 4000
 eval_every = 20
-learning_rate = 0.0001
+learning_rate = 0.00003
 target_size = 12000
 topK_set_a = 6000
 topK_set_b = 3000
@@ -76,5 +76,6 @@ max_pool_size6 = 2
 
 fully_connected_size1 = 500 
 fully_connected_size2 = 250
-threshold_division = 50
-fully_connected_size_sub = 300
+threshold_division = 10
+#10 for beta 
+#50 for alpha

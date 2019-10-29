@@ -3,6 +3,7 @@ import random
 import numpy as np
 import scipy.stats as st
 import sys
+from buildModel.hyperparameter import *
 cimport numpy as np
 
 def predictionToBedString(np.ndarray prediction, str chromosome, int region_start, double stride,
@@ -27,7 +28,7 @@ def predictionToBedString(np.ndarray prediction, str chromosome, int region_star
     cdef double end_point
     cdef double start_point
     
-    cdef double threshold_score = 200
+    cdef double threshold_score = 50
     cdef double p_value_max
     cdef double p_value_mean
     cdef double var

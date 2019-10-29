@@ -1,4 +1,5 @@
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import shutil
 import pandas as pd
 import numpy as np
@@ -152,6 +153,8 @@ def training(sess, loss, prediction, test_prediction, train_step, train_data_lis
     test_spec_containor_for_mean = []
     test_sens_containor_for_mean = []
 
+    saver = tf.train.Saver(max_to_keep=15)
+    
     # Start of the training process
     for i in range(generations):
         rand_index = np.random.choice(len(train_data_list), size=batch_size)
@@ -240,6 +243,8 @@ def training(sess, loss, prediction, test_prediction, train_step, train_data_lis
             sens_containor_for_mean.clear()
             test_spec_containor_for_mean.clear()
             test_sens_containor_for_mean.clear()
+        if i % 100 == 0 and i != 1:
+            save_path = saver.save(sess, os.getcwd() + "/models/model{}.ckpt".format(step_num,step_num), global_step=i)
 
     visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, train_sens, train_spec
             , train_loss, K_fold=str(step_num))
@@ -247,7 +252,6 @@ def training(sess, loss, prediction, test_prediction, train_step, train_data_lis
             , test_label_list, test_ref_list, test_prediction, k=len(test_data_list), K_fold=str(step_num))
 
     logger.info("Saving CNNPeaks")
-    saver = tf.train.Saver()
     save_path = saver.save(sess, os.getcwd() + "/models/model{}.ckpt".format(step_num,step_num))
     logger.info("Model saved in path : %s" % save_path)
 
@@ -364,7 +368,7 @@ def classValueFilter(output_value):
     return class_value_list
 
 
-def splitTrainingData(data_list, label_list, ref_list, Kfold=10):
+def splitTrainingData(data_list, label_list, ref_list, Kfold=15):
     """
     If Kfold is zero, it just split two parts
     :param list_data:
