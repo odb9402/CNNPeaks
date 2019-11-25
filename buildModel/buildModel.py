@@ -1,5 +1,5 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import shutil
 import pandas as pd
 import numpy as np
@@ -71,12 +71,7 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10, cross_valid = False):
         os.mkdir(os.getcwd() + "/models")
 
     #################### Training start with cross validation ################################
-    sens, spec = getTensorStat(prediction,label_data_train)#, prediction)
-
     for i in range(K_fold):
-        tf.summary.scalar("Loss",loss)
-        tf.summary.scalar("Sensitivity step{}",sens)
-        tf.summary.scalar("Specificity step{}",spec)
 
         training_data = []
         training_ref = []
@@ -121,25 +116,6 @@ def training(sess, loss, prediction, test_prediction, train_step, train_data_lis
     :return:
     """
 
-    LOG_DIR = os.path.join(os.path.dirname(__file__),'tensorLog{}'.format(step_num))
-    LOG_DIR_TEST = os.path.join(os.path.dirname(__file__),'tensorLog_test{}'.format(step_num))
-
-    if os.path.exists(LOG_DIR) == False:
-        os.mkdir(LOG_DIR)
-    else:
-        shutil.rmtree(LOG_DIR, ignore_errors=True)
-        os.mkdir(LOG_DIR)
-
-    if os.path.exists(LOG_DIR_TEST) == False:
-        os.mkdir(LOG_DIR_TEST)
-    else:
-        shutil.rmtree(LOG_DIR_TEST, ignore_errors=True)
-        os.mkdir(LOG_DIR_TEST)
-
-    merged = tf.summary.merge_all()
-    writer = tf.summary.FileWriter(LOG_DIR, graph=sess.graph)
-    writer_test = tf.summary.FileWriter(LOG_DIR_TEST, graph=sess.graph)
-
     train_loss = []
     train_spec = []
     train_sens = []
@@ -175,7 +151,7 @@ def training(sess, loss, prediction, test_prediction, train_step, train_data_lis
         train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref,
                 loss_weight:pnRate(rand_y), is_train_step:True, p_dropout:0.6}
 
-        summary , _ =  sess.run([merged, train_step], feed_dict=train_dict)
+        sess.run([train_step], feed_dict=train_dict)
 
         temp_train_loss, temp_train_preds = sess.run([loss, prediction], feed_dict=train_dict)
         temp_train_stat = getStat(temp_train_preds, rand_y, num_grid=num_grid)
@@ -184,8 +160,6 @@ def training(sess, loss, prediction, test_prediction, train_step, train_data_lis
         spec_containor_for_mean.append(temp_train_stat['spec'])
         if temp_train_stat['sens'] != -1:
             sens_containor_for_mean.append(temp_train_stat['sens'])
-
-        writer.add_summary(summary, i)
 
         # Recording results of test data
         eval_index = np.random.choice(len(test_data_list), size=batch_size)
@@ -209,8 +183,6 @@ def training(sess, loss, prediction, test_prediction, train_step, train_data_lis
         test_preds = sess.run(test_prediction, feed_dict=test_dict)
         temp_test_stat = getStat(test_preds, eval_y, num_grid=num_grid)
         
-        if i % 5 == 0:
-            patternVis(eval_x, eval_y, eval_ref, test_preds)
         
         test_spec_containor_for_mean.append(temp_test_stat['spec'])
         if temp_test_stat['sens'] != -1:
