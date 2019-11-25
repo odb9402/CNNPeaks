@@ -290,7 +290,7 @@ def createBamIndex(input_bam):
     "input_bam".
     :param input_bam: A input bam file name.
     """
-    sp.call(['sudo bamtools index -in ' + input_bam], shell=True)
+    sp.call(['bamtools index -in ' + input_bam], shell=True)
 
 
 
