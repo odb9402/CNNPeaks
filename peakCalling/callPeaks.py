@@ -107,7 +107,7 @@ def run(input_bam, logger, window_size=100000, num_grid=0, model_name=None, regi
 
 
 def call_peak(chr_no, chr_table, chr_lengths, file_name, ref_data_df, input_data, input_data_ref,
-        logger, num_grid, prediction, sess, window_size, pgb_on=False, window_start=1, window_end=None, window_chunk=500, bed_name=None):
+        logger, num_grid, prediction, sess, window_size, pgb_on=False, window_start=1, window_end=None, window_chunk=100, bed_name=None):
     """
 
     :param chr_no: Chromosome number of regions
