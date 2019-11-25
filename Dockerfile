@@ -69,6 +69,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         wget \
         python3-tk \
         tk-dev \
+	bamtools \
         && \
     rm -rf /var/lib/apt/lists/* && \
     find /usr/local/cuda-9.0/lib64/ -type f -name 'lib*_static.a' -not -name 'libcudart_static.a' -delete && \
