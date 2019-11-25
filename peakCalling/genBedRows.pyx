@@ -3,7 +3,7 @@ import random
 import numpy as np
 import scipy.stats as st
 import sys
-from buildModel.hyperparameter import *
+from buildModel.hyperparameters import *
 cimport numpy as np
 
 def predictionToBedString(np.ndarray prediction, str chromosome, int region_start, double stride,
