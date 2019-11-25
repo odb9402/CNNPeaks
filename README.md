@@ -237,12 +237,13 @@ After calling peaks by CNN-Peaks model, you can filter out some peaks with scori
 
 ## Using pre-trained models
 
-The pre-trained CNN-Peaks model is available.  You do not have to train your model if you use this well-tuned model.  To use the model, you just have to move "models" directory into your CNN-Peaks working directory which is outer most directory of CNN-Peaks.
+The pre-trained CNN-Peaks model is available.  You do not have to train your model if you use this well-tuned model. To use the model, you just have to move "models" directory into your CNN-Peaks working directory which is outer most directory of CNN-Peaks.
 
-### 1. [Alpha](https://drive.google.com/open?id=1LXcIfpLuTS_Q4qO75tBVTATmVASSl4jT)
-The Alpha model had been trained with 2997 genomic segments with narrow histone modifications such as H3K4me3 and small amounts of transcription factors such as MAX.
+### 1. [Alpha](http://dmblab.ml/CNNPeaks/alphaModel.tar)
+The Alpha model had been trained with 2997 genomic segments with narrow histone modifications such as H3K4me3 and small amounts of transcription factors such as MAX. Note that it has 50 threshold outputs.
 
-
+### 2. [Beta](http://dmblab.ml/CNNPeaks/betaModel.tar)
+The Beta model had been trained with 3294 genomic segments with narrow histone modifications such as H3K4me3 and small amounts of transcription factors such as MAX. In addition, to give variaty for the model, it contains 297 ATAC-Seq genomic segments. Note that it has 10 threshold outputs.
 
 ------
 
