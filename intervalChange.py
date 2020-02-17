@@ -68,15 +68,15 @@ args.size = int(args.size)
 
 if args.inputBed == None:
     print("Input bed file must be provided.")
-    args.print_help()
+    arg_parser.print_help()
     exit()
 elif args.inputBam == None:
     print("Input bam file must be provided.")
-    args.print_help()
+    arg_parser.print_help()
     exit()
 elif args.outputBed == None:
     print("Output bed file must be provided.")
-    args.print_help()
+    arg_parser.print_help()
     exit()
 
 change_interval(args.inputBed, args.inputBam, args.outputBed, args.size)
