@@ -12,7 +12,7 @@ from utility.utilities import extractChrClass
 from .defineModel import *
 from .hyperparameters import *
 
-def run(dir_name, logger, num_grid=0, K_fold_in=10, cross_valid = False):
+def run(dir_name, logger, num_grid=0, K_fold_in=10, cross_valid = False, label_fix_num=None):
     """
     This is a main function to build convolution neural network model
     for peak prediction.
@@ -27,7 +27,7 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10, cross_valid = False):
     dir_list = os.listdir(PATH)
 
     for dir in dir_list:
-        dir = PATH + '/' + dir
+        True
 
     input_list = {}
     for dir in dir_list:
@@ -64,6 +64,17 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10, cross_valid = False):
                 label_data_names.append(pd.read_csv(label_file_name))
         logger.info("DIRECTORY (TARGET) [{}]# of labels : <{}>".format(label_num,dir))
 
+    if label_fix_num != None:
+        step = 0
+        fin = len(input_data_names)
+        while fin-step > label_fix_num:
+            rand_idx = random.randint(0, fin - step - 1)
+            input_data_names.pop(rand_idx)
+            ref_data_names.pop(rand_idx)
+            label_data_names.pop(rand_idx)
+            step += 1
+            
+        
     K_fold = K_fold_in
     input_data_list, label_data_list, ref_data_list = splitTrainingData(input_data_names, label_data_names
             , ref_data_names, Kfold=K_fold)
@@ -92,6 +103,7 @@ def run(dir_name, logger, num_grid=0, K_fold_in=10, cross_valid = False):
         if not os.path.isdir(os.getcwd() + "/models/model_{}".format(i)):
             os.mkdir(os.getcwd() + "/models/model_{}".format(i))
 
+        logger.info("[{}]# of labels for training, [{}]# of labels for testing.".format(len(training_data), len(test_data)))
         training(sess, loss, prediction, test_prediction, train_step, training_data, training_label
                 , training_ref, test_data, test_label, test_ref, logger, num_grid, i)
 
@@ -129,7 +141,16 @@ def training(sess, loss, prediction, test_prediction, train_step, train_data_lis
     test_spec_containor_for_mean = []
     test_sens_containor_for_mean = []
 
-    saver = tf.train.Saver(max_to_keep=15)
+    saver = tf.train.Saver(max_to_keep=10)
+    
+    #pnRate_sum = 0
+    #for i in range(len(train_data_list)):
+    #    rand_y = []
+    #    rand_y.append(np.repeat(train_label_list[i][['peak']].values.transpose(),5))
+    #    rand_y = np.array(rand_y).reshape(label_data_train.shape)
+    #    pnRate_sum += pnRate(rand_y)
+    #pnRate_mean = pnRate_sum/len(train_data_list)
+    #logger.info("average PN rate : {}".format(pnRate_mean))
     
     # Start of the training process
     for i in range(generations):
@@ -150,6 +171,7 @@ def training(sess, loss, prediction, test_prediction, train_step, train_data_lis
 
         train_dict = {input_data_train: rand_x, label_data_train: rand_y, input_ref_data_train: rand_ref,
                 loss_weight:pnRate(rand_y), is_train_step:True, p_dropout:0.6}
+                #loss_weight:pnRate_mean, is_train_step:True, p_dropout:0.6}
 
         sess.run([train_step], feed_dict=train_dict)
 
@@ -196,7 +218,7 @@ def training(sess, loss, prediction, test_prediction, train_step, train_data_lis
                 loss_mean = sum(loss_containor_for_mean)/float(len(loss_containor_for_mean))
             spec_mean = sum(spec_containor_for_mean)/float(len(spec_containor_for_mean))
 
-            if len(sens_containor_for_mean) == 0:
+            if len(test_sens_containor_for_mean) == 0:
                 test_sens_mean = -1.
             else:
                 test_sens_mean = sum(test_sens_containor_for_mean)/float(len(test_sens_containor_for_mean))
@@ -568,8 +590,8 @@ def visualizePeakResult(batch_size, input_data_eval, num_grid, label_data_eval, 
             plt.xlabel('Regions')
             plt.ylabel('Read Count')
             plt.legend(loc='upper right')
+            plt.savefig('models/model_{}/peak{}.png'.format(K_fold,i), dpi=400)
             plt.show()
-            plt.savefig('models/model_{}/peak{}.png'.format(K_fold,i))
             plt.clf()
 
 
@@ -595,8 +617,8 @@ def visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, trai
     plt.title('Cross entropy Loss per generation')
     plt.xlabel('Generation')
     plt.ylabel('Loss')
+    plt.savefig('models/model_{}/LossPerGen.png'.format(K_fold), dpi=400)
     plt.show()
-    plt.savefig('models/model_{}/LossPerGen.png'.format(K_fold))
     plt.clf()
 
     plt.plot(eval_indices, test_sens, label='Test Set sensitivity')
@@ -606,8 +628,8 @@ def visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, trai
     plt.ylabel('Sensitivity')
     plt.legend(loc='lower right')
     plt.ylim([0,1])
+    plt.savefig('models/model_{}/SensPerGen.png'.format(K_fold), dpi=400)
     plt.show()
-    plt.savefig('models/model_{}/SensPerGen.png'.format(K_fold))
     plt.clf()
 
     plt.plot(eval_indices, test_spec, label='Test Set specificity')
@@ -617,8 +639,8 @@ def visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, trai
     plt.ylabel('Specificity')
     plt.legend(loc='lower right')
     plt.ylim([0,1])
+    plt.savefig('models/model_{}/SpecPerGen.png'.format(K_fold), dpi=400)
     plt.show()
-    plt.savefig('models/model_{}/SpecPerGen.png'.format(K_fold))
     plt.clf()
 
     plt.plot(eval_indices, [2*(test_sens[i]*test_spec[i])/(test_sens[i]+test_spec[i]) for i in range(len(test_sens))], label='Test Set F1 Score')
@@ -628,6 +650,6 @@ def visualizeTrainingProcess(eval_every, generations, test_sens, test_spec, trai
     plt.ylabel('F1 Score')
     plt.legend(loc='lower right')
     plt.ylim([0,1])
+    plt.savefig('models/model_{}/F1scorePerGen.png'.format(K_fold), dpi=400)
     plt.show()
-    plt.savefig('models/model_{}/F1scorePerGen.png'.format(K_fold))
     plt.clf()

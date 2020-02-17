@@ -2,7 +2,7 @@ import pysam
 import random
 import os
 
-def run(fileName, labelNumForChr = 20):
+def run(fileName, labelNumForChr = 15):
     """
     Generate random label point from
     """
