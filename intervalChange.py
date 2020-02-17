@@ -17,12 +17,15 @@ def change_interval(bed_name, bam_name, output_name, interval_size=200):
     print("Using alignment {} . . .".format(bam_name))
     
     i = 0
+    new_bed_str = ""
     for b in bed_lines:
         b = b.rstrip('\n').split('\t')
         region_str = "{}:{}-{}".format(b[0],b[1],b[2])
         samtool_proc = sp.Popen(["samtools depth -r {} {}".format(region_str, bam_name)]
-                                ,stdout=sp.PIPE ,shell=True)
-        out, err = samtool_proc.communicate()
+                                ,stdout=sp.PIPE
+                                ,stderr=sp.DEVNULL
+                                ,shell=True)
+        out, _ = samtool_proc.communicate()
         
         strings = [peak.split('\t') for peak in out.decode("utf-8").split('\n')]
         strings.pop(len(strings)-1)
@@ -43,10 +46,13 @@ def change_interval(bed_name, bam_name, output_name, interval_size=200):
                                         int(max_pos-interval_size/2),
                                         int(max_pos+interval_size/2),
                                         '\t'.join(b[3:]))
-        
-        new_bed_file.write(new_bed)
+        new_bed_str += new_bed 
         i += 1
         bar.update(i)
+        if i % 1000 == 0 and i != 0:
+            new_bed_file.write(new_bed_str)
+            new_bed_str = ""
+    new_bed_file.write(new_bed_str)
     new_bed_file.close()
     
 
@@ -59,5 +65,18 @@ arg_parser.add_argument("-s","--size", default=200, help="The interval size of t
 args = arg_parser.parse_args()
 
 args.size = int(args.size)
+
+if args.inputBed == None:
+    print("Input bed file must be provided.")
+    args.print_help()
+    exit()
+elif args.inputBam == None:
+    print("Input bam file must be provided.")
+    args.print_help()
+    exit()
+elif args.outputBed == None:
+    print("Output bed file must be provided.")
+    args.print_help()
+    exit()
 
 change_interval(args.inputBed, args.inputBam, args.outputBed, args.size)
