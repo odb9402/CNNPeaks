@@ -48,7 +48,7 @@ CNN-Peaks needs Python higher than 3.x. CNN-Peaks requires several Python packag
 > - numpy
 > - scipy
 > - sklearn
-> - tensorflow
+> - tensorflow==1.X.X
 > - pandas
 > - progressbar2
 > - pysam
