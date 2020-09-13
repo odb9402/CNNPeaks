@@ -250,3 +250,4 @@ The Beta model had been trained with 3294 genomic segments with narrow histone m
 > **CITATION**
 
 1. HOCKING, Toby Dylan, et al. Optimizing ChIP-seq peak detectors using visual labels and supervised machine learning. Bioinformatics, 2016, 33.4: 491-499.
+2. Oh, D., et al. CNN-Peaks: Chip-Seq peak detection pipeline using convolutional neural networks that imitate human visual inspection. Scientific reports, 2020, 10(1), 1-12.
